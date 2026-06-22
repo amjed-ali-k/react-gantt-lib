@@ -47,17 +47,17 @@ function eachCalendarDay(rangeStart: Date, rangeEnd: Date, visit: (day: Date) =>
 
 function normalizeHolidayDates(
   dates: HolidayMarking['dates'],
-): Map<string, string | undefined> {
-  const map = new Map<string, string | undefined>();
+): Map<string, { label?: string; index: number }> {
+  const map = new Map<string, { label?: string; index: number }>();
   if (!dates) return map;
 
-  for (const entry of dates) {
+  dates.forEach((entry, index) => {
     if (typeof entry === 'string' || entry instanceof Date) {
-      map.set(dateKey(entry), undefined);
-      continue;
+      map.set(dateKey(entry), { index });
+      return;
     }
-    map.set(dateKey(entry.date), entry.label);
-  }
+    map.set(dateKey(entry.date), { label: entry.label, index });
+  });
   return map;
 }
 
@@ -77,7 +77,7 @@ export function computeDateMarkingRects(
   const holidayRects: DateMarkingRect[] = [];
   const seenHolidayDays = new Set<string>();
 
-  const pushHolidayDay = (day: Date, label?: string) => {
+  const pushHolidayDay = (day: Date, label?: string, sourceIndex?: number) => {
     const key = dateKey(day);
     if (seenHolidayDays.has(key)) return;
     seenHolidayDays.add(key);
@@ -99,6 +99,8 @@ export function computeDateMarkingRects(
       color: holidayColor,
       kind: 'holiday',
       label,
+      date: day,
+      sourceIndex,
     });
   };
 
@@ -109,15 +111,15 @@ export function computeDateMarkingRects(
         pushHolidayDay(day, 'Weekend');
         return;
       }
-      const label = holidayDateMap.get(key);
-      if (holidayDateMap.has(key)) {
-        pushHolidayDay(day, label);
+      const entry = holidayDateMap.get(key);
+      if (entry) {
+        pushHolidayDay(day, entry.label, entry.index);
       }
     });
   }
 
   const blockRects: DateMarkingRect[] = [];
-  for (const block of blockDates ?? []) {
+  (blockDates ?? []).forEach((block, index) => {
     const blockStart = startOfDay(toDate(block.start));
     const blockEnd = endOfDay(toDate(block.end));
     const geom = clipToTimelinePixels(
@@ -128,7 +130,7 @@ export function computeDateMarkingRects(
       msPerPixel,
       timelineWidth,
     );
-    if (!geom) continue;
+    if (!geom) return;
 
     blockRects.push({
       key: `block-${dateKey(block.start)}-${dateKey(block.end)}-${block.label ?? ''}`,
@@ -137,8 +139,9 @@ export function computeDateMarkingRects(
       color: block.color ?? DEFAULT_BLOCK_COLOR,
       kind: 'block',
       label: block.label,
+      sourceIndex: index,
     });
-  }
+  });
 
   return { holidays: holidayRects, blocks: blockRects };
 }

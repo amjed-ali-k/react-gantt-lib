@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { DateMarkingLayers, ResolvedTask, TimelineRange } from '../../types';
+import type { BlockDateRange, DateMarkingLayers, ResolvedTask, TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
 import type { TimelineBounds } from '../../core/zoom';
 import type { TaskStore } from '../../hooks/useTaskStore';
@@ -17,6 +17,8 @@ import { TaskBar } from './TaskBar';
 import { TimelineGrid } from './TimelineGrid';
 import { DependencyLayer } from './DependencyLayer';
 import { BaselineLayer } from './BaselineLayer';
+import { DateMarkingInteractionLayer } from './DateMarkingInteractionLayer';
+import { TimelineHitLayer } from './TimelineHitLayer';
 
 interface TimelineBodyProps {
   tasks: ResolvedTask[];
@@ -31,8 +33,10 @@ interface TimelineBodyProps {
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
   dateMarkings?: DateMarkingLayers;
+  blockDates?: BlockDateRange[];
   showBaseline?: boolean;
   selectedTaskIds?: string[];
+  interactionsEnabled?: boolean;
   emit: EventEmitter;
   onTaskUpdate: (taskId: string, patch: { start?: Date; end?: Date; progress?: number }) => void;
 }
@@ -50,8 +54,10 @@ export const TimelineBody = memo(function TimelineBody({
   snapToGrid = true,
   timelineBounds,
   dateMarkings,
+  blockDates,
   showBaseline = true,
   selectedTaskIds,
+  interactionsEnabled = false,
   emit,
   onTaskUpdate,
 }: TimelineBodyProps) {
@@ -103,6 +109,22 @@ export const TimelineBody = memo(function TimelineBody({
         rowLayouts={rowLayouts}
         dateMarkings={dateMarkings}
       />
+      <TimelineHitLayer
+        range={range}
+        scale={scale}
+        columnWidth={columnWidth}
+        rowLayouts={rowLayouts}
+        height={totalHeight}
+        interactive={interactionsEnabled}
+        emit={emit}
+      />
+      <DateMarkingInteractionLayer
+        dateMarkings={dateMarkings}
+        blockDates={blockDates}
+        height={totalHeight}
+        interactive={interactionsEnabled}
+        emit={emit}
+      />
       <DependencyLayer
         tasks={tasks}
         taskIndexMap={taskIndexMap}
@@ -127,6 +149,8 @@ export const TimelineBody = memo(function TimelineBody({
           columnWidth={columnWidth}
           totalHeight={totalHeight}
           showBaseline={showBaseline}
+          interactive={interactionsEnabled}
+          emit={emit}
         />
       )}
       <svg className="rg-timeline-bars" width="100%" height={totalHeight}>

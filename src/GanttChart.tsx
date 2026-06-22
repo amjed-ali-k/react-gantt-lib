@@ -128,6 +128,8 @@ export function GanttChart({
     [selectedTaskIds, onSelectionChange, onTaskClick],
   );
 
+  const interactionsEnabled = !!(callbacks.onGanttClick || callbacks.onGanttContextMenu);
+
   const emit = useGanttEmitter({
     ...callbacks,
     onTaskHover: handleTaskHover,
@@ -468,6 +470,8 @@ export function GanttChart({
                     scale={scale}
                     columnWidth={columnWidth}
                     totalHeight={timelineContentHeight}
+                    interactive={interactionsEnabled}
+                    emit={emit}
                   />
                 )}
                 <TimelineHeader
@@ -475,6 +479,8 @@ export function GanttChart({
                   scale={scale}
                   columnWidth={columnWidth}
                   dateMarkings={dateMarkings}
+                  interactive={interactionsEnabled}
+                  emit={emit}
                 />
                 <TimelineBody
                   tasks={resolvedTasks}
@@ -489,8 +495,10 @@ export function GanttChart({
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
                   dateMarkings={dateMarkings}
+                  blockDates={blockDates}
                   showBaseline={showBaseline}
                   selectedTaskIds={effectiveSelectedIds}
+                  interactionsEnabled={interactionsEnabled}
                   emit={emit}
                   onTaskUpdate={handleTaskUpdate}
                 />

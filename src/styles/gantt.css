@@ -201,6 +201,34 @@
   pointer-events: none;
 }
 
+.rg-date-marking-interaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: block;
+}
+
+.rg-date-marking-hit {
+  cursor: pointer;
+}
+
+.rg-timeline-hit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  display: block;
+}
+
+.rg-timeline-hit-rect {
+  cursor: crosshair;
+}
+
+.rg-timeline-header--interactive {
+  cursor: crosshair;
+}
+
 .rg-event-markers {
   position: absolute;
   top: 0;
@@ -208,6 +236,19 @@
   width: 100%;
   pointer-events: none;
   z-index: 4;
+}
+
+.rg-event-markers--interactive {
+  pointer-events: auto;
+}
+
+.rg-event-markers--interactive .rg-event-marker-hit {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rg-event-markers:not(.rg-event-markers--interactive) {
+  pointer-events: none;
 }
 
 .rg-event-marker {
@@ -306,9 +347,9 @@
   pointer-events: none;
 }
 
-.rg-baseline-bar,
-.rg-baseline-milestone {
-  pointer-events: none;
+.rg-baseline-layer--interactive .rg-baseline-hit {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .rg-timeline-bars {

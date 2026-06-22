@@ -13,6 +13,8 @@ export interface ResolvedEventMarker {
   label: string;
   labelTop: number;
   color: string;
+  index: number;
+  marker: EventMarker;
 }
 
 export function computeEventMarkerPositions(
@@ -41,6 +43,8 @@ export function computeEventMarkerPositions(
       label: marker.label,
       labelTop: marker.labelTop ?? headerHeight + 20 + index * LABEL_STAGGER,
       color: marker.color ?? DEFAULT_EVENT_MARKER_COLOR,
+      index,
+      marker,
     });
   });
 

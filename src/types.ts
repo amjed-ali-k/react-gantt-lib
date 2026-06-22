@@ -141,6 +141,54 @@ export interface DateMarkingRect {
   color: string;
   kind: 'holiday' | 'block';
   label?: string;
+  /** Calendar day for holiday highlights. */
+  date?: Date;
+  /** Index in the original `blockDates` or `holidays.dates` array when applicable. */
+  sourceIndex?: number;
+}
+
+/** Discriminated union describing what was clicked or right-clicked on the chart. */
+export type GanttTarget =
+  | {
+      type: 'task';
+      task: GanttTask;
+      rowIndex: number;
+      element: 'bar' | 'milestone';
+    }
+  | {
+      type: 'baseline';
+      task: GanttTask;
+      rowIndex: number;
+      element: 'bar' | 'milestone';
+    }
+  | {
+      type: 'blockDate';
+      range: BlockDateRange;
+      index: number;
+    }
+  | {
+      type: 'holiday';
+      date: Date;
+      label?: string;
+      index?: number;
+    }
+  | {
+      type: 'eventMarker';
+      marker: EventMarker;
+      index: number;
+    }
+  | {
+      type: 'timeline';
+      date: Date;
+      rowIndex: number | null;
+    };
+
+export interface GanttPointerDetail {
+  target: GanttTarget;
+  clientX: number;
+  clientY: number;
+  /** Call to suppress the browser context menu (context-menu events only). */
+  preventDefault: () => void;
 }
 
 export interface DateMarkingLayers {
@@ -160,8 +208,10 @@ export interface EventMarker {
 }
 
 export interface GanttEventMap {
-  taskClick: { task: GanttTask; rowIndex: number };
-  taskDoubleClick: { task: GanttTask; rowIndex: number };
+  taskClick: { task: GanttTask; rowIndex: number; element?: 'bar' | 'milestone' };
+  taskDoubleClick: { task: GanttTask; rowIndex: number; element?: 'bar' | 'milestone' };
+  ganttClick: GanttPointerDetail;
+  ganttContextMenu: GanttPointerDetail;
   taskHover: {
     task: GanttTask | null;
     rowIndex: number | null;
@@ -192,6 +242,10 @@ export type GanttEventHandler<K extends GanttEventName> = (
 export interface GanttCallbacks {
   onTaskClick?: GanttEventHandler<'taskClick'>;
   onTaskDoubleClick?: GanttEventHandler<'taskDoubleClick'>;
+  /** Unified click handler for bars, baselines, blocked dates, holidays, event markers, and empty timeline. */
+  onGanttClick?: GanttEventHandler<'ganttClick'>;
+  /** Right-click handler for the same targets as `onGanttClick`. Call `preventDefault()` to suppress the browser menu. */
+  onGanttContextMenu?: GanttEventHandler<'ganttContextMenu'>;
   onTaskHover?: GanttEventHandler<'taskHover'>;
   onTaskDragStart?: GanttEventHandler<'taskDragStart'>;
   onTaskDrag?: GanttEventHandler<'taskDrag'>;

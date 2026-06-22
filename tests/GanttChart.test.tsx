@@ -68,4 +68,69 @@ describe('GanttChart', () => {
     expect(screen.getByTestId('zoom-toolbar')).toBeTruthy();
     expect(screen.getByText('Week')).toBeTruthy();
   });
+
+  it('fires onGanttClick for task bar clicks', () => {
+    const onGanttClick = vi.fn();
+    const { container } = render(
+      <GanttChart tasks={sampleTasks} onGanttClick={onGanttClick} height={400} />,
+    );
+    const bar = container.querySelector('[data-task-id="t1"]');
+    expect(bar).toBeTruthy();
+    fireEvent.click(bar!);
+    expect(onGanttClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({
+          type: 'task',
+          element: 'bar',
+          task: expect.objectContaining({ id: 't1' }),
+        }),
+      }),
+    );
+  });
+
+  it('fires onGanttContextMenu for blocked dates', () => {
+    const onGanttContextMenu = vi.fn();
+    const { container } = render(
+      <GanttChart
+        tasks={sampleTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        blockDates={[{ start: '2026-01-05', end: '2026-01-07', label: 'Blocked' }]}
+        onGanttContextMenu={onGanttContextMenu}
+        height={400}
+      />,
+    );
+    const hit = container.querySelector('[data-testid="date-marking-hit-block"]');
+    expect(hit).toBeTruthy();
+    fireEvent.contextMenu(hit!);
+    expect(onGanttContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({
+          type: 'blockDate',
+          range: expect.objectContaining({ label: 'Blocked' }),
+        }),
+      }),
+    );
+  });
+
+  it('fires onGanttClick for empty timeline area', () => {
+    const onGanttClick = vi.fn();
+    const { container } = render(
+      <GanttChart
+        tasks={sampleTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        onGanttClick={onGanttClick}
+        height={400}
+      />,
+    );
+    const hit = container.querySelector('[data-testid="timeline-hit-layer"] .rg-timeline-hit-rect');
+    expect(hit).toBeTruthy();
+    fireEvent.click(hit!);
+    expect(onGanttClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({ type: 'timeline' }),
+      }),
+    );
+  });
 });

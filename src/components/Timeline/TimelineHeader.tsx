@@ -1,14 +1,21 @@
 import { memo, useMemo } from 'react';
+import type { MouseEvent } from 'react';
 import { addScaleSteps, formatScaleHeader, formatScaleSubHeader } from '../../core/scale';
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
+import { getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
+import { pixelToDate } from '../../core/timelineInteraction';
+import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import { DateMarkingHeaderHighlights } from './DateMarkingHighlights';
+import { createPointerDetail } from './pointerDetail';
 
 interface TimelineHeaderProps {
   range: TimelineRange;
   scale: ViewScale;
   columnWidth: number;
   dateMarkings?: DateMarkingLayers;
+  interactive?: boolean;
+  emit?: EventEmitter;
 }
 
 interface HeaderColumn {
@@ -60,6 +67,8 @@ export const TimelineHeader = memo(function TimelineHeader({
   scale,
   columnWidth,
   dateMarkings,
+  interactive = false,
+  emit,
 }: TimelineHeaderProps) {
   const columns = useMemo((): HeaderColumn[] => {
     const cols: HeaderColumn[] = [];
@@ -79,8 +88,36 @@ export const TimelineHeader = memo(function TimelineHeader({
     [dateMarkings],
   );
 
+  const timelineWidth = resolveTimelineWidth(range, columnWidth);
+  const msPerPixel = getMsPerPixel(scale, columnWidth);
+
+  const resolveHeaderTarget = (clientX: number, headerEl: HTMLDivElement) => {
+    const rect = headerEl.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * timelineWidth;
+    const date = pixelToDate(x, range.start, msPerPixel);
+    return { type: 'timeline' as const, date, rowIndex: null };
+  };
+
+  const handleHeaderClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!interactive || !emit) return;
+    emit('ganttClick', createPointerDetail(resolveHeaderTarget(e.clientX, e.currentTarget), e));
+  };
+
+  const handleHeaderContextMenu = (e: MouseEvent<HTMLDivElement>) => {
+    if (!interactive || !emit) return;
+    emit(
+      'ganttContextMenu',
+      createPointerDetail(resolveHeaderTarget(e.clientX, e.currentTarget), e),
+    );
+  };
+
   return (
-    <div className="rg-timeline-header" data-testid="timeline-header">
+    <div
+      className={`rg-timeline-header${interactive ? ' rg-timeline-header--interactive' : ''}`}
+      data-testid="timeline-header"
+      onClick={interactive ? handleHeaderClick : undefined}
+      onContextMenu={interactive ? handleHeaderContextMenu : undefined}
+    >
       <div className="rg-timeline-header-inner">
         <DateMarkingHeaderHighlights rects={markingRects} />
         <div className="rg-timeline-header-upper">

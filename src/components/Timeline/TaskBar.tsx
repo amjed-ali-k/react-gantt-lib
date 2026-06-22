@@ -12,6 +12,7 @@ import {
   type TimelineBounds,
 } from '../../core/zoom';
 import type { ViewScale } from '../../core/scale';
+import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
 
 export interface TaskBarProps {
@@ -257,6 +258,39 @@ function TaskBarInner({
   const progress = task.progress ?? 0;
   const progressWidth = (geometry.width * progress) / 100;
   const isMilestone = task.type === 'milestone';
+  const taskElement = isMilestone ? 'milestone' : 'bar';
+
+  const handleTaskClick = useCallback(
+    (e: React.MouseEvent) => {
+      emit('taskClick', { task, rowIndex: task._rowIndex, element: taskElement });
+      emit(
+        'ganttClick',
+        createPointerDetail(
+          { type: 'task', task, rowIndex: task._rowIndex, element: taskElement },
+          e,
+        ),
+      );
+    },
+    [emit, task, taskElement],
+  );
+
+  const handleTaskDoubleClick = useCallback(() => {
+    emit('taskDoubleClick', { task, rowIndex: task._rowIndex, element: taskElement });
+  }, [emit, task, taskElement]);
+
+  const handleTaskContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      emit(
+        'ganttContextMenu',
+        createPointerDetail(
+          { type: 'task', task, rowIndex: task._rowIndex, element: taskElement },
+          e,
+        ),
+      );
+    },
+    [emit, task, taskElement],
+  );
   const accentColor = task.color ?? 'var(--rg-bar-fill)';
   const barStroke = task.borderColor;
   const barStrokeWidth = barStroke ? 1.5 : 0;
@@ -274,8 +308,9 @@ function TaskBarInner({
         if (dragRef.current) return;
         emit('taskHover', { task: null, rowIndex: null });
       }}
-      onClick={() => emit('taskClick', { task, rowIndex: task._rowIndex })}
-      onDoubleClick={() => emit('taskDoubleClick', { task, rowIndex: task._rowIndex })}
+      onClick={handleTaskClick}
+      onDoubleClick={handleTaskDoubleClick}
+      onContextMenu={handleTaskContextMenu}
     >
       {isMilestone ? (
         <>

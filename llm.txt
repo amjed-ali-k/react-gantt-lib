@@ -1,0 +1,487 @@
+# react-gantt-lib — AI agent reference
+
+Package: react-gantt-lib v0.1.0
+Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
+
+## Agent discovery (installed package)
+
+When installed from npm, this file ships at:
+- `node_modules/react-gantt-lib/llm.txt`
+- Package export: `react-gantt-lib/llm.txt`
+
+Read this file before integrating or extending the chart API.
+
+## Install
+
+npm install react-gantt-lib date-fns react react-dom
+
+import { GanttChart } from 'react-gantt-lib';
+import 'react-gantt-lib/styles.css';
+
+Peer deps: react >=18, react-dom >=18. Node >=18.
+
+## Minimal usage
+
+<GanttChart
+  tasks={[
+    { id: '1', name: 'Design', start: '2026-01-01', end: '2026-01-15', progress: 65 },
+  ]}
+  height={500}
+  zoomLevel="week"
+  onTasksChange={(tasks) => setTasks(tasks)}
+/>
+
+Dates: ISO strings ('2026-01-01', '2026-04-22T14:00:00') or Date objects.
+
+## Public exports
+
+Components / hooks:
+- GanttChart
+- useSidebarLayout
+- useGanttTimeline
+- useGanttTimelineOptional
+
+Classes:
+- TaskStore
+
+Zoom / scale:
+- ZOOM_LEVELS, PRESET_SCALES, resolveScale, resolveScales
+- getColumnWidth, computeTimelineRange, nextZoomLevel
+
+Dates (date-fns wrappers):
+- toDate, addUnit, diffUnits, format
+
+Types (all exported):
+GanttTask, GanttColumn, GanttChartProps, GanttCallbacks, GanttEventMap, GanttEventName, GanttEventHandler,
+GanttTarget, GanttPointerDetail,
+CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
+HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
+GanttDependency, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
+SidebarLayoutState, SidebarWidths, TimelineRange, TimelineRangeBounds,
+ResolvedTask, BarGeometry, ColumnRenderContext, DateMarkingLayers, DateMarkingRect,
+GanttTimelineContextValue
+
+## Layout (3 panels)
+
+| Panel | Prop | Default content | Resizer |
+|-------|------|-----------------|---------|
+| Left | showTaskList (default true) | columns (default: name) | divider-left |
+| Middle | showDateColumns (default true) | middleColumns (default: start, end) | divider-middle |
+| Right | always | SVG timeline + toolbar | — |
+
+Root element `.rg-gantt` data attributes (px):
+- data-sidebar-left
+- data-sidebar-middle
+- data-timeline-left
+
+onSidebarLayoutChange({ leftWidth, middleWidth, rightWidth, timelineLeft, totalWidth })
+
+Panel sizing props:
+- defaultLeftWidth: 220
+- defaultMiddleWidth: 180
+- minPanelWidth: 80
+- height: 500
+- width: '100%'
+- rowHeight: 36
+- className, style
+
+useSidebarLayout(containerRef, { defaultLeftWidth, defaultMiddleWidth, minPanelWidth, onLayoutChange })
+Returns: layout, leftWidth, middleWidth, timelineLeft, onDividerPointerDown, pointer move/up handlers, setLeftWidth, setMiddleWidth.
+Use when building a custom shell outside GanttChart.
+
+Vertical scroll sync: panels use `.rg-sync-scroll`; task list, middle columns, and timeline scroll together.
+
+## GanttTask
+
+Required: id, name, start, end
+Optional:
+- progress: number (0–100, default 0)
+- parentId: string — hierarchy; child rows indented 16px per level
+- collapsed: boolean — hide descendants (data-only; no built-in toggle UI)
+- type: 'task' | 'milestone' — milestone = diamond at start date; start === end
+- dependencies: string[] | GanttDependency[] — see Dependencies
+- baseline: { start, end, color? } — original plan overlay (amber default #e6a23c)
+- color: string — bar fill / milestone color
+- borderColor: string — bar outline
+- width: number — bar height in px within row (not bar length)
+- meta: Record<string, unknown>
+
+Task order in array = row order. Hidden children filtered by resolveTasks (collapsed ancestors).
+
+## Columns
+
+columns — left panel (default: [{ key: 'name', title: 'Task', flex: 2, minWidth: 120 }])
+middleColumns — middle panel (default: start + end columns)
+
+GanttColumn: { key, title, width?, minWidth?, flex?, render? }
+render({ task, rowIndex, columnKey }) => ReactNode
+
+Built-in cell keys (no custom render):
+- name → task.name
+- progress → `${progress}%`
+- start → toLocaleDateString() of _start
+- end → toLocaleDateString() of _end
+
+Hide panels: showTaskList={false}, showDateColumns={false}
+
+## Zoom / timeline scale
+
+One column = one scale step at current zoom.
+
+ViewScaleId / zoomLevel:
+| id | label | step | columnWidth (px) |
+|----|-------|------|------------------|
+| month | Month | 1 month | 120 |
+| week | Week | 1 week | 140 |
+| day | Day | 1 day | 48 |
+| 2day | 2 Days | 2 days | 64 |
+| 6hour | 6 Hours | 6 hours | 56 |
+| 3hour | 3 Hours | 3 hours | 48 |
+| 1hour | 1 Hour | 1 hour | 40 |
+| hour | Hour | 1 hour | 64 |
+| minute | Minute | 1 minute | 40 |
+
+Props:
+- zoomLevel: default 'week' (controlled; sync via prop + onZoomChange)
+- availableZoomLevels: string[] — toolbar +/− steps through this list; default month→week→day→hour→minute
+- columnWidth: number — override preset column width
+
+Toolbar: built-in − / label / +. Zoom preserves viewport center on change.
+
+Uncontrolled zoom inside chart: internal state; pass zoomLevel to control externally.
+
+computeTimelineRange(tasks, scaleOrId, paddingUnits=2, { minDate?, maxDate? })
+Returns TimelineRange: { start, end, columnCount, pixelWidth?, fixed? }
+
+## Fixed timeline range
+
+Set BOTH minDate AND maxDate:
+- Grid locked; does not grow when tasks dragged outside
+- Task dates clamped to window on drag (move + resize)
+- range.fixed = true; pixelWidth computed exactly to maxDate end-of-day
+
+Without both bounds: range auto from task min/max + paddingUnits (default 2 columns each side).
+
+## Snap vs smooth drag
+
+snapToGrid: default true
+| true | Smooth visual drag; dates snap to grid column boundaries on pointer release |
+| false | Pixel-precision dates on release (sub-hour at hour/minute zoom) |
+
+enableDrag: default true — move bar body
+enableResize: default true — left/right handles (visible on bar hover)
+enableProgressDrag: default true — bottom progress handle on bar hover
+
+Milestones: draggable (move only); no resize handles.
+
+Interaction:
+- Click row (sidebar) or bar → onTaskClick + selection
+- Double-click bar → onTaskDoubleClick
+- Hover bar → onTaskHover; resize handles appear (CSS .rg-bar:hover)
+- Drag emits taskDragStart → taskDrag → taskDragEnd
+- Resize emits taskResizeStart → taskResize → taskResizeEnd
+- Progress emits progressChange
+- Unified click/context-menu on bars, baselines, blocked dates, holidays, event markers, timeline → onGanttClick / onGanttContextMenu (see below)
+
+onTasksChange(tasks) — full updated array after drag/resize/progress commit. Use for controlled state.
+
+## Click & context menu (unified targets)
+
+onGanttClick and onGanttContextMenu receive GanttPointerDetail:
+{ target: GanttTarget, clientX, clientY, preventDefault() }
+
+GanttTarget discriminated union (switch on target.type):
+
+| type | When | Key fields |
+|------|------|------------|
+| task | Click/right-click task bar or milestone diamond | task, rowIndex, element: 'bar' \| 'milestone' |
+| baseline | Click/right-click baseline line or diamond | task, rowIndex, element: 'bar' \| 'milestone' |
+| blockDate | Click/right-click blocked date column band | range (BlockDateRange), index |
+| holiday | Click/right-click holiday/weekend band | date, label?, index? |
+| eventMarker | Click/right-click vertical event stripline | marker (EventMarker), index |
+| timeline | Click/right-click empty timeline body or header | date (at pointer x), rowIndex (number \| null; null in header) |
+
+Activation:
+- Pass onGanttClick and/or onGanttContextMenu to enable overlay hit targets (timeline, blocks, holidays, baselines, event markers).
+- Task bars always fire onTaskClick; also fire onGanttClick when that handler is set.
+- Right-click: call e.preventDefault() in onGanttContextMenu to suppress the browser menu.
+
+Click priority (top wins): task bar → baseline → blocked/holiday band → empty timeline.
+
+onTaskClick / onTaskDoubleClick now include optional element: 'bar' | 'milestone'.
+
+Example — custom context menu:
+<GanttChart
+  tasks={tasks}
+  blockDates={[{ start: '2026-04-14', end: '2026-04-16', label: 'Offsite' }]}
+  onGanttContextMenu={(e) => {
+    e.preventDefault();
+    const { target } = e;
+    if (target.type === 'task') openMenu(e.clientX, e.clientY, ['Edit', 'Delete'], target.task);
+    if (target.type === 'blockDate') openMenu(e.clientX, e.clientY, ['Clear block'], target.range);
+    if (target.type === 'timeline') openMenu(e.clientX, e.clientY, ['Add task'], target.date);
+  }}
+/>
+
+Example — switch on click target:
+onGanttClick={(e) => {
+  switch (e.target.type) {
+    case 'task': selectTask(e.target.task.id); break;
+    case 'baseline': showBaselineDiff(e.target.task); break;
+    case 'eventMarker': scrollToDate(e.target.marker.date); break;
+    case 'timeline': createTaskAt(e.target.date, e.target.rowIndex); break;
+  }
+}}
+
+## Dependencies
+
+dependencies on successor task points to predecessor id(s).
+
+Supported: finish-to-start (FS) only. Rendering: orthogonal SVG arrows predecessor end → successor start.
+
+Formats:
+- ['task-a', 'task-b']
+- [{ id: 'task-a' }, { id: 'task-b', type: 'FS', lag: 0 }]
+
+GanttDependency.type (FS|FF|SS|SF) and lag: typed but NOT implemented — always FS, lag ignored.
+
+## Baseline
+
+task.baseline: { start, end, color? }
+showBaseline: default true
+
+Tasks with baseline: extra row height; amber line below bar (or behind milestone diamond).
+Toggle: showBaseline={false}
+
+## Milestones
+
+type: 'milestone', start === end (datetime supported).
+Rendered as diamond (14px). Label to the right. Baseline shown behind diamond when set.
+
+## Holidays / blocked dates / event markers
+
+holidays?: HolidayMarking
+- weekends?: boolean — highlight Sat/Sun (weekStartsOn: Monday)
+- dates?: (string | Date | { date, label? })[]
+- color?: default #f2f2f2
+- isWeekend?: (date) => boolean — custom predicate
+
+blockDates?: BlockDateRange[]
+- { start, end, label?, color? } — light rose default; unavailable ranges
+
+eventMarkers?: EventMarker[]
+- { id?, date, label, color?, labelTop? } — vertical dashed stripline + labeled callout
+- date supports datetime for sub-day placement
+
+Layers render in timeline header grid (holidays/blocks) and full-height overlay (events).
+
+## Tooltip
+
+showTooltip: default false
+Floating tooltip on bar hover: name, start, end (time shown when non-midnight).
+
+## Selection
+
+selectedTaskIds?: string[] — controlled selection
+Uncontrolled: internal state; click selects one task
+onSelectionChange({ selectedIds })
+Selected bar: .rg-bar--selected, focus ring
+
+## Custom rows
+
+customRows?: CustomRowDefinition[]
+
+CustomRowDefinition:
+{
+  id: string,
+  meta?: TMeta,
+  cells: Record<columnKey, (ctx) => ReactNode | Promise<ReactNode>>
+}
+
+Cell keys:
+- Match columns[].key and middleColumns[].key for sidebar cells
+- '__timeline__' — full-width band inside .rg-timeline-inner (scrolls/zooms with chart)
+
+CustomRowCellContext:
+{ rowId, columnKey, columnIndex, rowIndex, zoomLevel, rangeStart, rangeEnd, scale, columnWidth, timelineWidth, msPerPixel, rowHeight, meta? }
+
+Async cells: Promise supported; shows loading ellipsis; onCustomRowCellReady / onCustomRowCellError
+
+Timeline band pattern — use hook inside component:
+function MyStrip() {
+  const { range, msPerPixel, columnWidth, scale, timelineWidth, zoomLevel, rowHeight } = useGanttTimeline();
+  const width = range.pixelWidth ?? range.columnCount * columnWidth;
+  return <div style={{ width }}>...</div>;
+}
+cells: { name: () => 'Label', start: () => '—', end: () => '—', __timeline__: () => <MyStrip /> }
+
+useGanttTimeline() — must be descendant of GanttChart (GanttTimelineProvider)
+useGanttTimelineOptional() — returns null outside chart
+
+Custom rows render below task rows in sidebar + timeline footer (.rg-custom-rows-timeline).
+
+## Event hooks (complete)
+
+| Prop | Event | Payload highlights |
+|------|-------|-------------------|
+| onTaskClick | taskClick | task, rowIndex, element?: 'bar' \| 'milestone' |
+| onTaskDoubleClick | taskDoubleClick | task, rowIndex, element?: 'bar' \| 'milestone' |
+| onGanttClick | ganttClick | GanttPointerDetail — unified click on any timeline target |
+| onGanttContextMenu | ganttContextMenu | GanttPointerDetail — right-click; call preventDefault() to suppress browser menu |
+| onTaskHover | taskHover | task \| null, rowIndex, clientX?, clientY? |
+| onTaskDragStart | taskDragStart | task, start, end |
+| onTaskDrag | taskDrag | task, start, end, deltaMs |
+| onTaskDragEnd | taskDragEnd | task, start, end, previousStart, previousEnd |
+| onTaskResizeStart | taskResizeStart | task, edge: 'start'\|'end' |
+| onTaskResize | taskResize | task, start, end, edge |
+| onTaskResizeEnd | taskResizeEnd | task, start, end, edge, previousStart, previousEnd |
+| onProgressChange | progressChange | task, progress, previousProgress |
+| onZoomChange | zoomChange | zoomLevel, scaleId, scaleLabel, columnWidth |
+| onScroll | scroll | scrollLeft, scrollTop |
+| onSidebarLayoutChange | sidebarLayoutChange | SidebarLayoutState |
+| onSelectionChange | selectionChange | selectedIds |
+| onCustomRowCellReady | customRowCellReady | rowId, columnKey |
+| onCustomRowCellError | customRowCellError | rowId, columnKey, error |
+| onTasksChange | — | GanttTask[] (not in GanttEventMap) |
+
+## Performance model
+
+TaskStore: external store; per-task version counters.
+TaskBar: React.memo + custom comparator; subscribes to single task version via useTaskVersion.
+Drag/resize: updateTask() bumps one version → only that bar re-renders.
+Grid, headers, dependency layer: separate memoized components.
+
+Advanced: import TaskStore directly for custom integrations.
+
+TaskStore API:
+- constructor(initial: GanttTask[])
+- subscribe(listener) → unsubscribe
+- getSnapshot(), getVersion(), getTaskVersion(taskId)
+- setTasks(tasks), updateTask(taskId, patch), replaceTasks(tasks)
+
+## Utility functions
+
+toDate(value) — parse ISO or Date; throws on invalid
+addUnit(date, amount, zoom: ZoomLevel)
+diffUnits(later, earlier, zoom: ZoomLevel)
+getColumnWidth(scaleOrId, override?)
+nextZoomLevel(current, 'in'|'out', availableIds?)
+resolveScale(id) — fallback to day preset if unknown
+resolveScales(ids?) — default ZOOM_LEVELS order
+format — re-exported from date-fns
+
+## DOM / CSS reference
+
+Import: 'react-gantt-lib/styles.css'
+
+CSS variables (--rg-*): bar colors, handles, grid, etc.
+
+Key classes:
+.rg-gantt, .rg-gantt-body, .rg-panels, .rg-timeline-panel, .rg-timeline-scroll, .rg-timeline-inner
+.rg-task-list, .rg-task-row, .rg-task-row--selected, .rg-task-cell
+.rg-timeline-header, .rg-timeline-body, .rg-timeline-grid
+.rg-bar, .rg-bar--selected, .rg-bar-handle, .rg-bar-progress-handle, .rg-bar-milestone
+.rg-baseline-layer, .rg-baseline-bar, .rg-baseline-milestone, .rg-baseline-hit
+.rg-date-marking-interaction, .rg-date-marking-hit
+.rg-timeline-hit, .rg-timeline-hit-rect
+.rg-event-markers--interactive, .rg-event-marker-hit
+.rg-timeline-header--interactive
+.rg-dependency-layer, .rg-dependency-arrow
+.rg-toolbar, .rg-divider
+.rg-custom-rows-timeline, .rg-custom-cell
+.rg-task-tooltip
+
+data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows
+
+Bars: data-task-id, data-selected
+
+## Controlled state patterns
+
+Tasks (recommended):
+const [tasks, setTasks] = useState(initial);
+<GanttChart tasks={tasks} onTasksChange={setTasks} />
+
+Zoom:
+const [zoom, setZoom] = useState('week');
+<GanttChart zoomLevel={zoom} onZoomChange={(e) => setZoom(e.scaleId)} />
+
+Selection:
+<GanttChart selectedTaskIds={ids} onSelectionChange={(e) => setIds(e.selectedIds)} />
+
+Fixed window:
+<GanttChart minDate="2026-01-01" maxDate="2026-06-30" />
+
+Disable editing:
+<GanttChart enableDrag={false} enableResize={false} enableProgressDrag={false} />
+
+## Hierarchy example
+
+[
+  { id: 'phase', name: 'Phase 1', start: '2026-01-01', end: '2026-01-31', progress: 50 },
+  { id: 't1', name: 'Subtask', start: '2026-01-05', end: '2026-01-10', parentId: 'phase', dependencies: ['t0'] },
+  { id: 't0', name: 'Kickoff', start: '2026-01-02', end: '2026-01-04' },
+]
+
+Set parent collapsed: true to hide children. App must toggle collapsed in task data.
+
+## Full feature example
+
+<GanttChart
+  tasks={tasks}
+  columns={[
+    { key: 'name', title: 'Task', flex: 2 },
+    { key: 'progress', title: '%', render: ({ task }) => `${task.progress}%` },
+  ]}
+  middleColumns={[
+    { key: 'start', title: 'Start' },
+    { key: 'end', title: 'End' },
+  ]}
+  height={480}
+  minDate="2026-04-01"
+  maxDate="2026-04-30"
+  zoomLevel="day"
+  availableZoomLevels={['day', '2day', '6hour', '3hour', '1hour']}
+  snapToGrid
+  showTooltip
+  showBaseline
+  holidays={{ weekends: true, dates: [{ date: '2026-04-10', label: 'Holiday' }] }}
+  blockDates={[{ start: '2026-04-14', end: '2026-04-16', label: 'Offsite' }]}
+  eventMarkers={[{ id: 'e1', date: '2026-04-07', label: 'Review' }]}
+  customRows={[myCustomRow]}
+  onTasksChange={setTasks}
+  onZoomChange={(e) => setZoom(e.scaleId)}
+  onTaskDragEnd={(e) => console.log(e.task.id, e.start, e.end)}
+  onGanttClick={(e) => console.log('clicked', e.target.type, e.target)}
+  onGanttContextMenu={(e) => { e.preventDefault(); console.log('menu', e.target); }}
+  onSidebarLayoutChange={(layout) => syncOverlays(layout.timelineLeft)}
+/>
+
+## Demo / playground
+
+npm run demo → http://localhost:5173
+
+demo/App.tsx — Examples tab: hierarchy+deps, snap vs smooth, custom row
+demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row
+
+Reference implementations:
+- demo/dailyColorStripRow.tsx — customRows + useGanttTimeline() daily color bands
+
+## Limitations (do not assume)
+
+- Dependency types other than FS not rendered
+- lag on GanttDependency ignored
+- No built-in collapse/expand UI (collapsed is data-only)
+- GanttChartProps.children unused
+- No built-in context menu UI (use onGanttContextMenu + your own menu component)
+- No built-in task creation/editing forms
+- No resource assignment / multi-project views
+- Middle panel start/end show date only (not time) via toLocaleDateString
+- Week starts Monday (date-fns weekStartsOn: 1)
+
+## Build / test
+
+npm run build — ESM + CJS + .d.ts → dist/
+npm test — vitest
+npm run typecheck
+
+Styles: react-gantt-lib/styles.css (side effect; not auto-imported)

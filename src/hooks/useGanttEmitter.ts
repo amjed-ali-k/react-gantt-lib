@@ -9,6 +9,8 @@ export type EventEmitter = <K extends GanttEventName>(
 const CALLBACK_MAP: Record<GanttEventName, keyof GanttCallbacks> = {
   taskClick: 'onTaskClick',
   taskDoubleClick: 'onTaskDoubleClick',
+  ganttClick: 'onGanttClick',
+  ganttContextMenu: 'onGanttContextMenu',
   taskHover: 'onTaskHover',
   taskDragStart: 'onTaskDragStart',
   taskDrag: 'onTaskDrag',

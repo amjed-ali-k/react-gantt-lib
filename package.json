@@ -26,14 +26,16 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./llm.txt": "./llm.txt"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "llm.txt"
   ],
   "sideEffects": [
     "*.css"
