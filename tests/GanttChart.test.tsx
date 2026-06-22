@@ -64,6 +64,37 @@ describe('GanttChart', () => {
     });
   });
 
+  it('applies optional per-row height on custom rows', async () => {
+    const customRows: CustomRowDefinition[] = [
+      {
+        id: 'short-row',
+        height: 20,
+        cells: {
+          name: () => 'Short row',
+          __timeline__: () => null,
+        },
+      },
+      {
+        id: 'tall-row',
+        height: 60,
+        cells: {
+          name: () => 'Tall row',
+          __timeline__: () => null,
+        },
+      },
+    ];
+    const { container } = render(
+      <GanttChart tasks={sampleTasks} customRows={customRows} height={400} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Short row')).toBeTruthy();
+    });
+    const shortRow = container.querySelector('[data-row-id="short-row"]');
+    const tallRow = container.querySelector('[data-row-id="tall-row"]');
+    expect(shortRow?.getAttribute('style')).toContain('height: 20px');
+    expect(tallRow?.getAttribute('style')).toContain('height: 60px');
+  });
+
   it('exposes zoom toolbar', () => {
     render(<GanttChart tasks={sampleTasks} zoomLevel="week" height={400} />);
     expect(screen.getByTestId('zoom-toolbar')).toBeTruthy();

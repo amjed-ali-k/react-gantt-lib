@@ -72,6 +72,7 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
     metrics.rangeStart.getTime(),
     metrics.rangeEnd.getTime(),
     metrics.rowHeight,
+    row.height,
     row.meta,
     emit,
   ]);

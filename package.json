@@ -51,7 +51,8 @@
     "test:watch": "vitest",
     "prepublishOnly": "npm run build",
     "release:notes": "node scripts/release-notes.mjs",
-    "release:notes:write": "node scripts/release-notes.mjs --version"
+    "release:notes:write": "node scripts/release-notes.mjs --version",
+    "release": "node scripts/release.mjs"
   },
   "peerDependencies": {
     "react": ">=18",

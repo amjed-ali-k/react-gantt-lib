@@ -341,6 +341,7 @@ CustomRowDefinition:
 {
   id: string,
   meta?: TMeta,
+  height?: number,  // px; defaults to chart rowHeight
   cells: Record<columnKey, (ctx) => ReactNode | Promise<ReactNode>>
 }
 

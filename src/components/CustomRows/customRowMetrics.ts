@@ -1,5 +1,22 @@
 import type { ViewScale } from '../../core/scale';
 
+export function getCustomRowHeight(
+  row: { height?: number },
+  defaultRowHeight: number,
+): number {
+  return row.height ?? defaultRowHeight;
+}
+
+export function totalCustomRowsHeight(
+  rows: { height?: number }[],
+  defaultRowHeight: number,
+): number {
+  return rows.reduce(
+    (sum, row) => sum + getCustomRowHeight(row, defaultRowHeight),
+    0,
+  );
+}
+
 /** Timeline metrics passed to custom row cells (also available via `useGanttTimeline`). */
 export interface CustomRowMetrics {
   zoomLevel: string;
@@ -13,7 +30,7 @@ export interface CustomRowMetrics {
 }
 
 export function buildCustomRowCellContext(
-  row: { id: string; meta?: unknown },
+  row: { id: string; meta?: unknown; height?: number },
   columnKey: string,
   columnIndex: number,
   rowIndex: number,
@@ -31,7 +48,7 @@ export function buildCustomRowCellContext(
     columnWidth: metrics.columnWidth,
     timelineWidth: metrics.timelineWidth,
     msPerPixel: metrics.msPerPixel,
-    rowHeight: metrics.rowHeight,
+    rowHeight: getCustomRowHeight(row, metrics.rowHeight),
     meta: row.meta,
   };
 }

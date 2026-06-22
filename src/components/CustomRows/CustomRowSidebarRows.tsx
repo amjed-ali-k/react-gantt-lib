@@ -3,6 +3,7 @@ import type { CustomRowDefinition, GanttColumn } from '../../types';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import { AsyncCustomCell } from './AsyncCustomCell';
 import type { CustomRowMetrics } from './customRowMetrics';
+import { getCustomRowHeight } from './customRowMetrics';
 
 interface CustomRowSidebarRowsProps {
   rows: CustomRowDefinition[];
@@ -24,11 +25,13 @@ export const CustomRowLeftRows = memo(function CustomRowLeftRows({
 
   return (
     <>
-      {rows.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => {
+        const height = getCustomRowHeight(row, rowHeight);
+        return (
         <div
           key={row.id}
           className="rg-task-row rg-custom-row-sidebar"
-          style={{ height: rowHeight, paddingLeft: 8 }}
+          style={{ height, paddingLeft: 8 }}
           data-row-id={row.id}
         >
           {columns.map((col, colIdx) => (
@@ -48,7 +51,8 @@ export const CustomRowLeftRows = memo(function CustomRowLeftRows({
             </div>
           ))}
         </div>
-      ))}
+        );
+      })}
     </>
   );
 });
@@ -65,11 +69,13 @@ export const CustomRowMiddleRows = memo(function CustomRowMiddleRows({
 
   return (
     <>
-      {rows.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => {
+        const height = getCustomRowHeight(row, rowHeight);
+        return (
         <div
           key={row.id}
           className="rg-task-row rg-custom-row-sidebar"
-          style={{ height: rowHeight }}
+          style={{ height }}
           data-row-id={row.id}
         >
           {columns.map((col, colIdx) => (
@@ -89,7 +95,8 @@ export const CustomRowMiddleRows = memo(function CustomRowMiddleRows({
             </div>
           ))}
         </div>
-      ))}
+        );
+      })}
     </>
   );
 });

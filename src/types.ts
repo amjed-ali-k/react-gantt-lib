@@ -113,6 +113,8 @@ export type CustomRowCellGenerator<TMeta = unknown> = (
 export interface CustomRowDefinition<TMeta = unknown> {
   id: string;
   meta?: TMeta;
+  /** Row height in px. Falls back to the chart `rowHeight` when omitted. */
+  height?: number;
   /** Per-column async data/renderer. Key = column key from columns config */
   cells: Record<string, CustomRowCellGenerator<TMeta>>;
 }

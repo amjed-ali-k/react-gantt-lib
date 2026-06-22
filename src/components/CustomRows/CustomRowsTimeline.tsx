@@ -3,6 +3,7 @@ import type { CustomRowDefinition } from '../../types';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import { AsyncCustomCell } from './AsyncCustomCell';
 import type { CustomRowMetrics } from './customRowMetrics';
+import { getCustomRowHeight } from './customRowMetrics';
 
 interface CustomRowsTimelineProps {
   rows: CustomRowDefinition[];
@@ -25,11 +26,13 @@ export const CustomRowsTimeline = memo(function CustomRowsTimeline({
 
   return (
     <div className="rg-custom-rows-timeline" data-testid="custom-rows">
-      {rows.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => {
+        const height = getCustomRowHeight(row, rowHeight);
+        return (
         <div
           key={row.id}
           className="rg-custom-row-timeline-band"
-          style={{ height: rowHeight, width: timelineWidth }}
+          style={{ height, width: timelineWidth }}
           data-row-id={row.id}
         >
           <AsyncCustomCell
@@ -42,7 +45,8 @@ export const CustomRowsTimeline = memo(function CustomRowsTimeline({
             timeline
           />
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 });
