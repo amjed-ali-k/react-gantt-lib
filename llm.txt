@@ -35,6 +35,7 @@ Dates: ISO strings ('2026-01-01', '2026-04-22T14:00:00') or Date objects.
 
 ## Public exports
 
+
 Components / hooks:
 - GanttChart
 - useSidebarLayout
