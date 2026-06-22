@@ -360,6 +360,21 @@ export function GanttChart({
     });
   }, []);
 
+  const handleToggleCollapse = useCallback(
+    (taskId: string) => {
+      const source = tasks.find((t) => t.id === taskId);
+      if (!source) return;
+      const collapsed = !source.collapsed;
+      updateTask(taskId, { collapsed });
+      if (onTasksChange) {
+        onTasksChange(
+          tasks.map((t) => (t.id === taskId ? { ...t, collapsed } : t)),
+        );
+      }
+    },
+    [tasks, updateTask, onTasksChange],
+  );
+
   const handleTaskUpdate = useCallback(
     (taskId: string, patch: { start?: Date; end?: Date; progress?: number }) => {
       const source = tasks.find((t) => t.id === taskId);
@@ -414,11 +429,13 @@ export function GanttChart({
             >
               <TaskListPanel
                 tasks={resolvedTasks}
+                sourceTasks={tasks}
                 columns={columns}
                 rowHeight={rowHeight}
                 rowLayouts={rowLayouts}
                 width={leftWidth}
                 selectedTaskIds={effectiveSelectedIds}
+                onToggleCollapse={handleToggleCollapse}
                 emit={emit}
                 customRows={customRows}
                 customRowMetrics={customRowMetrics}

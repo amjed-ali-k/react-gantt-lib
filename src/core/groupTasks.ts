@@ -5,6 +5,15 @@ export function isGroupTask(task: GanttTask): boolean {
   return task.type === 'group';
 }
 
+export function taskHasChildren(taskId: string, tasks: GanttTask[]): boolean {
+  return tasks.some((task) => task.parentId === taskId);
+}
+
+/** Rows that can expand/collapse descendants in the sidebar. */
+export function taskSupportsCollapse(task: GanttTask, tasks: GanttTask[]): boolean {
+  return isGroupTask(task) || taskHasChildren(task.id, tasks);
+}
+
 /** Group rows show a summary bar unless explicitly disabled. */
 export function groupShowsSummaryBar(task: GanttTask): boolean {
   if (!isGroupTask(task)) return false;

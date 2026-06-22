@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { GanttChart } from '../src/GanttChart';
-import type { CustomRowDefinition } from '../src/types';
+import type { CustomRowDefinition, GanttTask } from '../src/types';
 
 const sampleTasks = [
   { id: 't1', name: 'Design', start: '2026-01-01', end: '2026-01-15', progress: 40 },
@@ -203,6 +204,32 @@ describe('GanttChart', () => {
     );
     expect(container.querySelector('.rg-timeline-bars [data-task-id="g1"]')).toBeTruthy();
     expect(container.querySelector('.rg-timeline-bars [data-task-id="c1"]')).toBeNull();
+  });
+
+  it('collapses and expands group children from sidebar toggle', () => {
+    const groupTasks: GanttTask[] = [
+      { id: 'g1', name: 'Phase', type: 'group', start: '2026-01-01', end: '2026-01-30' },
+      { id: 'c1', name: 'Child', start: '2026-01-05', end: '2026-01-10', parentId: 'g1' },
+    ];
+    function Harness() {
+      const [tasks, setTasks] = useState(groupTasks);
+      return (
+        <GanttChart
+          tasks={tasks}
+          onTasksChange={setTasks}
+          minDate="2026-01-01"
+          maxDate="2026-01-31"
+          height={400}
+        />
+      );
+    }
+    render(<Harness />);
+    const list = screen.getByTestId('task-list-left');
+    expect(within(list).getByText('Child')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse group' }));
+    expect(within(list).queryByText('Child')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand group' }));
+    expect(within(list).getByText('Child')).toBeTruthy();
   });
 
   it('does not update read-only tasks on drag end', () => {

@@ -5,6 +5,8 @@ import {
   rollUpGroupDates,
   shouldRenderTaskBar,
   resolveTaskInteractionFlags,
+  taskHasChildren,
+  taskSupportsCollapse,
 } from '../src/core/groupTasks';
 import { toDate } from '../src/core/dates';
 import type { GanttTask } from '../src/types';
@@ -40,6 +42,12 @@ describe('groupTasks', () => {
     expect(groupShowsSummaryBar(tasks[3])).toBe(false);
     expect(shouldRenderTaskBar(tasks[3], tasks)).toBe(false);
     expect(shouldRenderTaskBar(tasks[4], tasks)).toBe(true);
+  });
+
+  it('detects collapsible parent rows', () => {
+    expect(taskHasChildren('g1', tasks)).toBe(true);
+    expect(taskSupportsCollapse(tasks[0], tasks)).toBe(true);
+    expect(taskSupportsCollapse(tasks[4], tasks)).toBe(false);
   });
 
   it('resolves per-task read-only interaction flags', () => {

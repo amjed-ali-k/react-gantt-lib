@@ -1,6 +1,6 @@
 # react-gantt-lib — AI agent reference
 
-Package: react-gantt-lib v0.1.0
+Package: react-gantt-lib v0.1.1
 Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
 
 ## Agent discovery (installed package)
@@ -53,7 +53,7 @@ Dates (date-fns wrappers):
 
 Types (all exported):
 GanttTask, GanttColumn, GanttChartProps, GanttCallbacks, GanttEventMap, GanttEventName, GanttEventHandler,
-GanttTarget, GanttPointerDetail,
+GanttTarget, GanttPointerDetail, GanttHoverDetail,
 CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
 HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
 GanttDependency, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
@@ -97,8 +97,11 @@ Required: id, name, start, end
 Optional:
 - progress: number (0–100, default 0)
 - parentId: string — hierarchy; child rows indented 16px per level
-- collapsed: boolean — hide descendants (data-only; no built-in toggle UI)
-- type: 'task' | 'milestone' — milestone = diamond at start date; start === end
+- collapsed: boolean — hide descendant rows and timeline bars when true
+- type: 'task' | 'milestone' | 'group' — milestone = diamond; group = parent/summary row
+- showSummaryBar: boolean — on group rows only; default true. false = sidebar folder only (no summary bar; children keep their own bars)
+- readOnly: boolean — disables drag, resize, and progress edits for this task
+- enableDrag, enableResize, enableProgressDrag: boolean — per-task overrides (fall back to chart-level props)
 - dependencies: string[] | GanttDependency[] — see Dependencies
 - baseline: { start, end, color? } — original plan overlay (amber default #e6a23c)
 - color: string — bar fill / milestone color
@@ -106,7 +109,33 @@ Optional:
 - width: number — bar height in px within row (not bar length)
 - meta: Record<string, unknown>
 
-Task order in array = row order. Hidden children filtered by resolveTasks (collapsed ancestors).
+Task order in array = row order. Hidden descendants filtered by resolveTasks when any ancestor has collapsed: true.
+
+## Group rows & collapse
+
+type: 'group' — parent row for hierarchy and optional summary timeline bar.
+
+| showSummaryBar | Timeline behavior |
+|----------------|-------------------|
+| true (default) | One rolled-up bar spanning descendant dates; child bars hidden |
+| false | No bar on group row; children render their own bars |
+
+Sidebar collapse/expand (built-in):
+- Parent rows with type: 'group' OR any task with children show a ▸/▾ button in the first column
+- Click toggles task.collapsed; updates via onTasksChange when used with controlled tasks
+- Collapsed ancestors hide all descendant rows (sidebar + timeline)
+
+Roll-up dates for summary groups: min(start) / max(end) of visible descendant leaf bars (computed in resolveTasks).
+
+Helpers (internal, not exported from package entry): isGroupTask, groupShowsSummaryBar, shouldRenderTaskBar, taskHasChildren, taskSupportsCollapse in src/core/groupTasks.ts
+
+Example — folder vs summary group:
+[
+  { id: 'phase', name: 'Phase 1', type: 'group', showSummaryBar: false, start: '2026-04-01', end: '2026-04-01' },
+  { id: 'a', name: 'Task A', parentId: 'phase', start: '2026-04-02', end: '2026-04-06' },
+  { id: 'envelope', name: 'Envelope', type: 'group', start: '2026-04-10', end: '2026-04-10' },
+  { id: 'roof', name: 'Roofing', parentId: 'envelope', start: '2026-04-10', end: '2026-04-12' },
+]
 
 ## Columns
 
@@ -168,14 +197,15 @@ snapToGrid: default true
 | true | Smooth visual drag; dates snap to grid column boundaries on pointer release |
 | false | Pixel-precision dates on release (sub-hour at hour/minute zoom) |
 
-enableDrag: default true — move bar body
-enableResize: default true — left/right handles (visible on bar hover)
-enableProgressDrag: default true — bottom progress handle on bar hover
+enableDrag: default true — move bar body (per-task override: GanttTask.enableDrag)
+enableResize: default true — left/right handles on bar hover (per-task: enableResize)
+enableProgressDrag: default true — bottom progress handle (per-task: enableProgressDrag)
+readOnly: true on a task — disables drag, resize, and progress for that task
 
 Milestones: draggable (move only); no resize handles.
 
 Interaction:
-- Click row (sidebar) or bar → onTaskClick + selection
+- Click row (sidebar) or bar → onTaskClick + selection; Ctrl/⌘+click toggles multi-select
 - Double-click bar → onTaskDoubleClick
 - Hover bar → onTaskHover; resize handles appear (CSS .rg-bar:hover)
 - Drag emits taskDragStart → taskDrag → taskDragEnd
@@ -188,7 +218,12 @@ onTasksChange(tasks) — full updated array after drag/resize/progress commit. U
 ## Click & context menu (unified targets)
 
 onGanttClick and onGanttContextMenu receive GanttPointerDetail:
-{ target: GanttTarget, clientX, clientY, preventDefault() }
+{ target: GanttTarget, clientX, clientY, ctrlKey?, metaKey?, shiftKey?, preventDefault() }
+
+onGanttHover receives GanttHoverDetail:
+{ target: GanttTarget | null, phase: 'enter' | 'leave' | 'move', clientX, clientY }
+Fires for blocked dates and holidays on the interaction layer (areas not covered by task bars).
+Pass onGanttHover (or onGanttClick / onGanttContextMenu) to enable date-marking hit targets.
 
 GanttTarget discriminated union (switch on target.type):
 
@@ -202,13 +237,22 @@ GanttTarget discriminated union (switch on target.type):
 | timeline | Click/right-click empty timeline body or header | date (at pointer x), rowIndex (number \| null; null in header) |
 
 Activation:
-- Pass onGanttClick and/or onGanttContextMenu to enable overlay hit targets (timeline, blocks, holidays, baselines, event markers).
+- Pass onGanttClick, onGanttContextMenu, and/or onGanttHover to enable overlay hit targets (timeline, blocks, holidays, baselines, event markers).
 - Task bars always fire onTaskClick; also fire onGanttClick when that handler is set.
 - Right-click: call e.preventDefault() in onGanttContextMenu to suppress the browser menu.
 
 Click priority (top wins): task bar → baseline → blocked/holiday band → empty timeline.
 
-onTaskClick / onTaskDoubleClick now include optional element: 'bar' | 'milestone'.
+onTaskClick / onTaskDoubleClick include optional element: 'bar' | 'milestone' and modifier keys ctrlKey, metaKey, shiftKey.
+
+Example — block hover tooltip:
+<GanttChart
+  blockDates={[{ start: '2026-04-07', end: '2026-04-07', label: 'Curing — no pours' }]}
+  onGanttHover={({ target, phase }) => {
+    if (target?.type === 'blockDate' && phase === 'enter') showTip(target.range.label);
+    if (phase === 'leave') hideTip();
+  }}
+/>
 
 Example — custom context menu:
 <GanttChart
@@ -284,8 +328,9 @@ Floating tooltip on bar hover: name, start, end (time shown when non-midnight).
 
 selectedTaskIds?: string[] — controlled selection
 Uncontrolled: internal state; click selects one task
+Ctrl/⌘+click (metaKey / ctrlKey on onTaskClick): toggle task in selection without clearing others
 onSelectionChange({ selectedIds })
-Selected bar: .rg-bar--selected, focus ring
+Selected bar: .rg-bar--selected, focus ring; sidebar: .rg-task-row--selected
 
 ## Custom rows
 
@@ -324,10 +369,11 @@ Custom rows render below task rows in sidebar + timeline footer (.rg-custom-rows
 
 | Prop | Event | Payload highlights |
 |------|-------|-------------------|
-| onTaskClick | taskClick | task, rowIndex, element?: 'bar' \| 'milestone' |
+| onTaskClick | taskClick | task, rowIndex, element?, ctrlKey?, metaKey?, shiftKey? |
 | onTaskDoubleClick | taskDoubleClick | task, rowIndex, element?: 'bar' \| 'milestone' |
 | onGanttClick | ganttClick | GanttPointerDetail — unified click on any timeline target |
 | onGanttContextMenu | ganttContextMenu | GanttPointerDetail — right-click; call preventDefault() to suppress browser menu |
+| onGanttHover | ganttHover | GanttHoverDetail — hover on blocks, holidays, etc. |
 | onTaskHover | taskHover | task \| null, rowIndex, clientX?, clientY? |
 | onTaskDragStart | taskDragStart | task, start, end |
 | onTaskDrag | taskDrag | task, start, end, deltaMs |
@@ -378,9 +424,9 @@ CSS variables (--rg-*): bar colors, handles, grid, etc.
 
 Key classes:
 .rg-gantt, .rg-gantt-body, .rg-panels, .rg-timeline-panel, .rg-timeline-scroll, .rg-timeline-inner
-.rg-task-list, .rg-task-row, .rg-task-row--selected, .rg-task-cell
+.rg-task-list, .rg-task-row, .rg-task-row--selected, .rg-task-cell, .rg-task-collapse
 .rg-timeline-header, .rg-timeline-body, .rg-timeline-grid
-.rg-bar, .rg-bar--selected, .rg-bar-handle, .rg-bar-progress-handle, .rg-bar-milestone
+.rg-bar, .rg-bar--selected, .rg-bar--group, .rg-bar--readonly, .rg-bar-handle, .rg-bar-progress-handle, .rg-bar-milestone
 .rg-baseline-layer, .rg-baseline-bar, .rg-baseline-milestone, .rg-baseline-hit
 .rg-date-marking-interaction, .rg-date-marking-hit
 .rg-timeline-hit, .rg-timeline-hit-rect
@@ -393,7 +439,9 @@ Key classes:
 
 data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows
 
-Bars: data-task-id, data-selected
+Bars: data-task-id, data-selected (timeline SVG)
+Sidebar rows: data-task-id on .rg-task-row (left + middle panels)
+Collapse button: aria-label "Collapse group" / "Expand group"
 
 ## Controlled state patterns
 
@@ -411,18 +459,33 @@ Selection:
 Fixed window:
 <GanttChart minDate="2026-01-01" maxDate="2026-06-30" />
 
-Disable editing:
+Selection (multi-select):
+const [ids, setIds] = useState<string[]>([]);
+<GanttChart
+  tasks={tasks}
+  selectedTaskIds={ids}
+  onSelectionChange={(e) => setIds(e.selectedIds)}
+  onTaskClick={({ task, ctrlKey, metaKey }) => {
+    /* selection already updated; use modifiers for custom behavior */
+  }}
+/>
+
+Per-task read-only:
+{ id: 'done', name: 'Completed', start: '...', end: '...', readOnly: true }
+
+Disable editing globally:
 <GanttChart enableDrag={false} enableResize={false} enableProgressDrag={false} />
 
 ## Hierarchy example
 
 [
-  { id: 'phase', name: 'Phase 1', start: '2026-01-01', end: '2026-01-31', progress: 50 },
-  { id: 't1', name: 'Subtask', start: '2026-01-05', end: '2026-01-10', parentId: 'phase', dependencies: ['t0'] },
+  { id: 'phase', name: 'Phase 1', type: 'group', start: '2026-01-01', end: '2026-01-31' },
+  { id: 't1', name: 'Subtask', start: '2026-01-05', end: '2026-01-10', parentId: 'phase' },
   { id: 't0', name: 'Kickoff', start: '2026-01-02', end: '2026-01-04' },
 ]
 
-Set parent collapsed: true to hide children. App must toggle collapsed in task data.
+Toggle collapsed via sidebar ▸/▾ on the group row, or set collapsed: true in task data.
+Use onTasksChange to persist collapsed state.
 
 ## Full feature example
 
@@ -453,6 +516,7 @@ Set parent collapsed: true to hide children. App must toggle collapsed in task d
   onTaskDragEnd={(e) => console.log(e.task.id, e.start, e.end)}
   onGanttClick={(e) => console.log('clicked', e.target.type, e.target)}
   onGanttContextMenu={(e) => { e.preventDefault(); console.log('menu', e.target); }}
+  onGanttHover={(e) => e.target?.type === 'blockDate' && e.phase === 'enter' && console.log(e.target.range.label)}
   onSidebarLayoutChange={(layout) => syncOverlays(layout.timelineLeft)}
 />
 
@@ -460,7 +524,8 @@ Set parent collapsed: true to hide children. App must toggle collapsed in task d
 
 npm run demo → http://localhost:5173
 
-demo/App.tsx — Examples tab: hierarchy+deps, snap vs smooth, custom row
+demo/App.tsx — Examples tab: grid snap, custom row, smooth drag, advanced interactions (multi-select, groups, read-only, block hover)
+demo/advancedFeaturesDemo.tsx — multi-select, group folders/summary bars, collapse toggles, read-only task, onGanttHover
 demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row
 
 Reference implementations:
@@ -470,7 +535,7 @@ Reference implementations:
 
 - Dependency types other than FS not rendered
 - lag on GanttDependency ignored
-- No built-in collapse/expand UI (collapsed is data-only)
+- onGanttHover for blocks may not fire when pointer is over a task bar (bars sit above block hit layer)
 - GanttChartProps.children unused
 - No built-in context menu UI (use onGanttContextMenu + your own menu component)
 - No built-in task creation/editing forms

@@ -134,8 +134,8 @@ export function AdvancedFeaturesDemo({ onLog }: AdvancedFeaturesDemoProps) {
         <div>
           <h2>Advanced interactions</h2>
           <p>
-            Multi-select with Ctrl/⌘+click, group summary rows, per-task read-only, blocked-date
-            hover tooltips, and <code>data-task-id</code> on sidebar rows for testing.
+            Multi-select with Ctrl/⌘+click, group rows with collapse toggles, per-task read-only,
+            blocked-date hover tooltips, and <code>data-task-id</code> on sidebar rows.
           </p>
         </div>
         <span className="demo-badge demo-badge--smooth">no snap</span>
@@ -155,8 +155,8 @@ export function AdvancedFeaturesDemo({ onLog }: AdvancedFeaturesDemoProps) {
           &quot;Pour slab A&quot; cannot be dragged or resized
         </div>
         <div className="demo-stat">
-          <strong>Groups</strong>
-          Pour phase = sidebar folder; Building envelope = summary bar
+          <strong>Collapse</strong>
+          Use ▸/▾ on group rows to hide or show children
         </div>
       </div>
 

@@ -126,10 +126,40 @@
 }
 
 .rg-task-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   padding: 0 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rg-task-collapse {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.rg-task-collapse:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.rg-task-collapse-icon {
+  font-size: 11px;
+  line-height: 1;
 }
 
 .rg-timeline-panel {

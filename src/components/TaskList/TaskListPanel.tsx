@@ -1,17 +1,20 @@
 import { memo } from 'react';
-import type { CustomRowDefinition, GanttColumn, ResolvedTask } from '../../types';
+import type { CustomRowDefinition, GanttColumn, GanttTask, ResolvedTask } from '../../types';
 import type { RowLayout } from '../../core/rowLayout';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { CustomRowMetrics } from '../CustomRows/customRowMetrics';
+import { taskSupportsCollapse } from '../../core/groupTasks';
 import { CustomRowLeftRows, CustomRowMiddleRows } from '../CustomRows/CustomRowSidebarRows';
 
 interface TaskListPanelProps {
   tasks: ResolvedTask[];
+  sourceTasks: GanttTask[];
   columns: GanttColumn[];
   rowHeight: number;
   rowLayouts?: RowLayout[];
   width: number;
   selectedTaskIds?: string[];
+  onToggleCollapse?: (taskId: string) => void;
   emit: EventEmitter;
   customRows?: CustomRowDefinition[];
   customRowMetrics?: CustomRowMetrics;
@@ -28,11 +31,13 @@ function rowHeightForTask(
 
 export const TaskListPanel = memo(function TaskListPanel({
   tasks,
+  sourceTasks,
   columns,
   rowHeight,
   rowLayouts,
   width,
   selectedTaskIds,
+  onToggleCollapse,
   emit,
   customRows = [],
   customRowMetrics,
@@ -87,21 +92,46 @@ export const TaskListPanel = memo(function TaskListPanel({
                 })
               }
             >
-              {columns.map((col) => (
-                <div
-                  key={col.key}
-                  className="rg-task-cell"
-                  style={{ flex: col.flex ?? 1, minWidth: col.minWidth }}
-                >
-                  {col.render
-                    ? col.render({ task, rowIndex: task._rowIndex, columnKey: col.key })
-                    : col.key === 'name'
-                      ? task.name
-                      : col.key === 'progress'
-                        ? `${task.progress ?? 0}%`
-                        : null}
-                </div>
-              ))}
+              {columns.map((col, colIndex) => {
+                const showCollapse =
+                  colIndex === 0 &&
+                  !!onToggleCollapse &&
+                  taskSupportsCollapse(task, sourceTasks);
+                const cellContent = col.render
+                  ? col.render({ task, rowIndex: task._rowIndex, columnKey: col.key })
+                  : col.key === 'name'
+                    ? task.name
+                    : col.key === 'progress'
+                      ? `${task.progress ?? 0}%`
+                      : null;
+
+                return (
+                  <div
+                    key={col.key}
+                    className="rg-task-cell"
+                    style={{ flex: col.flex ?? 1, minWidth: col.minWidth }}
+                  >
+                    {showCollapse && (
+                      <button
+                        type="button"
+                        className="rg-task-collapse"
+                        aria-expanded={!task.collapsed}
+                        aria-label={task.collapsed ? 'Expand group' : 'Collapse group'}
+                        title={task.collapsed ? 'Expand' : 'Collapse'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleCollapse(task.id);
+                        }}
+                      >
+                        <span className="rg-task-collapse-icon" aria-hidden>
+                          {task.collapsed ? '▸' : '▾'}
+                        </span>
+                      </button>
+                    )}
+                    {cellContent}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
