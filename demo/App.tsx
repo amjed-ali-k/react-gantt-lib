@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
-import type { CustomRowDefinition, GanttTask, ViewScaleId } from '../src/types';
+import type { CustomRowDefinition, GanttTask, GanttTheme, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
+import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
 import { PlaygroundApp } from './playground';
+import { DemoThemeProvider } from './chartTheme';
+import { ThemeToggle } from './ThemeToggle';
 import './demo.css';
 import './playground.css';
 import './dailyColorStripRow.css';
@@ -121,6 +124,7 @@ function ChartSection({
   onLog,
   height = 360,
   customRows,
+  theme,
 }: {
   title: string;
   subtitle: string;
@@ -135,6 +139,7 @@ function ChartSection({
   onLog: (event: string, detail: string) => void;
   height?: number;
   customRows?: CustomRowDefinition[];
+  theme: GanttTheme;
 }) {
   return (
     <section className="demo-section">
@@ -151,6 +156,7 @@ function ChartSection({
         <GanttChart
           tasks={tasks}
           height={height}
+          theme={theme}
           zoomLevel={zoomLevel}
           minDate={minDate}
           maxDate={maxDate}
@@ -172,6 +178,7 @@ function ChartSection({
 }
 
 function ExamplesDemo() {
+  const { chartTheme } = useDemoTheme();
   const [snappedTasks, setSnappedTasks] = useState(SNAPPED_TASKS);
   const [smoothTasks, setSmoothTasks] = useState(SMOOTH_TASKS);
   const [snappedZoom, setSnappedZoom] = useState<string>('week');
@@ -205,6 +212,7 @@ function ExamplesDemo() {
         snapToGrid
         onLog={log}
         height={400}
+        theme={chartTheme}
       />
 
       <ChartSection
@@ -221,6 +229,7 @@ function ExamplesDemo() {
         onLog={log}
         height={440}
         customRows={[DAILY_COLOR_STRIP_ROW]}
+        theme={chartTheme}
       />
 
       <ChartSection
@@ -236,9 +245,10 @@ function ExamplesDemo() {
         snapToGrid={false}
         onLog={log}
         height={280}
+        theme={chartTheme}
       />
 
-      <AdvancedFeaturesDemo onLog={log} />
+      <AdvancedFeaturesDemo onLog={log} theme={chartTheme} />
 
       <div className="demo-panels">
         <div className="demo-tips">
@@ -294,10 +304,13 @@ export function App() {
   };
 
   return (
-    <div className="demo-page">
-      <header className="demo-topbar">
-        <h1>react-gantt-lib</h1>
-        <nav className="demo-tabs" aria-label="Demo sections">
+    <DemoThemeProvider>
+      <div className="demo-page">
+        <header className="demo-topbar">
+          <h1>react-gantt-lib</h1>
+          <div className="demo-topbar-actions">
+            <ThemeToggle />
+            <nav className="demo-tabs" aria-label="Demo sections">
           <button
             type="button"
             className={`demo-tab ${tab === 'examples' ? 'demo-tab--active' : ''}`}
@@ -312,11 +325,13 @@ export function App() {
           >
             Playground
             <span className="demo-tab-badge">controls</span>
-          </button>
-        </nav>
+            </button>
+          </nav>
+        </div>
       </header>
 
       {tab === 'examples' ? <ExamplesDemo /> : <PlaygroundApp />}
-    </div>
+      </div>
+    </DemoThemeProvider>
   );
 }

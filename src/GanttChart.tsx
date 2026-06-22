@@ -54,6 +54,7 @@ export function GanttChart({
   width = '100%',
   className,
   style,
+  theme = 'light',
   defaultLeftWidth = 220,
   defaultMiddleWidth = 180,
   minPanelWidth = 80,
@@ -404,7 +405,7 @@ export function GanttChart({
     <GanttTimelineProvider value={timelineContext}>
     <div
       ref={containerRef}
-      className={`rg-gantt ${className ?? ''}`}
+      className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
       style={{ width, height, ...style }}
       data-testid="gantt-chart"
       data-sidebar-left={leftWidth}

@@ -54,7 +54,7 @@ Dates (date-fns wrappers):
 
 Types (all exported):
 GanttTask, GanttColumn, GanttChartProps, GanttCallbacks, GanttEventMap, GanttEventName, GanttEventHandler,
-GanttTarget, GanttPointerDetail, GanttHoverDetail,
+GanttTarget, GanttPointerDetail, GanttHoverDetail, GanttTheme,
 CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
 HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
 GanttDependency, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
@@ -417,11 +417,35 @@ resolveScale(id) — fallback to day preset if unknown
 resolveScales(ids?) — default ZOOM_LEVELS order
 format — re-exported from date-fns
 
+## Theme (light / dark)
+
+theme?: 'light' | 'dark' | 'auto' — default 'light'
+Applies class `rg-theme-{theme}` on `.rg-gantt`.
+
+| value | Behavior |
+|-------|----------|
+| light | Default light surfaces and text |
+| dark | Twilight navy palette (#0c1222 base), elevated surfaces, brighter accents |
+| auto | Light by default; follows OS `prefers-color-scheme: dark` |
+
+Dark mode design notes:
+- No pure black (#000) or pure white (#fff) text — uses #0c1222 / #e2e8f0
+- Elevation via lighter surfaces (--rg-surface-raised), not heavy shadows
+- Brighter bar fill (#60a5fa) and handles (#38bdf8) for contrast
+- Borders use rgba(255,255,255,0.1)
+
+Example:
+<GanttChart tasks={tasks} theme="dark" />
+<GanttChart tasks={tasks} theme="auto" />
+
+Demo: topbar theme toggle cycles System → Light → Dark (localStorage `rg-demo-theme`).
+
 ## DOM / CSS reference
 
 Import: 'react-gantt-lib/styles.css'
 
-CSS variables (--rg-*): bar colors, handles, grid, etc.
+CSS variables (--rg-*): semantic tokens for bg, text, borders, bars, tooltips, selection, etc.
+Theme overrides all --rg-* tokens on `.rg-theme-dark` and `.rg-theme-auto` (in dark media query).
 
 Key classes:
 .rg-gantt, .rg-gantt-body, .rg-panels, .rg-timeline-panel, .rg-timeline-scroll, .rg-timeline-inner

@@ -4,6 +4,7 @@ import type { BlockDateRange, EventMarker, GanttTask, HolidayDateEntry } from '.
 import { PRESET_SCALES } from '../src/core/scale';
 import { PlaygroundSection } from './PlaygroundSection';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
+import { useDemoTheme } from './chartTheme';
 import './playground.css';
 
 const PLAYGROUND_HOLIDAYS: HolidayDateEntry[] = [
@@ -78,6 +79,7 @@ function toDatetimeLocalValue(iso: string): string {
 }
 
 export function PlaygroundApp() {
+  const { chartTheme } = useDemoTheme();
   const [minDate, setMinDate] = useState('2026-04-01');
   const [maxDate, setMaxDate] = useState('2026-04-30');
   const [enabledZooms, setEnabledZooms] = useState<Record<ZoomOptionId, boolean>>({
@@ -511,6 +513,7 @@ export function PlaygroundApp() {
         <GanttChart
           tasks={tasks}
           height={480}
+          theme={chartTheme}
           minDate={minDate}
           maxDate={maxDate}
           zoomLevel={zoomLevel}

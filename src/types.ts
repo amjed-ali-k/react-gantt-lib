@@ -7,6 +7,8 @@ export type ZoomLevel = 'month' | 'week' | 'day' | 'hour' | 'minute';
 /** Extended preset ids including multi-step column scales. */
 export type ViewScaleId = ZoomLevel | '2day' | '6hour' | '3hour' | '1hour';
 
+export type GanttTheme = 'light' | 'dark' | 'auto';
+
 export type DependencyType = 'FS' | 'FF' | 'SS' | 'SF';
 
 /** Original scheduled dates before plan changes (rendered as amber baseline). */
@@ -303,6 +305,8 @@ export interface GanttChartProps extends GanttCallbacks {
   width?: number | string;
   className?: string;
   style?: React.CSSProperties;
+  /** Chart color theme. `auto` follows the OS prefers-color-scheme setting. Default `light`. */
+  theme?: GanttTheme;
   defaultLeftWidth?: number;
   defaultMiddleWidth?: number;
   minPanelWidth?: number;

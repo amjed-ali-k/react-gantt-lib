@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
-import type { BlockDateRange, GanttEventMap, GanttTask } from '../src/types';
+import type { BlockDateRange, GanttEventMap, GanttTask, GanttTheme } from '../src/types';
 
 export const ADVANCED_FEATURES_TASKS: GanttTask[] = [
   {
@@ -98,9 +98,10 @@ export const ADVANCED_BLOCK_DATES: BlockDateRange[] = [
 
 interface AdvancedFeaturesDemoProps {
   onLog: (event: string, detail: string) => void;
+  theme: GanttTheme;
 }
 
-export function AdvancedFeaturesDemo({ onLog }: AdvancedFeaturesDemoProps) {
+export function AdvancedFeaturesDemo({ onLog, theme }: AdvancedFeaturesDemoProps) {
   const [tasks, setTasks] = useState(ADVANCED_FEATURES_TASKS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [blockHoverLabel, setBlockHoverLabel] = useState<string | null>(null);
@@ -164,6 +165,7 @@ export function AdvancedFeaturesDemo({ onLog }: AdvancedFeaturesDemoProps) {
         <GanttChart
           tasks={tasks}
           height={380}
+          theme={theme}
           zoomLevel="week"
           minDate="2026-04-01"
           maxDate="2026-04-20"
