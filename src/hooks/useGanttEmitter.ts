@@ -11,6 +11,7 @@ const CALLBACK_MAP: Record<GanttEventName, keyof GanttCallbacks> = {
   taskDoubleClick: 'onTaskDoubleClick',
   ganttClick: 'onGanttClick',
   ganttContextMenu: 'onGanttContextMenu',
+  ganttHover: 'onGanttHover',
   taskHover: 'onTaskHover',
   taskDragStart: 'onTaskDragStart',
   taskDrag: 'onTaskDrag',

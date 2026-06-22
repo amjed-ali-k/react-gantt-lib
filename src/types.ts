@@ -31,7 +31,15 @@ export interface GanttTask {
   progress?: number;
   parentId?: string;
   dependencies?: GanttDependency[] | string[];
-  type?: 'task' | 'milestone';
+  type?: 'task' | 'milestone' | 'group';
+  /** On group rows: show a spanning summary bar (default true). Set false for sidebar-only group rows. */
+  showSummaryBar?: boolean;
+  /** Prevent drag, resize, and progress edits for this task. */
+  readOnly?: boolean;
+  /** Per-task overrides for interaction (fall back to chart-level props). */
+  enableDrag?: boolean;
+  enableResize?: boolean;
+  enableProgressDrag?: boolean;
   /** Original plan dates — line below bars or diamond behind milestones. */
   baseline?: TaskBaseline;
   /** Bar fill / milestone color. */
@@ -187,8 +195,18 @@ export interface GanttPointerDetail {
   target: GanttTarget;
   clientX: number;
   clientY: number;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
   /** Call to suppress the browser context menu (context-menu events only). */
   preventDefault: () => void;
+}
+
+export interface GanttHoverDetail {
+  target: GanttTarget | null;
+  phase: 'enter' | 'leave' | 'move';
+  clientX: number;
+  clientY: number;
 }
 
 export interface DateMarkingLayers {
@@ -208,10 +226,18 @@ export interface EventMarker {
 }
 
 export interface GanttEventMap {
-  taskClick: { task: GanttTask; rowIndex: number; element?: 'bar' | 'milestone' };
+  taskClick: {
+    task: GanttTask;
+    rowIndex: number;
+    element?: 'bar' | 'milestone';
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    shiftKey?: boolean;
+  };
   taskDoubleClick: { task: GanttTask; rowIndex: number; element?: 'bar' | 'milestone' };
   ganttClick: GanttPointerDetail;
   ganttContextMenu: GanttPointerDetail;
+  ganttHover: GanttHoverDetail;
   taskHover: {
     task: GanttTask | null;
     rowIndex: number | null;
@@ -246,6 +272,8 @@ export interface GanttCallbacks {
   onGanttClick?: GanttEventHandler<'ganttClick'>;
   /** Right-click handler for the same targets as `onGanttClick`. Call `preventDefault()` to suppress the browser menu. */
   onGanttContextMenu?: GanttEventHandler<'ganttContextMenu'>;
+  /** Hover handler for blocked dates, holidays, and other gantt targets (when not occluded by task bars). */
+  onGanttHover?: GanttEventHandler<'ganttHover'>;
   onTaskHover?: GanttEventHandler<'taskHover'>;
   onTaskDragStart?: GanttEventHandler<'taskDragStart'>;
   onTaskDrag?: GanttEventHandler<'taskDrag'>;

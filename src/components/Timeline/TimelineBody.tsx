@@ -19,6 +19,7 @@ import { DependencyLayer } from './DependencyLayer';
 import { BaselineLayer } from './BaselineLayer';
 import { DateMarkingInteractionLayer } from './DateMarkingInteractionLayer';
 import { TimelineHitLayer } from './TimelineHitLayer';
+import { shouldRenderTaskBar, resolveTaskInteractionFlags } from '../../core/groupTasks';
 
 interface TimelineBodyProps {
   tasks: ResolvedTask[];
@@ -155,7 +156,13 @@ export const TimelineBody = memo(function TimelineBody({
       )}
       <svg className="rg-timeline-bars" width="100%" height={totalHeight}>
         {tasks.map((task, i) => {
+          if (!shouldRenderTaskBar(task, tasks)) return null;
           const g = geometries[i];
+          const flags = resolveTaskInteractionFlags(task, {
+            enableDrag: enableDrag ?? true,
+            enableResize: enableResize ?? true,
+            enableProgressDrag: enableProgressDrag ?? true,
+          });
           return (
             <TaskBar
               key={task.id}
@@ -166,9 +173,9 @@ export const TimelineBody = memo(function TimelineBody({
               rangeStart={range.start}
               store={store}
               selected={selectedTaskIds?.includes(task.id) ?? false}
-              enableDrag={enableDrag}
-              enableResize={enableResize}
-              enableProgressDrag={enableProgressDrag}
+              enableDrag={flags.enableDrag}
+              enableResize={flags.enableResize}
+              enableProgressDrag={flags.enableProgressDrag}
               snapToGrid={snapToGrid}
               timelineBounds={timelineBounds}
               emit={emit}

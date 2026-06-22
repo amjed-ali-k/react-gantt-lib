@@ -118,17 +118,35 @@ export function GanttChart({
 
   const handleTaskClick = useCallback(
     (detail: GanttEventMap['taskClick']) => {
+      const multi = !!(detail.ctrlKey || detail.metaKey);
+      const computeNext = (current: string[]) => {
+        if (multi) {
+          return current.includes(detail.task.id)
+            ? current.filter((id) => id !== detail.task.id)
+            : [...current, detail.task.id];
+        }
+        return [detail.task.id];
+      };
+
       if (selectedTaskIds === undefined) {
-        setInternalSelectedIds([detail.task.id]);
+        setInternalSelectedIds((current) => {
+          const nextIds = computeNext(current);
+          onSelectionChange?.({ selectedIds: nextIds });
+          return nextIds;
+        });
+      } else {
+        onSelectionChange?.({ selectedIds: computeNext(selectedTaskIds) });
       }
-      const nextIds = selectedTaskIds ?? [detail.task.id];
-      onSelectionChange?.({ selectedIds: nextIds });
       onTaskClick?.(detail);
     },
     [selectedTaskIds, onSelectionChange, onTaskClick],
   );
 
-  const interactionsEnabled = !!(callbacks.onGanttClick || callbacks.onGanttContextMenu);
+  const interactionsEnabled = !!(
+    callbacks.onGanttClick ||
+    callbacks.onGanttContextMenu ||
+    callbacks.onGanttHover
+  );
 
   const emit = useGanttEmitter({
     ...callbacks,
@@ -344,6 +362,8 @@ export function GanttChart({
 
   const handleTaskUpdate = useCallback(
     (taskId: string, patch: { start?: Date; end?: Date; progress?: number }) => {
+      const source = tasks.find((t) => t.id === taskId);
+      if (source?.readOnly) return;
       const mapped: Record<string, unknown> = {};
       if (patch.start && patch.end && timelineBounds) {
         const clamped = clampTaskDates(patch.start, patch.end, timelineBounds, 'move');

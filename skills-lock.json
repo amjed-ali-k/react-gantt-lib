@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "release-notes": {
+      "source": "phuryn/pm-skills",
+      "sourceType": "github",
+      "skillPath": "pm-execution/skills/release-notes/SKILL.md",
+      "computedHash": "3553814c2f40e0c59ffe55315741a04f8e13f3b37d2e348aae3de58be730fd42"
+    }
+  }
+}

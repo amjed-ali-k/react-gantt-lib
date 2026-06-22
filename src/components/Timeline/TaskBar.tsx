@@ -258,11 +258,20 @@ function TaskBarInner({
   const progress = task.progress ?? 0;
   const progressWidth = (geometry.width * progress) / 100;
   const isMilestone = task.type === 'milestone';
+  const isGroup = task.type === 'group';
   const taskElement = isMilestone ? 'milestone' : 'bar';
+  const isReadOnly = !enableDrag && !enableResize && !enableProgressDrag;
 
   const handleTaskClick = useCallback(
     (e: React.MouseEvent) => {
-      emit('taskClick', { task, rowIndex: task._rowIndex, element: taskElement });
+      emit('taskClick', {
+        task,
+        rowIndex: task._rowIndex,
+        element: taskElement,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+      });
       emit(
         'ganttClick',
         createPointerDetail(
@@ -298,7 +307,7 @@ function TaskBarInner({
   return (
     <g
       ref={groupRef}
-      className={`rg-bar ${selected ? 'rg-bar--selected' : ''}`}
+      className={`rg-bar ${selected ? 'rg-bar--selected' : ''} ${isGroup ? 'rg-bar--group' : ''} ${isReadOnly ? 'rg-bar--readonly' : ''}`}
       data-task-id={task.id}
       data-selected={selected || undefined}
       transform={`translate(${geometry.x}, ${geometry.y})`}
@@ -447,6 +456,10 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   }
   if (prev.task.color !== next.task.color) return false;
   if (prev.task.borderColor !== next.task.borderColor) return false;
+  if (prev.enableDrag !== next.enableDrag) return false;
+  if (prev.enableResize !== next.enableResize) return false;
+  if (prev.enableProgressDrag !== next.enableProgressDrag) return false;
+  if (prev.task.type !== next.task.type) return false;
   if (prev.task.width !== next.task.width) return false;
   return true;
 }

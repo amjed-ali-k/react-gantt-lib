@@ -57,6 +57,7 @@ export const TaskListPanel = memo(function TaskListPanel({
           return (
             <div
               key={task.id}
+              data-task-id={task.id}
               className={`rg-task-row ${selected ? 'rg-task-row--selected' : ''}`}
               style={{ height: h, paddingLeft: 8 + task._level * 16 }}
               onMouseEnter={(e) =>
@@ -76,7 +77,15 @@ export const TaskListPanel = memo(function TaskListPanel({
                 })
               }
               onMouseLeave={() => emit('taskHover', { task: null, rowIndex: null })}
-              onClick={() => emit('taskClick', { task, rowIndex: task._rowIndex })}
+              onClick={(e) =>
+                emit('taskClick', {
+                  task,
+                  rowIndex: task._rowIndex,
+                  ctrlKey: e.ctrlKey,
+                  metaKey: e.metaKey,
+                  shiftKey: e.shiftKey,
+                })
+              }
             >
               {columns.map((col) => (
                 <div
@@ -152,6 +161,7 @@ export const MiddlePanel = memo(function MiddlePanel({
         {tasks.map((task, index) => (
           <div
             key={task.id}
+            data-task-id={task.id}
             className="rg-task-row"
             style={{ height: rowHeightForTask(task, index, rowHeight, rowLayouts) }}
           >

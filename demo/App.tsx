@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { CustomRowDefinition, GanttTask, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
+import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
 import { PlaygroundApp } from './playground';
 import './demo.css';
 import './playground.css';
@@ -237,6 +238,8 @@ function ExamplesDemo() {
         height={280}
       />
 
+      <AdvancedFeaturesDemo onLog={log} />
+
       <div className="demo-panels">
         <div className="demo-tips">
           <h3>Try it</h3>
@@ -246,6 +249,11 @@ function ExamplesDemo() {
             <li>Bottom chart: no grid snap — bars follow the cursor smoothly</li>
             <li>Top chart: snaps to week boundaries when you release</li>
             <li>Custom row example: daily color strip synced via <code>useGanttTimeline()</code></li>
+            <li>
+              <strong>Advanced interactions:</strong> Ctrl/⌘+click multi-select, group summary
+              bars, read-only tasks, <code>onGanttHover</code> on blocked dates
+            </li>
+            <li>Sidebar rows expose <code>data-task-id</code> for E2E selectors</li>
             <li>Switch to the <strong>Playground</strong> tab for date range + zoom level controls</li>
           </ul>
         </div>

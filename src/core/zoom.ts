@@ -1,6 +1,7 @@
 import type { GanttTask, ResolvedTask, TimelineRange, TimelineRangeBounds } from '../types';
 import { endOfDay } from 'date-fns';
 import { toDate } from './dates';
+import { groupShowsSummaryBar, isGroupTask, rollUpGroupDates } from './groupTasks';
 import {
   resolveScale,
   startOfScaleUnit,
@@ -256,17 +257,28 @@ export function resolveTasks(tasks: GanttTask[]): ResolvedTask[] {
 
   return tasks
     .filter((t) => !isHidden(t))
-    .map((task, rowIndex) => ({
-      ...task,
-      _start: toDate(task.start),
-      _end: toDate(task.end),
-      _baselineStart: task.baseline ? toDate(task.baseline.start) : undefined,
-      _baselineEnd: task.baseline ? toDate(task.baseline.end) : undefined,
-      _rowIndex: rowIndex,
-      _level: level(task),
-      _visible: true,
-      progress: task.progress ?? 0,
-    }));
+    .map((task, rowIndex) => {
+      let start = toDate(task.start);
+      let end = toDate(task.end);
+      if (isGroupTask(task) && groupShowsSummaryBar(task)) {
+        const rollup = rollUpGroupDates(task, tasks);
+        if (rollup) {
+          start = rollup.start;
+          end = rollup.end;
+        }
+      }
+      return {
+        ...task,
+        _start: start,
+        _end: end,
+        _baselineStart: task.baseline ? toDate(task.baseline.start) : undefined,
+        _baselineEnd: task.baseline ? toDate(task.baseline.end) : undefined,
+        _rowIndex: rowIndex,
+        _level: level(task),
+        _visible: true,
+        progress: task.progress ?? 0,
+      };
+    });
 }
 
 export function updateTaskInList(

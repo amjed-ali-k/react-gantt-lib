@@ -403,6 +403,16 @@
   cursor: grabbing;
 }
 
+.rg-bar--group .rg-bar-bg {
+  fill-opacity: 0.2;
+  stroke-dasharray: 4 2;
+}
+
+.rg-bar--readonly .rg-bar-bg,
+.rg-bar--readonly .rg-bar-milestone {
+  cursor: default;
+}
+
 .rg-bar-focus-ring {
   pointer-events: none;
 }
