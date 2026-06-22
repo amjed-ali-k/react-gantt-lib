@@ -1,0 +1,34 @@
+.pg-daily-strip-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.rg-custom-row-timeline-band .rg-custom-cell {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.pg-daily-strip {
+  display: flex;
+  height: 100%;
+  min-height: 28px;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.pg-daily-strip-cell {
+  flex-shrink: 0;
+  height: 100%;
+  border-right: 1px solid #fff;
+  transition: opacity 0.15s ease;
+  cursor: default;
+}
+
+.pg-daily-strip-cell:last-child {
+  border-right: none;
+}
