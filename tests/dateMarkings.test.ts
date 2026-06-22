@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDateMarkingRects, DEFAULT_BLOCK_COLOR, DEFAULT_HOLIDAY_COLOR } from '../src/core/dateMarkings';
+import { computeDateMarkingRects } from '../src/core/dateMarkings';
 import { resolveScale } from '../src/core/scale';
 import { computeTimelineRange } from '../src/core/zoom';
 
@@ -19,7 +19,7 @@ describe('computeDateMarkingRects', () => {
     });
     expect(holidays.length).toBeGreaterThan(0);
     expect(holidays.every((r) => r.kind === 'holiday')).toBe(true);
-    expect(holidays[0].color).toBe(DEFAULT_HOLIDAY_COLOR);
+    expect(holidays[0].color).toBeUndefined();
   });
 
   it('marks specific holiday dates', () => {
@@ -36,7 +36,19 @@ describe('computeDateMarkingRects', () => {
     ]);
     expect(blocks).toHaveLength(1);
     expect(blocks[0].kind).toBe('block');
-    expect(blocks[0].color).toBe(DEFAULT_BLOCK_COLOR);
+    expect(blocks[0].color).toBeUndefined();
     expect(blocks[0].width).toBeGreaterThan(scale.columnWidth);
+  });
+
+  it('passes custom colors through when provided', () => {
+    const { holidays, blocks } = computeDateMarkingRects(
+      range,
+      scale,
+      scale.columnWidth,
+      { weekends: true, color: '#abcdef' },
+      [{ start: '2026-04-14', end: '2026-04-16', color: '#ff00ff' }],
+    );
+    expect(holidays[0].color).toBe('#abcdef');
+    expect(blocks[0].color).toBe('#ff00ff');
   });
 });

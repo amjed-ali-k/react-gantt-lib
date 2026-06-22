@@ -148,7 +148,7 @@ export interface DateMarkingRect {
   key: string;
   x: number;
   width: number;
-  color: string;
+  color?: string;
   kind: 'holiday' | 'block';
   label?: string;
   /** Calendar day for holiday highlights. */

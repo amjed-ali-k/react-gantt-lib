@@ -70,7 +70,7 @@ export function computeDateMarkingRects(
 ): DateMarkingLayers {
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
   const msPerPixel = getMsPerPixel(scale, columnWidth);
-  const holidayColor = holidays?.color ?? DEFAULT_HOLIDAY_COLOR;
+  const holidayColor = holidays?.color;
   const isWeekend = holidays?.isWeekend ?? defaultIsWeekend;
   const holidayDateMap = normalizeHolidayDates(holidays?.dates);
 
@@ -96,7 +96,7 @@ export function computeDateMarkingRects(
       key: `holiday-${key}`,
       x: geom.x,
       width: geom.width,
-      color: holidayColor,
+      ...(holidayColor ? { color: holidayColor } : {}),
       kind: 'holiday',
       label,
       date: day,
@@ -136,7 +136,7 @@ export function computeDateMarkingRects(
       key: `block-${dateKey(block.start)}-${dateKey(block.end)}-${block.label ?? ''}`,
       x: geom.x,
       width: geom.width,
-      color: block.color ?? DEFAULT_BLOCK_COLOR,
+      ...(block.color ? { color: block.color } : {}),
       kind: 'block',
       label: block.label,
       sourceIndex: index,

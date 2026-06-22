@@ -18,7 +18,7 @@ export function DateMarkingHighlights({ rects, height }: DateMarkingHighlightsPr
           y={0}
           width={rect.width}
           height={height}
-          fill={rect.color}
+          {...(rect.color ? { fill: rect.color } : {})}
           className={`rg-date-marking rg-date-marking--${rect.kind}`}
           data-testid={`date-marking-${rect.kind}`}
         >
@@ -43,7 +43,11 @@ export function DateMarkingHeaderHighlights({ rects }: DateMarkingHeaderHighligh
         <div
           key={rect.key}
           className={`rg-header-marking rg-header-marking--${rect.kind}`}
-          style={{ left: rect.x, width: rect.width, backgroundColor: rect.color }}
+          style={{
+            left: rect.x,
+            width: rect.width,
+            ...(rect.color ? { backgroundColor: rect.color } : {}),
+          }}
           title={rect.label}
         />
       ))}
