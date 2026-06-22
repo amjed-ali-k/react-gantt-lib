@@ -1,7 +1,10 @@
-## v0.1.4
+## v0.1.5
 
-* [Update RELEASE_NOTES.md to version 0.1.4, removing previous entries and updating the full changelog link.](https://github.com/amjed-ali-k/react-gantt-lib/commit/c5fca87a9c17548549e0137ac6570fdd5a52952a) ([c5fca87](https://github.com/amjed-ali-k/react-gantt-lib/commit/c5fca87a9c17548549e0137ac6570fdd5a52952a))
-* [Update RELEASE_NOTES.md for version 0.1.4, removing previous entries and linking to the full changelog.](https://github.com/amjed-ali-k/react-gantt-lib/commit/a1f6c711f64fb6e6a326db9fc40e4ec155eb6b90) ([a1f6c71](https://github.com/amjed-ali-k/react-gantt-lib/commit/a1f6c711f64fb6e6a326db9fc40e4ec155eb6b90))
-* [0.1.4](https://github.com/amjed-ali-k/react-gantt-lib/commit/3552cb7f0a27ba6e7779c72430b7d73443bce9e6) ([3552cb7](https://github.com/amjed-ali-k/react-gantt-lib/commit/3552cb7f0a27ba6e7779c72430b7d73443bce9e6))
+* [Enhance Custom Row Functionality](https://github.com/amjed-ali-k/react-gantt-lib/commit/db91292163a859aba4d1eacaed90597f0f02b89e) ([db91292](https://github.com/amjed-ali-k/react-gantt-lib/commit/db91292163a859aba4d1eacaed90597f0f02b89e))
+  * Added optional `height` property to `CustomRowDefinition` for per-row height customization.
+  * Implemented `getCustomRowHeight` function to calculate row height based on the new property.
+  * Updated components to utilize the custom row height in rendering.
+  * Added a test case to verify the application of custom heights in the Gantt chart.
+* [0.1.5](https://github.com/amjed-ali-k/react-gantt-lib/commit/1a0f64bde331be9cee3fe56cc243de626e245592) ([1a0f64b](https://github.com/amjed-ali-k/react-gantt-lib/commit/1a0f64bde331be9cee3fe56cc243de626e245592))
 
-**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.3...v0.1.4
+**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.4...v0.1.5
