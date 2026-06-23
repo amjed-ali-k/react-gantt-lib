@@ -25,8 +25,6 @@ function metricsRevision(metrics: CustomRowMetrics, timeline: boolean): string {
   ];
   if (timeline) {
     parts.push(
-      metrics.scrollLeft,
-      metrics.viewportWidth,
       metrics.visibleColumns.startIndex,
       metrics.visibleColumns.endIndex,
     );

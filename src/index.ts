@@ -5,8 +5,17 @@ export { ZOOM_LEVELS, nextZoomLevel, getColumnWidth, computeTimelineRange, resol
 export { resolveScales, type ViewScale } from './core/scale';
 export {
   getVisibleColumnRange,
+  getViewportColumnRange,
+  maintainBufferedColumnRange,
   filterRectsInXRange,
+  DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT,
   type VisibleColumnRange,
 } from './core/visibleColumns';
+export { useBufferedSegmentCache } from './hooks/useBufferedSegmentCache';
+export {
+  useVirtualColumnSegments,
+  VirtualColumnCell,
+  type VirtualColumnSegment,
+} from './hooks/useVirtualColumnSegments';
 export { format, toDate, addUnit, diffUnits } from './core/dates';
 export { TaskStore } from './hooks/useTaskStore';

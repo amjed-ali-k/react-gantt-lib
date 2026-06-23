@@ -31,6 +31,8 @@ export interface CustomRowMetrics {
   scrollLeft: number;
   viewportWidth: number;
   visibleColumns: VisibleColumnRange;
+  viewportColumns: VisibleColumnRange;
+  columnScrollBufferPercent: number;
 }
 
 export function buildCustomRowCellContext(
@@ -57,6 +59,9 @@ export function buildCustomRowCellContext(
     viewportWidth: metrics.viewportWidth,
     visibleColumnStart: metrics.visibleColumns.startIndex,
     visibleColumnEnd: metrics.visibleColumns.endIndex,
+    viewportColumnStart: metrics.viewportColumns.startIndex,
+    viewportColumnEnd: metrics.viewportColumns.endIndex,
+    columnScrollBufferPercent: metrics.columnScrollBufferPercent,
     meta: row.meta,
   };
 }

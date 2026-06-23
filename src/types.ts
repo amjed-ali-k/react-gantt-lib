@@ -109,8 +109,13 @@ export interface CustomRowCellContext<TMeta = unknown> {
   viewportWidth: number;
   /** First visible column index (includes overscan). */
   visibleColumnStart: number;
-  /** Last visible column index (includes overscan). */
+  /** Last visible column index inside the buffered virtual window. */
   visibleColumnEnd: number;
+  /** Tight viewport column range (no buffer) — useful for highlighting only on-screen columns. */
+  viewportColumnStart: number;
+  viewportColumnEnd: number;
+  /** Horizontal scroll buffer (% of viewport width) applied on each side. */
+  columnScrollBufferPercent: number;
   meta?: TMeta;
 }
 
@@ -351,6 +356,12 @@ export interface GanttChartProps extends GanttCallbacks {
   selectedTaskIds?: string[];
   onTasksChange?: (tasks: GanttTask[]) => void;
   customRows?: CustomRowDefinition[];
+  /**
+   * Horizontal buffer for column virtualization, as % of viewport width on each side.
+   * Buffered columns stay mounted while scrolling so custom cells are not recalculated
+   * until they leave the buffer. Default 10.
+   */
+  columnScrollBufferPercent?: number;
   /** Called whenever sidebar positions change — use to sync external UI */
   onSidebarLayoutChange?: GanttEventHandler<'sidebarLayoutChange'>;
   children?: React.ReactNode;

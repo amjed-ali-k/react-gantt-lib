@@ -3,6 +3,7 @@ import { addDays, endOfDay, startOfDay } from 'date-fns';
 import type { CustomRowDefinition } from '../src/types';
 import { useGanttTimeline } from '../src/context/GanttChartContext';
 import { dateToPixel } from '../src/core/zoom';
+import { useBufferedSegmentCache } from '../src/hooks/useBufferedSegmentCache';
 import './dailyColorStripRow.css';
 
 function colorForDate(date: Date): string {
@@ -10,17 +11,6 @@ function colorForDate(date: Date): string {
   const hash = (seed * 9301 + 49297) % 233280;
   const hue = hash % 360;
   return `hsl(${hue} 62% 58%)`;
-}
-
-function eachDayInRange(start: Date, end: Date): Date[] {
-  const days: Date[] = [];
-  let day = startOfDay(start);
-  const last = startOfDay(end);
-  while (day.getTime() <= last.getTime()) {
-    days.push(day);
-    day = addDays(day, 1);
-  }
-  return days;
 }
 
 function daySegmentWidth(
@@ -35,32 +25,49 @@ function daySegmentWidth(
   return (segmentEnd - segmentStart) / msPerPixel;
 }
 
+interface DaySegment {
+  key: number;
+  label: string;
+  x: number;
+  width: number;
+  color: string;
+}
+
 /** Timeline band — uses `useGanttTimeline()` so it scrolls and zooms with the chart. */
 export const DailyColorStrip = memo(function DailyColorStrip() {
   const { range, msPerPixel, timelineWidth, visibleColumns } = useGanttTimeline();
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [hoveredKey, setHoveredKey] = useState<number | null>(null);
 
-  const segments = useMemo(() => {
+  const dayKeys = useMemo(() => {
     const { startX, endX } = visibleColumns;
-    return eachDayInRange(range.start, range.end)
-      .map((day) => {
-        const x = dateToPixel(startOfDay(day), range.start, msPerPixel);
-        const width = daySegmentWidth(day, range.start, range.end, msPerPixel);
-        return {
-          key: day.toISOString(),
-          label: day.toDateString(),
-          x,
-          width,
-          color: colorForDate(day),
-        };
-      })
-      .filter(
-        (segment) =>
-          segment.width > 0 &&
-          segment.x + segment.width >= startX &&
-          segment.x <= endX,
-      );
-  }, [range.start, range.end, msPerPixel, visibleColumns]);
+    const keys: number[] = [];
+    let day = startOfDay(range.start);
+    const last = startOfDay(range.end);
+    while (day.getTime() <= last.getTime()) {
+      const x = dateToPixel(startOfDay(day), range.start, msPerPixel);
+      const width = daySegmentWidth(day, range.start, range.end, msPerPixel);
+      if (width > 0 && x + width >= startX && x <= endX) {
+        keys.push(day.getTime());
+      }
+      day = addDays(day, 1);
+    }
+    return keys;
+  }, [visibleColumns.startIndex, visibleColumns.endIndex, range.start, range.end, msPerPixel]);
+
+  const segments = useBufferedSegmentCache<number, DaySegment>(
+    dayKeys,
+    (ms) => {
+      const day = new Date(ms);
+      return {
+        key: ms,
+        label: day.toDateString(),
+        x: dateToPixel(startOfDay(day), range.start, msPerPixel),
+        width: daySegmentWidth(day, range.start, range.end, msPerPixel),
+        color: colorForDate(day),
+      };
+    },
+    `${range.start.getTime()}|${range.end.getTime()}|${msPerPixel}`,
+  );
 
   return (
     <div className="pg-daily-strip" style={{ width: timelineWidth }}>

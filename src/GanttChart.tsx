@@ -23,8 +23,8 @@ import { resolveScale, resolveScales } from './core/scale';
 import { computeDateMarkingRects } from './core/dateMarkings';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
 import { computeRowLayouts, totalRowLayoutHeight } from './core/rowLayout';
-import { getVisibleColumnRange } from './core/visibleColumns';
-import { stableTimelineRange, stableVisibleColumnRange } from './core/stableValue';
+import { maintainBufferedColumnRange, getViewportColumnRange, DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT } from './core/visibleColumns';
+import { stableTimelineRange } from './core/stableValue';
 import { toDate } from './core/dates';
 import { TaskListPanel, MiddlePanel } from './components/TaskList/TaskListPanel';
 import { TimelineHeader } from './components/Timeline/TimelineHeader';
@@ -74,6 +74,7 @@ export function GanttChart({
   minDate,
   maxDate,
   customRows = [],
+  columnScrollBufferPercent = DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT,
   onTasksChange,
   onSidebarLayoutChange,
   onTaskHover,
@@ -226,7 +227,7 @@ export function GanttChart({
   }, [minDate, maxDate]);
 
   const rangeRef = useRef<ReturnType<typeof computeTimelineRange> | null>(null);
-  const visibleColumnsRef = useRef<ReturnType<typeof getVisibleColumnRange> | null>(null);
+  const visibleColumnsRef = useRef<ReturnType<typeof maintainBufferedColumnRange> | null>(null);
 
   const range = useMemo(() => {
     const next = computeTimelineRange(tasks, scale, 2, {
@@ -249,11 +250,26 @@ export function GanttChart({
   const timelineContentHeight = TIMELINE_HEADER_HEIGHT + timelineBodyHeight;
 
   const visibleColumns = useMemo(() => {
-    const next = getVisibleColumnRange(scrollLeft, viewportWidth, columnWidth, range.columnCount);
-    const stable = stableVisibleColumnRange(next, visibleColumnsRef.current ?? undefined);
-    visibleColumnsRef.current = stable;
-    return stable;
-  }, [scrollLeft, viewportWidth, columnWidth, range.columnCount]);
+    const next = maintainBufferedColumnRange(
+      scrollLeft,
+      viewportWidth,
+      columnWidth,
+      range.columnCount,
+      columnScrollBufferPercent,
+      visibleColumnsRef.current,
+    );
+    visibleColumnsRef.current = next;
+    return next;
+  }, [scrollLeft, viewportWidth, columnWidth, range.columnCount, columnScrollBufferPercent]);
+
+  const viewportColumns = useMemo(
+    () => getViewportColumnRange(scrollLeft, viewportWidth, columnWidth, range.columnCount),
+    [scrollLeft, viewportWidth, columnWidth, range.columnCount],
+  );
+
+  useEffect(() => {
+    visibleColumnsRef.current = null;
+  }, [range.columnCount, columnWidth, scaleId, columnScrollBufferPercent]);
 
   const timelineContext = useMemo(
     () => ({
@@ -267,6 +283,8 @@ export function GanttChart({
       scrollLeft,
       viewportWidth,
       visibleColumns,
+      viewportColumns,
+      columnScrollBufferPercent,
     }),
     [
       scaleId,
@@ -279,6 +297,8 @@ export function GanttChart({
       scrollLeft,
       viewportWidth,
       visibleColumns,
+      viewportColumns,
+      columnScrollBufferPercent,
     ],
   );
 
@@ -295,6 +315,8 @@ export function GanttChart({
       scrollLeft,
       viewportWidth,
       visibleColumns,
+      viewportColumns,
+      columnScrollBufferPercent,
     }),
     [
       scaleId,
@@ -307,6 +329,8 @@ export function GanttChart({
       scrollLeft,
       viewportWidth,
       visibleColumns,
+      viewportColumns,
+      columnScrollBufferPercent,
     ],
   );
 

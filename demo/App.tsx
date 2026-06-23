@@ -3,10 +3,11 @@ import { GanttChart } from '../src/GanttChart';
 import type { CustomRowDefinition, GanttTask, GanttTheme, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
 import {
+  CALCULATED_COLUMN_ROW,
+  GRADIENT_BAND_ROW,
   LARGE_TIMELINE_MAX_DATE,
   LARGE_TIMELINE_MIN_DATE,
   LARGE_TIMELINE_TASKS,
-  TWELVE_BAND_ROW,
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
@@ -133,6 +134,7 @@ function ChartSection({
   customRows,
   theme,
   badgeClassName,
+  columnScrollBufferPercent,
 }: {
   title: string;
   subtitle: string;
@@ -149,6 +151,7 @@ function ChartSection({
   customRows?: CustomRowDefinition[];
   theme: GanttTheme;
   badgeClassName?: string;
+  columnScrollBufferPercent?: number;
 }) {
   return (
     <section className="demo-section">
@@ -175,6 +178,7 @@ function ChartSection({
           customRows={customRows}
           onTasksChange={onTasksChange}
           onZoomChange={(e) => onZoomChange(e.zoomLevel)}
+          columnScrollBufferPercent={columnScrollBufferPercent}
           onTaskDragEnd={(e) =>
             onLog('taskDragEnd', `${e.task.name} → ${e.start.toISOString()}`)
           }
@@ -229,8 +233,8 @@ function ExamplesDemo() {
       />
 
       <ChartSection
-        title="Large timeline + 12-band gradient"
-        subtitle="Four-year fixed range with column virtualization. Footer row shows 12 interpolated color bands — only visible segments mount. Drag any task bar; the custom row should stay stable."
+        title="Large timeline — 50 rows + 32-band grid"
+        subtitle="Four-year range, 50 workstreams, column virtualization. Footer rows use 32 interpolated bands with 1px gaps; per-column cache only computes newly scrolled columns."
         badge="virtualized columns"
         badgeClassName="demo-badge--perf"
         tasks={largeTasks}
@@ -241,8 +245,9 @@ function ExamplesDemo() {
         maxDate={LARGE_TIMELINE_MAX_DATE}
         snapToGrid
         onLog={log}
-        height={460}
-        customRows={[TWELVE_BAND_ROW]}
+        height={720}
+        customRows={[GRADIENT_BAND_ROW, CALCULATED_COLUMN_ROW]}
+        columnScrollBufferPercent={10}
         theme={chartTheme}
       />
 
@@ -289,7 +294,7 @@ function ExamplesDemo() {
             <li>Drag the bar body to move; drag edges to change start/end</li>
             <li>Bottom chart: no grid snap — bars follow the cursor smoothly</li>
             <li>Top chart: snaps to week boundaries when you release</li>
-            <li>Large timeline example: multi-year range with virtualized columns + 12-band gradient row</li>
+            <li>Large timeline: 50 rows, 32-band gradient footer with 1px column gaps</li>
             <li>Custom row example: daily color strip synced via <code>useGanttTimeline()</code></li>
             <li>
               <strong>Advanced interactions:</strong> Ctrl/⌘+click multi-select, group summary

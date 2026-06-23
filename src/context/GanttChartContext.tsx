@@ -13,7 +13,11 @@ export interface GanttTimelineContextValue {
   msPerPixel: number;
   scrollLeft: number;
   viewportWidth: number;
+  /** Buffered virtual column window — sticky while scrolling inside the buffer. */
   visibleColumns: VisibleColumnRange;
+  /** Tight viewport column window without buffer. */
+  viewportColumns: VisibleColumnRange;
+  columnScrollBufferPercent: number;
 }
 
 const GanttTimelineContext = createContext<GanttTimelineContextValue | null>(null);
