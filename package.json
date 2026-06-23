@@ -1,6 +1,6 @@
 {
   "name": "react-gantt-lib",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "High-performance React Gantt chart with granular updates and customizable panels",
   "type": "module",
   "license": "MIT",
