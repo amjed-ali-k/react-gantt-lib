@@ -23,6 +23,7 @@ import { resolveScale, resolveScales } from './core/scale';
 import { computeDateMarkingRects } from './core/dateMarkings';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
 import { computeRowLayouts, totalRowLayoutHeight } from './core/rowLayout';
+import { getVisibleColumnRange } from './core/visibleColumns';
 import { toDate } from './core/dates';
 import { TaskListPanel, MiddlePanel } from './components/TaskList/TaskListPanel';
 import { TimelineHeader } from './components/Timeline/TimelineHeader';
@@ -84,6 +85,9 @@ export function GanttChart({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [scaleId, setScaleId] = useState(zoomProp);
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const scrollRafRef = useRef<number | null>(null);
+  const pendingScrollLeftRef = useRef(0);
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{
     task: GanttTask;
@@ -234,6 +238,11 @@ export function GanttChart({
   const timelineBodyHeight = totalRowLayoutHeight(rowLayouts);
   const timelineContentHeight = TIMELINE_HEADER_HEIGHT + timelineBodyHeight;
 
+  const visibleColumns = useMemo(
+    () => getVisibleColumnRange(scrollLeft, viewportWidth, columnWidth, range.columnCount),
+    [scrollLeft, viewportWidth, columnWidth, range.columnCount],
+  );
+
   const timelineContext = useMemo(
     () => ({
       zoomLevel: scaleId,
@@ -243,8 +252,22 @@ export function GanttChart({
       range,
       rowHeight,
       msPerPixel,
+      scrollLeft,
+      viewportWidth,
+      visibleColumns,
     }),
-    [scaleId, scale, columnWidth, timelineWidth, range, rowHeight, msPerPixel],
+    [
+      scaleId,
+      scale,
+      columnWidth,
+      timelineWidth,
+      range,
+      rowHeight,
+      msPerPixel,
+      scrollLeft,
+      viewportWidth,
+      visibleColumns,
+    ],
   );
 
   const customRowMetrics = useMemo(
@@ -257,8 +280,23 @@ export function GanttChart({
       rangeStart: range.start,
       rangeEnd: range.end,
       rowHeight,
+      scrollLeft,
+      viewportWidth,
+      visibleColumns,
     }),
-    [scaleId, scale, columnWidth, timelineWidth, msPerPixel, range.start, range.end, rowHeight],
+    [
+      scaleId,
+      scale,
+      columnWidth,
+      timelineWidth,
+      msPerPixel,
+      range.start,
+      range.end,
+      rowHeight,
+      scrollLeft,
+      viewportWidth,
+      visibleColumns,
+    ],
   );
 
   const dateMarkings = useMemo(
@@ -270,7 +308,10 @@ export function GanttChart({
     const el = timelineScrollRef.current;
     if (!el) return;
 
-    const update = () => setViewportWidth(el.clientWidth);
+    const update = () => {
+      setViewportWidth(el.clientWidth);
+      setScrollLeft(el.scrollLeft);
+    };
     update();
 
     const ro = new ResizeObserver(update);
@@ -292,7 +333,8 @@ export function GanttChart({
   useLayoutEffect(() => {
     const scrollEl = timelineScrollRef.current;
     if (!scrollEl) return;
-    clampTimelineScroll(scrollEl);
+    const left = clampTimelineScroll(scrollEl);
+    setScrollLeft(left);
   }, [timelineWidth, viewportWidth, clampTimelineScroll]);
 
   const handleZoomChange = useCallback(
@@ -332,6 +374,7 @@ export function GanttChart({
     const centerPx = dateToPixel(centerDate, range.start, msPerPixel);
     const maxScroll = Math.max(0, timelineWidth - scrollEl.clientWidth);
     scrollEl.scrollLeft = Math.min(maxScroll, Math.max(0, centerPx - scrollEl.clientWidth / 2));
+    setScrollLeft(scrollEl.scrollLeft);
   }, [scaleId, range.start, columnWidth, timelineWidth, scale]);
 
   useEffect(() => {
@@ -344,10 +387,27 @@ export function GanttChart({
     (e: React.UIEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
       const left = clampTimelineScroll(el);
+      pendingScrollLeftRef.current = left;
+
+      if (scrollRafRef.current == null) {
+        scrollRafRef.current = requestAnimationFrame(() => {
+          scrollRafRef.current = null;
+          setScrollLeft(pendingScrollLeftRef.current);
+        });
+      }
+
       emit('scroll', { scrollLeft: left, scrollTop: el.scrollTop });
     },
     [emit, clampTimelineScroll],
   );
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current != null) {
+        cancelAnimationFrame(scrollRafRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setScaleId(zoomProp);
@@ -516,6 +576,7 @@ export function GanttChart({
                   range={range}
                   scale={scale}
                   columnWidth={columnWidth}
+                  visibleColumns={visibleColumns}
                   dateMarkings={dateMarkings}
                   interactive={interactionsEnabled}
                   emit={emit}
@@ -525,6 +586,7 @@ export function GanttChart({
                   range={range}
                   scale={scale}
                   columnWidth={columnWidth}
+                  visibleColumns={visibleColumns}
                   rowLayouts={rowLayouts}
                   store={store}
                   enableDrag={enableDrag}

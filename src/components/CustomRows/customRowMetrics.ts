@@ -1,4 +1,5 @@
 import type { ViewScale } from '../../core/scale';
+import type { VisibleColumnRange } from '../../core/visibleColumns';
 
 export function getCustomRowHeight(
   row: { height?: number },
@@ -27,6 +28,9 @@ export interface CustomRowMetrics {
   rangeStart: Date;
   rangeEnd: Date;
   rowHeight: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  visibleColumns: VisibleColumnRange;
 }
 
 export function buildCustomRowCellContext(
@@ -49,6 +53,10 @@ export function buildCustomRowCellContext(
     timelineWidth: metrics.timelineWidth,
     msPerPixel: metrics.msPerPixel,
     rowHeight: getCustomRowHeight(row, metrics.rowHeight),
+    scrollLeft: metrics.scrollLeft,
+    viewportWidth: metrics.viewportWidth,
+    visibleColumnStart: metrics.visibleColumns.startIndex,
+    visibleColumnEnd: metrics.visibleColumns.endIndex,
     meta: row.meta,
   };
 }

@@ -103,6 +103,14 @@ export interface CustomRowCellContext<TMeta = unknown> {
   timelineWidth: number;
   msPerPixel: number;
   rowHeight: number;
+  /** Horizontal scroll offset of the timeline viewport in px. */
+  scrollLeft: number;
+  /** Width of the timeline viewport in px. */
+  viewportWidth: number;
+  /** First visible column index (includes overscan). */
+  visibleColumnStart: number;
+  /** Last visible column index (includes overscan). */
+  visibleColumnEnd: number;
   meta?: TMeta;
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
 import type { CustomRowDefinition } from '../src/types';
 import { useGanttTimeline } from '../src/context/GanttChartContext';
+import { dateToPixel } from '../src/core/zoom';
 import './dailyColorStripRow.css';
 
 function colorForDate(date: Date): string {
@@ -36,33 +37,40 @@ function daySegmentWidth(
 
 /** Timeline band — uses `useGanttTimeline()` so it scrolls and zooms with the chart. */
 export function DailyColorStrip() {
-  const { range, msPerPixel } = useGanttTimeline();
+  const { range, msPerPixel, timelineWidth, visibleColumns } = useGanttTimeline();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
   const segments = useMemo(() => {
+    const { startX, endX } = visibleColumns;
     return eachDayInRange(range.start, range.end)
       .map((day) => {
+        const x = dateToPixel(startOfDay(day), range.start, msPerPixel);
         const width = daySegmentWidth(day, range.start, range.end, msPerPixel);
         return {
           key: day.toISOString(),
           label: day.toDateString(),
+          x,
           width,
           color: colorForDate(day),
         };
       })
-      .filter((segment) => segment.width > 0);
-  }, [range.start, range.end, msPerPixel]);
-
-  const totalWidth = segments.reduce((sum, segment) => sum + segment.width, 0);
+      .filter(
+        (segment) =>
+          segment.width > 0 &&
+          segment.x + segment.width >= startX &&
+          segment.x <= endX,
+      );
+  }, [range.start, range.end, msPerPixel, visibleColumns]);
 
   return (
-    <div className="pg-daily-strip" style={{ width: Math.max(totalWidth, 1) }}>
+    <div className="pg-daily-strip" style={{ width: timelineWidth }}>
       {segments.map((segment) => (
         <div
           key={segment.key}
           className="pg-daily-strip-cell"
           title={segment.label}
           style={{
+            left: segment.x,
             width: segment.width,
             backgroundColor: segment.color,
             opacity: hoveredKey === segment.key ? 0.9 : 1,

@@ -6,6 +6,11 @@ import type { DateMarkingLayers, TimelineRange } from '../../types';
 import { getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
 import { pixelToDate } from '../../core/timelineInteraction';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
+import {
+  buildUpperHeaderBandsForVisibleRange,
+  filterRectsInXRange,
+  type VisibleColumnRange,
+} from '../../core/visibleColumns';
 import { DateMarkingHeaderHighlights } from './DateMarkingHighlights';
 import { createPointerDetail } from './pointerDetail';
 
@@ -13,6 +18,7 @@ interface TimelineHeaderProps {
   range: TimelineRange;
   scale: ViewScale;
   columnWidth: number;
+  visibleColumns: VisibleColumnRange;
   dateMarkings?: DateMarkingLayers;
   interactive?: boolean;
   emit?: EventEmitter;
@@ -66,27 +72,31 @@ export const TimelineHeader = memo(function TimelineHeader({
   range,
   scale,
   columnWidth,
+  visibleColumns,
   dateMarkings,
   interactive = false,
   emit,
 }: TimelineHeaderProps) {
-  const columns = useMemo((): HeaderColumn[] => {
+  const { startIndex, endIndex } = visibleColumns;
+
+  const visibleLowerColumns = useMemo((): HeaderColumn[] => {
+    if (endIndex < startIndex) return [];
     const cols: HeaderColumn[] = [];
-    for (let i = 0; i < range.columnCount; i++) {
+    for (let i = startIndex; i <= endIndex; i++) {
       cols.push({ date: addScaleSteps(range.start, i, scale), x: i * columnWidth });
     }
     return cols;
-  }, [range.start, range.columnCount, scale, columnWidth]);
+  }, [range.start, scale, columnWidth, startIndex, endIndex]);
 
   const upperBands = useMemo(
-    () => buildUpperHeaderBands(columns, scale, columnWidth),
-    [columns, scale, columnWidth],
+    () => buildUpperHeaderBandsForVisibleRange(range, scale, columnWidth, visibleColumns),
+    [range, scale, columnWidth, visibleColumns],
   );
 
-  const markingRects = useMemo(
-    () => [...(dateMarkings?.holidays ?? []), ...(dateMarkings?.blocks ?? [])],
-    [dateMarkings],
-  );
+  const markingRects = useMemo(() => {
+    const all = [...(dateMarkings?.holidays ?? []), ...(dateMarkings?.blocks ?? [])];
+    return filterRectsInXRange(all, visibleColumns.startX, visibleColumns.endX);
+  }, [dateMarkings, visibleColumns.startX, visibleColumns.endX]);
 
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
   const msPerPixel = getMsPerPixel(scale, columnWidth);
@@ -132,9 +142,9 @@ export const TimelineHeader = memo(function TimelineHeader({
           ))}
         </div>
         <div className="rg-timeline-header-lower">
-          {columns.map((col, i) => (
+          {visibleLowerColumns.map((col, i) => (
             <div
-              key={`l-${i}`}
+              key={`l-${startIndex + i}`}
               className="rg-header-cell rg-header-cell--lower"
               style={{ left: col.x, width: columnWidth }}
             >

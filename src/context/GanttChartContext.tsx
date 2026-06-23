@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { TimelineRange } from '../types';
 import type { ViewScale } from '../core/scale';
+import type { VisibleColumnRange } from '../core/visibleColumns';
 
 export interface GanttTimelineContextValue {
   zoomLevel: string;
@@ -10,6 +11,9 @@ export interface GanttTimelineContextValue {
   range: TimelineRange;
   rowHeight: number;
   msPerPixel: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  visibleColumns: VisibleColumnRange;
 }
 
 const GanttTimelineContext = createContext<GanttTimelineContextValue | null>(null);

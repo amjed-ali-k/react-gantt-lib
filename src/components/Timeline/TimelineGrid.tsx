@@ -2,6 +2,11 @@ import { memo, useMemo } from 'react';
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
 import { dateToPixel, getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
+import {
+  filterRectsInXRange,
+  getVisibleVerticalLines,
+  type VisibleColumnRange,
+} from '../../core/visibleColumns';
 import { DateMarkingHighlights } from './DateMarkingHighlights';
 
 import type { RowLayout } from '../../core/rowLayout';
@@ -12,6 +17,7 @@ interface TimelineGridProps {
   scale: ViewScale;
   columnWidth: number;
   rowLayouts: RowLayout[];
+  visibleColumns: VisibleColumnRange;
   dateMarkings?: DateMarkingLayers;
 }
 
@@ -20,23 +26,20 @@ export const TimelineGrid = memo(function TimelineGrid({
   scale,
   columnWidth,
   rowLayouts,
+  visibleColumns,
   dateMarkings,
 }: TimelineGridProps) {
   const totalHeight = totalRowLayoutHeight(rowLayouts);
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
-  const markingRects = useMemo(
-    () => [...(dateMarkings?.holidays ?? []), ...(dateMarkings?.blocks ?? [])],
-    [dateMarkings],
-  );
+  const markingRects = useMemo(() => {
+    const all = [...(dateMarkings?.holidays ?? []), ...(dateMarkings?.blocks ?? [])];
+    return filterRectsInXRange(all, visibleColumns.startX, visibleColumns.endX);
+  }, [dateMarkings, visibleColumns.startX, visibleColumns.endX]);
 
-  const verticalLines = useMemo(() => {
-    const lines: number[] = [];
-    for (let x = 0; x < timelineWidth; x += columnWidth) {
-      lines.push(x);
-    }
-    lines.push(timelineWidth);
-    return lines;
-  }, [timelineWidth, columnWidth]);
+  const verticalLines = useMemo(
+    () => getVisibleVerticalLines(visibleColumns, columnWidth, timelineWidth),
+    [visibleColumns, columnWidth, timelineWidth],
+  );
 
   const horizontalLines = useMemo(() => {
     return rowLayouts.map((row) => row.y + row.height);

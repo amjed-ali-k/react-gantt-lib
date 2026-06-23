@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import type { BlockDateRange, DateMarkingLayers, ResolvedTask, TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
+import type { VisibleColumnRange } from '../../core/visibleColumns';
 import type { TimelineBounds } from '../../core/zoom';
 import type { TaskStore } from '../../hooks/useTaskStore';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
@@ -27,6 +28,7 @@ interface TimelineBodyProps {
   scale: ViewScale;
   columnWidth: number;
   rowLayouts: RowLayout[];
+  visibleColumns: VisibleColumnRange;
   store: TaskStore;
   enableDrag?: boolean;
   enableResize?: boolean;
@@ -48,6 +50,7 @@ export const TimelineBody = memo(function TimelineBody({
   scale,
   columnWidth,
   rowLayouts,
+  visibleColumns,
   store,
   enableDrag,
   enableResize,
@@ -108,6 +111,7 @@ export const TimelineBody = memo(function TimelineBody({
         scale={scale}
         columnWidth={columnWidth}
         rowLayouts={rowLayouts}
+        visibleColumns={visibleColumns}
         dateMarkings={dateMarkings}
       />
       <TimelineHitLayer
