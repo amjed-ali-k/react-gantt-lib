@@ -50,7 +50,7 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
       return;
     }
 
-    setLoading(true);
+    if (content === null) setLoading(true);
     const ctx = buildCustomRowCellContext(
       row,
       columnKey,
@@ -89,7 +89,7 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
   ]);
 
   const className = loading ? 'rg-custom-cell rg-custom-cell--loading' : 'rg-custom-cell';
-  if (loading) {
+  if (loading && content === null) {
     return timeline ? <div className={className}>…</div> : <span className={className}>…</span>;
   }
   return timeline ? <div className={className}>{content}</div> : <span className={className}>{content}</span>;
