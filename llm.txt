@@ -513,7 +513,7 @@ Key classes:
 .rg-dependency-layer, .rg-dependency-arrow
 .rg-toolbar, .rg-divider
 .rg-custom-rows-timeline, .rg-custom-cell
-.rg-task-tooltip
+.rg-task-tooltip, .rg-task-tooltip-shell
 
 data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows
 
