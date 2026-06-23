@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
 import type { CustomRowDefinition } from '../src/types';
 import { useGanttTimeline } from '../src/context/GanttChartContext';
@@ -36,7 +36,7 @@ function daySegmentWidth(
 }
 
 /** Timeline band — uses `useGanttTimeline()` so it scrolls and zooms with the chart. */
-export function DailyColorStrip() {
+export const DailyColorStrip = memo(function DailyColorStrip() {
   const { range, msPerPixel, timelineWidth, visibleColumns } = useGanttTimeline();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
@@ -81,7 +81,7 @@ export function DailyColorStrip() {
       ))}
     </div>
   );
-}
+});
 
 export const DAILY_COLOR_STRIP_ROW: CustomRowDefinition = {
   id: 'daily-color-strip',

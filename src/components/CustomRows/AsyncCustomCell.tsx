@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, memo, type ReactNode } from 'react';
+import { memo, useEffect, useState, useRef, type ReactNode } from 'react';
 import type { CustomRowDefinition } from '../../types';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import { buildCustomRowCellContext, type CustomRowMetrics } from './customRowMetrics';
@@ -13,6 +13,27 @@ interface AsyncCellProps {
   timeline?: boolean;
 }
 
+function metricsRevision(metrics: CustomRowMetrics, timeline: boolean): string {
+  const parts = [
+    metrics.zoomLevel,
+    metrics.columnWidth,
+    metrics.timelineWidth,
+    metrics.msPerPixel,
+    metrics.rangeStart.getTime(),
+    metrics.rangeEnd.getTime(),
+    metrics.rowHeight,
+  ];
+  if (timeline) {
+    parts.push(
+      metrics.scrollLeft,
+      metrics.viewportWidth,
+      metrics.visibleColumns.startIndex,
+      metrics.visibleColumns.endIndex,
+    );
+  }
+  return parts.join('|');
+}
+
 export const AsyncCustomCell = memo(function AsyncCustomCell({
   row,
   columnKey,
@@ -24,11 +45,10 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
 }: AsyncCellProps) {
   const [content, setContent] = useState<ReactNode>(null);
   const [loading, setLoading] = useState(true);
-  const genRef = useRef(row.cells[columnKey]);
+  const metricsRef = useRef(metrics);
+  metricsRef.current = metrics;
 
-  useEffect(() => {
-    genRef.current = row.cells[columnKey];
-  }, [row.cells, columnKey]);
+  const revision = metricsRevision(metrics, timeline);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +60,13 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
     }
 
     setLoading(true);
-    const ctx = buildCustomRowCellContext(row, columnKey, columnIndex, rowIndex, metrics);
+    const ctx = buildCustomRowCellContext(
+      row,
+      columnKey,
+      columnIndex,
+      rowIndex,
+      metricsRef.current,
+    );
 
     Promise.resolve(generator(ctx))
       .then((result) => {
@@ -64,17 +90,11 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
     columnKey,
     columnIndex,
     rowIndex,
-    metrics.zoomLevel,
-    metrics.scale,
-    metrics.columnWidth,
-    metrics.timelineWidth,
-    metrics.msPerPixel,
-    metrics.rangeStart.getTime(),
-    metrics.rangeEnd.getTime(),
-    metrics.rowHeight,
-    row.height,
+    revision,
     row.meta,
+    row.height,
     emit,
+    timeline,
   ]);
 
   const className = loading ? 'rg-custom-cell rg-custom-cell--loading' : 'rg-custom-cell';

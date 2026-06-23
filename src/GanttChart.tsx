@@ -24,6 +24,7 @@ import { computeDateMarkingRects } from './core/dateMarkings';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
 import { computeRowLayouts, totalRowLayoutHeight } from './core/rowLayout';
 import { getVisibleColumnRange } from './core/visibleColumns';
+import { stableTimelineRange, stableVisibleColumnRange } from './core/stableValue';
 import { toDate } from './core/dates';
 import { TaskListPanel, MiddlePanel } from './components/TaskList/TaskListPanel';
 import { TimelineHeader } from './components/Timeline/TimelineHeader';
@@ -224,24 +225,35 @@ export function GanttChart({
     return { min: toDate(minDate), max: toDate(maxDate) };
   }, [minDate, maxDate]);
 
-  const range = useMemo(
-    () =>
-      computeTimelineRange(tasks, scale, 2, {
-        minDate,
-        maxDate,
-      }),
-    [tasks, scale, minDate, maxDate],
-  );
+  const rangeRef = useRef<ReturnType<typeof computeTimelineRange> | null>(null);
+  const visibleColumnsRef = useRef<ReturnType<typeof getVisibleColumnRange> | null>(null);
+
+  const range = useMemo(() => {
+    const next = computeTimelineRange(tasks, scale, 2, {
+      minDate,
+      maxDate,
+    });
+    const stable = stableTimelineRange(next, rangeRef.current ?? undefined);
+    rangeRef.current = stable;
+    return stable;
+  }, [
+    ...(minDate != null && maxDate != null ? [] : [tasks]),
+    scale,
+    minDate,
+    maxDate,
+  ]);
 
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
   const msPerPixel = getMsPerPixel(scale, columnWidth);
   const timelineBodyHeight = totalRowLayoutHeight(rowLayouts);
   const timelineContentHeight = TIMELINE_HEADER_HEIGHT + timelineBodyHeight;
 
-  const visibleColumns = useMemo(
-    () => getVisibleColumnRange(scrollLeft, viewportWidth, columnWidth, range.columnCount),
-    [scrollLeft, viewportWidth, columnWidth, range.columnCount],
-  );
+  const visibleColumns = useMemo(() => {
+    const next = getVisibleColumnRange(scrollLeft, viewportWidth, columnWidth, range.columnCount);
+    const stable = stableVisibleColumnRange(next, visibleColumnsRef.current ?? undefined);
+    visibleColumnsRef.current = stable;
+    return stable;
+  }, [scrollLeft, viewportWidth, columnWidth, range.columnCount]);
 
   const timelineContext = useMemo(
     () => ({
@@ -290,8 +302,7 @@ export function GanttChart({
       columnWidth,
       timelineWidth,
       msPerPixel,
-      range.start,
-      range.end,
+      range,
       rowHeight,
       scrollLeft,
       viewportWidth,

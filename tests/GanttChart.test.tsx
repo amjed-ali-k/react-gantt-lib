@@ -290,4 +290,56 @@ describe('GanttChart', () => {
     fireEvent.pointerUp(document, { clientX: 200, pointerId: 1 });
     expect(onTasksChange).not.toHaveBeenCalled();
   });
+
+  it('does not re-run custom row generators when tasks update within a fixed range', async () => {
+    const sidebarGen = vi.fn(async () => 'Sidebar stable');
+    const timelineGen = vi.fn(async () => 'Timeline stable');
+    const customRows: CustomRowDefinition[] = [
+      {
+        id: 'stable-row',
+        cells: {
+          name: sidebarGen,
+          __timeline__: timelineGen,
+        },
+      },
+    ];
+    const dragTasks = [
+      { id: 't1', name: 'Drag me', start: '2026-01-01', end: '2026-01-10', progress: 0 },
+      { id: 't2', name: 'Other', start: '2026-01-15', end: '2026-01-20', progress: 0 },
+    ];
+
+    const { rerender } = render(
+      <GanttChart
+        tasks={dragTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        customRows={customRows}
+        height={400}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(sidebarGen).toHaveBeenCalledTimes(1);
+      expect(timelineGen).toHaveBeenCalledTimes(1);
+    });
+
+    const updatedTasks = dragTasks.map((task) =>
+      task.id === 't1'
+        ? { ...task, start: '2026-01-03', end: '2026-01-12' }
+        : task,
+    );
+
+    rerender(
+      <GanttChart
+        tasks={updatedTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        customRows={customRows}
+        height={400}
+      />,
+    );
+
+    expect(sidebarGen).toHaveBeenCalledTimes(1);
+    expect(timelineGen).toHaveBeenCalledTimes(1);
+  });
 });

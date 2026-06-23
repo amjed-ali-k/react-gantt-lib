@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { CustomRowDefinition, GanttTask, GanttTheme, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
+import {
+  LARGE_TIMELINE_MAX_DATE,
+  LARGE_TIMELINE_MIN_DATE,
+  LARGE_TIMELINE_TASKS,
+  TWELVE_BAND_ROW,
+} from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
 import { PlaygroundApp } from './playground';
@@ -10,6 +16,7 @@ import { ThemeToggle } from './ThemeToggle';
 import './demo.css';
 import './playground.css';
 import './dailyColorStripRow.css';
+import './largeTimelineDemo.css';
 
 const SNAPPED_TASKS: GanttTask[] = [
   { id: 'phase-1', name: 'Discovery', start: '2026-01-06', end: '2026-01-17', progress: 100 },
@@ -125,6 +132,7 @@ function ChartSection({
   height = 360,
   customRows,
   theme,
+  badgeClassName,
 }: {
   title: string;
   subtitle: string;
@@ -140,6 +148,7 @@ function ChartSection({
   height?: number;
   customRows?: CustomRowDefinition[];
   theme: GanttTheme;
+  badgeClassName?: string;
 }) {
   return (
     <section className="demo-section">
@@ -148,7 +157,9 @@ function ChartSection({
           <h2>{title}</h2>
           <p>{subtitle}</p>
         </div>
-        <span className={`demo-badge ${snapToGrid ? 'demo-badge--snap' : 'demo-badge--smooth'}`}>
+        <span
+          className={`demo-badge ${badgeClassName ?? (snapToGrid ? 'demo-badge--snap' : 'demo-badge--smooth')}`}
+        >
           {badge}
         </span>
       </div>
@@ -181,8 +192,10 @@ function ExamplesDemo() {
   const { chartTheme } = useDemoTheme();
   const [snappedTasks, setSnappedTasks] = useState(SNAPPED_TASKS);
   const [smoothTasks, setSmoothTasks] = useState(SMOOTH_TASKS);
+  const [largeTasks, setLargeTasks] = useState(LARGE_TIMELINE_TASKS);
   const [snappedZoom, setSnappedZoom] = useState<string>('week');
   const [smoothZoom, setSmoothZoom] = useState<string>('day');
+  const [largeZoom, setLargeZoom] = useState<string>('week');
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const log = useCallback((event: string, detail: string) => {
@@ -212,6 +225,24 @@ function ExamplesDemo() {
         snapToGrid
         onLog={log}
         height={400}
+        theme={chartTheme}
+      />
+
+      <ChartSection
+        title="Large timeline + 12-band gradient"
+        subtitle="Four-year fixed range with column virtualization. Footer row shows 12 interpolated color bands — only visible segments mount. Drag any task bar; the custom row should stay stable."
+        badge="virtualized columns"
+        badgeClassName="demo-badge--perf"
+        tasks={largeTasks}
+        onTasksChange={setLargeTasks}
+        zoomLevel={largeZoom}
+        onZoomChange={setLargeZoom}
+        minDate={LARGE_TIMELINE_MIN_DATE}
+        maxDate={LARGE_TIMELINE_MAX_DATE}
+        snapToGrid
+        onLog={log}
+        height={460}
+        customRows={[TWELVE_BAND_ROW]}
         theme={chartTheme}
       />
 
@@ -258,6 +289,7 @@ function ExamplesDemo() {
             <li>Drag the bar body to move; drag edges to change start/end</li>
             <li>Bottom chart: no grid snap — bars follow the cursor smoothly</li>
             <li>Top chart: snaps to week boundaries when you release</li>
+            <li>Large timeline example: multi-year range with virtualized columns + 12-band gradient row</li>
             <li>Custom row example: daily color strip synced via <code>useGanttTimeline()</code></li>
             <li>
               <strong>Advanced interactions:</strong> Ctrl/⌘+click multi-select, group summary
