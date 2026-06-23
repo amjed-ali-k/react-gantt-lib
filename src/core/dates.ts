@@ -24,6 +24,7 @@ import {
   isValid,
 } from 'date-fns';
 import type { ZoomLevel } from '../types';
+import { formatDisplay, hasDisplayTime } from './displayFormat';
 
 export function toDate(value: Date | string): Date {
   if (value instanceof Date) return value;
@@ -110,18 +111,18 @@ export function diffUnits(later: Date, earlier: Date, zoom: ZoomLevel): number {
   }
 }
 
-export function formatHeader(date: Date, zoom: ZoomLevel): string {
+export function formatHeader(date: Date, zoom: ZoomLevel, timeZone?: string): string {
   switch (zoom) {
     case 'minute':
-      return format(date, 'HH:mm');
+      return formatDisplay(date, 'HH:mm', timeZone);
     case 'hour':
-      return format(date, 'HH:00');
+      return formatDisplay(date, 'HH:00', timeZone);
     case 'day':
-      return format(date, 'd');
+      return formatDisplay(date, 'd', timeZone);
     case 'week':
-      return format(date, 'MMM d');
+      return formatDisplay(date, 'MMM d', timeZone);
     case 'month':
-      return format(date, 'MMM yyyy');
+      return formatDisplay(date, 'MMM yyyy', timeZone);
     default: {
       const _exhaustive: never = zoom;
       return _exhaustive;
@@ -129,17 +130,17 @@ export function formatHeader(date: Date, zoom: ZoomLevel): string {
   }
 }
 
-export function formatSubHeader(date: Date, zoom: ZoomLevel): string {
+export function formatSubHeader(date: Date, zoom: ZoomLevel, timeZone?: string): string {
   switch (zoom) {
     case 'minute':
     case 'hour':
-      return format(date, 'EEE d MMM');
+      return formatDisplay(date, 'EEE d MMM', timeZone);
     case 'day':
-      return format(date, 'MMMM yyyy');
+      return formatDisplay(date, 'MMMM yyyy', timeZone);
     case 'week':
-      return format(date, 'MMMM yyyy');
+      return formatDisplay(date, 'MMMM yyyy', timeZone);
     case 'month':
-      return format(date, 'yyyy');
+      return formatDisplay(date, 'yyyy', timeZone);
     default: {
       const _exhaustive: never = zoom;
       return _exhaustive;
@@ -148,14 +149,10 @@ export function formatSubHeader(date: Date, zoom: ZoomLevel): string {
 }
 
 /** Human-readable date/time for task tooltips (time omitted at midnight). */
-export function formatTaskDateTime(value: Date | string): string {
+export function formatTaskDateTime(value: Date | string, timeZone?: string): string {
   const d = toDate(value);
-  const hasTime =
-    d.getHours() !== 0 ||
-    d.getMinutes() !== 0 ||
-    d.getSeconds() !== 0 ||
-    d.getMilliseconds() !== 0;
-  return format(d, hasTime ? 'MMM d, yyyy HH:mm' : 'MMM d, yyyy');
+  const pattern = hasDisplayTime(d, timeZone) ? 'MMM d, yyyy HH:mm' : 'MMM d, yyyy';
+  return formatDisplay(d, pattern, timeZone);
 }
 
 export { format, parseISO, isValid };

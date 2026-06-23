@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react';
 import { addScaleSteps, formatScaleHeader, formatScaleSubHeader } from '../../core/scale';
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
+import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
 import { getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
 import { pixelToDate } from '../../core/timelineInteraction';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
@@ -40,16 +41,17 @@ export function buildUpperHeaderBands(
   columns: HeaderColumn[],
   scale: ViewScale,
   columnWidth: number,
+  timeZone?: string,
 ): HeaderBand[] {
   if (columns.length === 0) return [];
 
   const bands: HeaderBand[] = [];
   let bandStartX = columns[0].x;
-  let bandLabel = formatScaleSubHeader(columns[0].date, scale);
+  let bandLabel = formatScaleSubHeader(columns[0].date, scale, timeZone);
 
   for (let i = 1; i <= columns.length; i++) {
     const atEnd = i === columns.length;
-    const nextLabel = atEnd ? null : formatScaleSubHeader(columns[i].date, scale);
+    const nextLabel = atEnd ? null : formatScaleSubHeader(columns[i].date, scale, timeZone);
 
     if (atEnd || nextLabel !== bandLabel) {
       const endX = atEnd ? columns[i - 1].x + columnWidth : columns[i].x;
@@ -77,6 +79,7 @@ export const TimelineHeader = memo(function TimelineHeader({
   interactive = false,
   emit,
 }: TimelineHeaderProps) {
+  const timezone = useGanttDisplayTimezone();
   const { startIndex, endIndex } = visibleColumns;
 
   const visibleLowerColumns = useMemo((): HeaderColumn[] => {
@@ -89,8 +92,8 @@ export const TimelineHeader = memo(function TimelineHeader({
   }, [range.start, scale, columnWidth, startIndex, endIndex]);
 
   const upperBands = useMemo(
-    () => buildUpperHeaderBandsForVisibleRange(range, scale, columnWidth, visibleColumns),
-    [range, scale, columnWidth, visibleColumns],
+    () => buildUpperHeaderBandsForVisibleRange(range, scale, columnWidth, visibleColumns, timezone),
+    [range, scale, columnWidth, visibleColumns, timezone],
   );
 
   const markingRects = useMemo(() => {
@@ -148,7 +151,7 @@ export const TimelineHeader = memo(function TimelineHeader({
               className="rg-header-cell rg-header-cell--lower"
               style={{ left: col.x, width: columnWidth }}
             >
-              {formatScaleHeader(col.date, scale)}
+              {formatScaleHeader(col.date, scale, timezone)}
             </div>
           ))}
         </div>

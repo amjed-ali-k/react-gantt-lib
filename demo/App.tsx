@@ -11,6 +11,7 @@ import {
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
+import { TimezoneDemo } from './timezoneDemo';
 import { PlaygroundApp } from './playground';
 import { DemoThemeProvider } from './chartTheme';
 import { ThemeToggle } from './ThemeToggle';
@@ -289,6 +290,8 @@ function ExamplesDemo() {
         theme={chartTheme}
       />
 
+      <TimezoneDemo onLog={log} theme={chartTheme} />
+
       <AdvancedFeaturesDemo onLog={log} theme={chartTheme} />
 
       <div className="demo-panels">
@@ -301,6 +304,10 @@ function ExamplesDemo() {
             <li>Top chart: snaps to week boundaries when you release</li>
             <li>Large timeline: 50 rows, 32-band gradient footer with 1px column gaps</li>
             <li>Custom row example: daily color strip synced via <code>useGanttTimeline()</code></li>
+            <li>
+              <strong>Display timezone:</strong> pick a zone — headers, columns, and tooltips all
+              match; drag callbacks still emit UTC instants
+            </li>
             <li>
               <strong>Advanced interactions:</strong> Ctrl/⌘+click multi-select, group summary
               bars, read-only tasks, <code>onGanttHover</code> on blocked dates

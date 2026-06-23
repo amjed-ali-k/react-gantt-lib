@@ -52,6 +52,14 @@ describe('dates', () => {
   it('formatTaskDateTime includes time when set', () => {
     expect(formatTaskDateTime('2026-04-22T14:00:00')).toBe('Apr 22, 2026 14:00');
   });
+
+  it('formatTaskDateTime respects display timezone', () => {
+    expect(formatTaskDateTime('2026-04-22T18:00:00Z', 'America/New_York')).toBe('Apr 22, 2026 14:00');
+  });
+
+  it('formatTaskDateTime omits time at midnight in display timezone', () => {
+    expect(formatTaskDateTime('2026-04-01T04:00:00Z', 'America/New_York')).toBe('Apr 1, 2026');
+  });
 });
 
 describe('zoom', () => {

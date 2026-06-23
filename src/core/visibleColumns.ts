@@ -177,16 +177,18 @@ export function buildUpperHeaderBandsForVisibleRange(
   scale: ViewScale,
   columnWidth: number,
   visible: VisibleColumnRange,
+  timeZone?: string,
 ): HeaderBand[] {
   const { startIndex, endIndex } = visible;
   if (endIndex < startIndex) return [];
 
   let bandStartIdx = startIndex;
-  const firstLabel = formatScaleSubHeader(addScaleSteps(range.start, startIndex, scale), scale);
+  const firstLabel = formatScaleSubHeader(addScaleSteps(range.start, startIndex, scale), scale, timeZone);
   while (bandStartIdx > 0) {
     const prevLabel = formatScaleSubHeader(
       addScaleSteps(range.start, bandStartIdx - 1, scale),
       scale,
+      timeZone,
     );
     if (prevLabel !== firstLabel) break;
     bandStartIdx--;
@@ -194,13 +196,13 @@ export function buildUpperHeaderBandsForVisibleRange(
 
   const bands: HeaderBand[] = [];
   let bandStartX = bandStartIdx * columnWidth;
-  let bandLabel = formatScaleSubHeader(addScaleSteps(range.start, bandStartIdx, scale), scale);
+  let bandLabel = formatScaleSubHeader(addScaleSteps(range.start, bandStartIdx, scale), scale, timeZone);
 
   for (let i = bandStartIdx + 1; i <= endIndex + 1; i++) {
     const atEnd = i > endIndex;
     const nextLabel = atEnd
       ? null
-      : formatScaleSubHeader(addScaleSteps(range.start, i, scale), scale);
+      : formatScaleSubHeader(addScaleSteps(range.start, i, scale), scale, timeZone);
 
     if (atEnd || nextLabel !== bandLabel) {
       const endX = atEnd ? (endIndex + 1) * columnWidth : i * columnWidth;

@@ -332,6 +332,12 @@ export interface GanttChartProps extends GanttCallbacks {
   style?: React.CSSProperties;
   /** Chart color theme. `auto` follows the OS prefers-color-scheme setting. Default `light`. */
   theme?: GanttTheme;
+  /**
+   * IANA timezone for all on-screen date/time labels (e.g. `America/New_York`).
+   * When omitted, labels use the browser's local timezone.
+   * Display only — task dates, drag/snap, and callbacks are unchanged.
+   */
+  timezone?: string;
   defaultLeftWidth?: number;
   defaultMiddleWidth?: number;
   minPanelWidth?: number;

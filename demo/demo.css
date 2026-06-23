@@ -31,6 +31,8 @@
   --demo-badge-smooth-text: #6d28d9;
   --demo-badge-advanced-bg: #dcfce7;
   --demo-badge-advanced-text: #15803d;
+  --demo-badge-timezone-bg: #fef3c7;
+  --demo-badge-timezone-text: #b45309;
   --demo-theme-toggle-bg: #ffffff;
   --demo-theme-toggle-border: #cbd5e1;
   --demo-theme-toggle-text: #475569;
@@ -62,6 +64,8 @@
     --demo-badge-smooth-text: #c4b5fd;
     --demo-badge-advanced-bg: rgba(74, 222, 128, 0.12);
     --demo-badge-advanced-text: #86efac;
+    --demo-badge-timezone-bg: rgba(251, 191, 36, 0.15);
+    --demo-badge-timezone-text: #fcd34d;
     --demo-theme-toggle-bg: #1a1f3a;
     --demo-theme-toggle-border: rgba(255, 255, 255, 0.14);
     --demo-theme-toggle-text: #e2e8f0;
@@ -93,6 +97,8 @@
   --demo-badge-smooth-text: #c4b5fd;
   --demo-badge-advanced-bg: rgba(74, 222, 128, 0.12);
   --demo-badge-advanced-text: #86efac;
+  --demo-badge-timezone-bg: rgba(251, 191, 36, 0.15);
+  --demo-badge-timezone-text: #fcd34d;
   --demo-theme-toggle-bg: #1a1f3a;
   --demo-theme-toggle-border: rgba(255, 255, 255, 0.14);
   --demo-theme-toggle-text: #e2e8f0;
@@ -123,6 +129,8 @@
   --demo-badge-smooth-text: #6d28d9;
   --demo-badge-advanced-bg: #dcfce7;
   --demo-badge-advanced-text: #15803d;
+  --demo-badge-timezone-bg: #fef3c7;
+  --demo-badge-timezone-text: #b45309;
   --demo-theme-toggle-bg: #ffffff;
   --demo-theme-toggle-border: #cbd5e1;
   --demo-theme-toggle-text: #475569;
@@ -338,6 +346,45 @@ body {
 .demo-badge--advanced {
   background: var(--demo-badge-advanced-bg);
   color: var(--demo-badge-advanced-text);
+}
+
+.demo-badge--timezone {
+  background: var(--demo-badge-timezone-bg);
+  color: var(--demo-badge-timezone-text);
+}
+
+.demo-timezone-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.demo-timezone-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--demo-text-muted);
+}
+
+.demo-timezone-field select {
+  min-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--demo-border-strong);
+  border-radius: 8px;
+  background: var(--demo-surface);
+  color: var(--demo-text);
+  font-size: 13px;
+}
+
+.demo-timezone-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1;
 }
 
 .demo-stats--advanced {

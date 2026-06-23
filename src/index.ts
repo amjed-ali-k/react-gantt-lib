@@ -1,4 +1,5 @@
 export { GanttChart, useSidebarLayout, useGanttTimeline, useGanttTimelineOptional } from './GanttChart';
+export { useGanttDisplayTimezone } from './context/GanttDisplayContext';
 export type { GanttTimelineContextValue } from './context/GanttChartContext';
 export type * from './types';
 export { ZOOM_LEVELS, nextZoomLevel, getColumnWidth, computeTimelineRange, resolveScale, PRESET_SCALES } from './core/zoom';

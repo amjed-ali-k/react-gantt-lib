@@ -32,6 +32,7 @@ import { TimelineBody } from './components/Timeline/TimelineBody';
 import { ZoomToolbar } from './components/Toolbar/ZoomToolbar';
 import { CustomRowsTimeline } from './components/CustomRows/CustomRowsTimeline';
 import { GanttTimelineProvider } from './context/GanttChartContext';
+import { GanttDisplayProvider } from './context/GanttDisplayContext';
 import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
 import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
 
@@ -57,6 +58,7 @@ export function GanttChart({
   className,
   style,
   theme = 'light',
+  timezone,
   defaultLeftWidth = 220,
   defaultMiddleWidth = 180,
   minPanelWidth = 80,
@@ -555,6 +557,7 @@ export function GanttChart({
   const tooltipEnabled = showTooltip || !!renderTaskTooltip;
 
   return (
+    <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
     <div
       ref={containerRef}
@@ -716,10 +719,12 @@ export function GanttChart({
       </TaskTooltipProvider>
     </div>
     </GanttTimelineProvider>
+    </GanttDisplayProvider>
   );
 }
 
 export { useSidebarLayout } from './hooks/useSidebarLayout';
 export { useGanttTimeline, useGanttTimelineOptional } from './context/GanttChartContext';
+export { useGanttDisplayTimezone } from './context/GanttDisplayContext';
 export type { GanttTimelineContextValue } from './context/GanttChartContext';
 export type * from './types';

@@ -19,9 +19,9 @@ import {
   differenceInDays,
   differenceInWeeks,
   differenceInMonths,
-  format,
 } from 'date-fns';
 import type { ZoomLevel } from '../types';
+import { formatDisplay } from './displayFormat';
 
 export interface ViewScale {
   id: string;
@@ -128,31 +128,31 @@ export function getScaleMsPerPixel(scale: ViewScale): number {
   return (next.getTime() - anchor.getTime()) / scale.columnWidth;
 }
 
-export function formatScaleHeader(date: Date, scale: ViewScale): string {
-  if (scale.id === '2day') return format(date, 'MMM d');
+export function formatScaleHeader(date: Date, scale: ViewScale, timeZone?: string): string {
+  if (scale.id === '2day') return formatDisplay(date, 'MMM d', timeZone);
   if (scale.stepUnit === 'hour' || scale.stepUnit === 'minute') {
-    return format(date, scale.stepAmount >= 6 ? 'HH:mm' : 'HH:mm');
+    return formatDisplay(date, 'HH:mm', timeZone);
   }
   switch (scale.stepUnit) {
     case 'day':
-      return format(date, 'd');
+      return formatDisplay(date, 'd', timeZone);
     case 'week':
-      return format(date, 'MMM d');
+      return formatDisplay(date, 'MMM d', timeZone);
     case 'month':
-      return format(date, 'MMM yyyy');
+      return formatDisplay(date, 'MMM yyyy', timeZone);
     default:
-      return format(date, 'd');
+      return formatDisplay(date, 'd', timeZone);
   }
 }
 
-export function formatScaleSubHeader(date: Date, scale: ViewScale): string {
+export function formatScaleSubHeader(date: Date, scale: ViewScale, timeZone?: string): string {
   if (scale.stepUnit === 'hour' || scale.stepUnit === 'minute') {
-    return format(date, 'EEE d MMM');
+    return formatDisplay(date, 'EEE d MMM', timeZone);
   }
   if (scale.stepUnit === 'day' || scale.stepUnit === 'week') {
-    return format(date, 'MMMM yyyy');
+    return formatDisplay(date, 'MMMM yyyy', timeZone);
   }
-  return format(date, 'yyyy');
+  return formatDisplay(date, 'yyyy', timeZone);
 }
 
 export function nextScaleInList(

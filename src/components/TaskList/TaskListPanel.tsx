@@ -4,6 +4,8 @@ import type { RowLayout } from '../../core/rowLayout';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { CustomRowMetrics } from '../CustomRows/customRowMetrics';
 import { taskSupportsCollapse } from '../../core/groupTasks';
+import { formatDisplayDate } from '../../core/displayFormat';
+import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
 import { CustomRowLeftRows, CustomRowMiddleRows } from '../CustomRows/CustomRowSidebarRows';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 
@@ -172,6 +174,7 @@ export const MiddlePanel = memo(function MiddlePanel({
   columnOffset = 0,
   emit,
 }: MiddlePanelProps) {
+  const timezone = useGanttDisplayTimezone();
   if (columns.length === 0) return null;
 
   return (
@@ -204,9 +207,9 @@ export const MiddlePanel = memo(function MiddlePanel({
                 {col.render
                   ? col.render({ task, rowIndex: task._rowIndex, columnKey: col.key })
                   : col.key === 'start'
-                    ? task._start.toLocaleDateString()
+                    ? formatDisplayDate(task._start, timezone)
                     : col.key === 'end'
-                      ? task._end.toLocaleDateString()
+                      ? formatDisplayDate(task._end, timezone)
                       : null}
               </div>
             ))}

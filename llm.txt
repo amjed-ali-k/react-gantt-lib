@@ -1,6 +1,6 @@
 # react-gantt-lib — AI agent reference
 
-Package: react-gantt-lib v0.1.8
+Package: react-gantt-lib v0.1.9
 Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
 
 ## Agent discovery (installed package)
@@ -41,6 +41,7 @@ Components / hooks:
 - useSidebarLayout
 - useGanttTimeline
 - useGanttTimelineOptional
+- useGanttDisplayTimezone
 
 Classes:
 - TaskStore
@@ -150,10 +151,36 @@ render({ task, rowIndex, columnKey }) => ReactNode
 Built-in cell keys (no custom render):
 - name → task.name
 - progress → `${progress}%`
-- start → toLocaleDateString() of _start
-- end → toLocaleDateString() of _end
+- start → formatted _start (date only; respects `timezone` prop when set)
+- end → formatted _end (date only; respects `timezone` prop when set)
 
 Hide panels: showTaskList={false}, showDateColumns={false}
+
+## Display timezone
+
+timezone?: string — IANA timezone id (e.g. `America/New_York`, `Asia/Tokyo`, `UTC`). Default undefined = browser local timezone.
+
+**Display only** — does not change stored task dates, drag/snap math, timeline range, bar positions, or callback payloads (those remain real Date instants / ISO strings).
+
+When set, all on-screen date/time labels use that zone for every viewer worldwide:
+- Timeline header labels (upper + lower bands)
+- Middle panel start/end columns
+- Built-in task tooltip start/end (time shown when non-midnight in the display zone)
+
+Not affected: bar geometry, today marker position (current instant), holidays/blocks grid placement, event marker x position, onTaskDragEnd dates, onTasksChange data.
+
+Example — global team sees New York time:
+<GanttChart tasks={tasks} timezone="America/New_York" showTooltip />
+
+Custom column/tooltip UI inside the chart tree:
+import { useGanttDisplayTimezone } from 'react-gantt-lib';
+// Inside GanttChart descendant:
+const timezone = useGanttDisplayTimezone();
+// Use with formatTaskDateTime from src/core/dates (internal) or your own Intl formatting
+
+Hook: useGanttDisplayTimezone() — returns string | undefined. Must be descendant of GanttChart (GanttDisplayProvider). Undefined = browser local.
+
+Implementation: GanttDisplayProvider + Intl.DateTimeFormat in src/core/displayFormat.ts. formatScaleHeader, formatScaleSubHeader, formatTaskDateTime accept optional timeZone param internally.
 
 ## Zoom / timeline scale
 
@@ -326,7 +353,7 @@ Layers render in timeline header grid (holidays/blocks) and full-height overlay 
 Built-in and custom task tooltips share an optimized overlay: position updates are imperative (no chart re-render on mousemove).
 
 Props:
-- showTooltip?: boolean — default false. Built-in floating tooltip: name, start, end (time when non-midnight).
+- showTooltip?: boolean — default false. Built-in floating tooltip: name, start, end (time when non-midnight in display timezone; see `timezone` prop).
 - renderTaskTooltip?: TaskTooltipRenderer — custom tooltip UI. When set, tooltips are enabled and replace the built-in content.
 
 Types:
@@ -545,6 +572,9 @@ Selection:
 Fixed window:
 <GanttChart minDate="2026-01-01" maxDate="2026-06-30" />
 
+Display timezone (labels only):
+<GanttChart tasks={tasks} timezone="America/New_York" showTooltip />
+
 Selection (multi-select):
 const [ids, setIds] = useState<string[]>([]);
 <GanttChart
@@ -592,6 +622,7 @@ Use onTasksChange to persist collapsed state.
   availableZoomLevels={['day', '2day', '6hour', '3hour', '1hour']}
   snapToGrid
   showTooltip
+  timezone="America/New_York"
   renderTaskTooltip={(task, onChange) => <MyTooltip task={task} onChange={onChange} />}
   showBaseline
   holidays={{ weekends: true, dates: [{ date: '2026-04-10', label: 'Holiday' }] }}
@@ -611,7 +642,8 @@ Use onTasksChange to persist collapsed state.
 
 npm run demo → http://localhost:5173
 
-demo/App.tsx — Examples tab: grid snap, custom row, smooth drag, advanced interactions (multi-select, groups, read-only, block hover)
+demo/App.tsx — Examples tab: grid snap, custom row, smooth drag, display timezone, advanced interactions (multi-select, groups, read-only, block hover)
+demo/timezoneDemo.tsx — timezone selector, live browser vs chart clocks, UTC tasks with hour zoom, showTooltip
 demo/advancedFeaturesDemo.tsx — multi-select, group folders/summary bars, collapse toggles, read-only task, onGanttHover
 demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row, built-in vs custom task tooltip
 
@@ -627,7 +659,7 @@ Reference implementations:
 - No built-in context menu UI (use onGanttContextMenu + your own menu component)
 - No built-in task creation/editing forms (use renderTaskTooltip + onChange for inline edits)
 - No resource assignment / multi-project views
-- Middle panel start/end show date only (not time) via toLocaleDateString
+- Middle panel start/end show date only (not time); formatted in `timezone` when set, else browser locale
 - Week starts Monday (date-fns weekStartsOn: 1)
 
 ## Build / test
