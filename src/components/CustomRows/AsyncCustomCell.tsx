@@ -13,8 +13,8 @@ interface AsyncCellProps {
   timeline?: boolean;
 }
 
-function metricsRevision(metrics: CustomRowMetrics, timeline: boolean): string {
-  const parts = [
+function metricsRevision(metrics: CustomRowMetrics): string {
+  return [
     metrics.zoomLevel,
     metrics.columnWidth,
     metrics.timelineWidth,
@@ -22,14 +22,7 @@ function metricsRevision(metrics: CustomRowMetrics, timeline: boolean): string {
     metrics.rangeStart.getTime(),
     metrics.rangeEnd.getTime(),
     metrics.rowHeight,
-  ];
-  if (timeline) {
-    parts.push(
-      metrics.visibleColumns.startIndex,
-      metrics.visibleColumns.endIndex,
-    );
-  }
-  return parts.join('|');
+  ].join('|');
 }
 
 export const AsyncCustomCell = memo(function AsyncCustomCell({
@@ -46,7 +39,7 @@ export const AsyncCustomCell = memo(function AsyncCustomCell({
   const metricsRef = useRef(metrics);
   metricsRef.current = metrics;
 
-  const revision = metricsRevision(metrics, timeline);
+  const revision = metricsRevision(metrics);
 
   useEffect(() => {
     let cancelled = false;
