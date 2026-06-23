@@ -282,6 +282,15 @@ export type GanttEventHandler<K extends GanttEventName> = (
   detail: GanttEventMap[K],
 ) => void;
 
+/** Patch handler passed to `renderTaskTooltip` for inline edits from the tooltip. */
+export type TaskTooltipChangeHandler = (patch: Partial<GanttTask>) => void;
+
+/** Custom task tooltip renderer — receives the hovered task and an `onChange` patch handler. */
+export type TaskTooltipRenderer = (
+  task: GanttTask,
+  onChange: TaskTooltipChangeHandler,
+) => React.ReactNode;
+
 export interface GanttCallbacks {
   onTaskClick?: GanttEventHandler<'taskClick'>;
   onTaskDoubleClick?: GanttEventHandler<'taskDoubleClick'>;
@@ -291,6 +300,7 @@ export interface GanttCallbacks {
   onGanttContextMenu?: GanttEventHandler<'ganttContextMenu'>;
   /** Hover handler for blocked dates, holidays, and other gantt targets (when not occluded by task bars). */
   onGanttHover?: GanttEventHandler<'ganttHover'>;
+  /** Fires on mouse enter and leave only (`task: null` on leave). Not called on mousemove. */
   onTaskHover?: GanttEventHandler<'taskHover'>;
   onTaskDragStart?: GanttEventHandler<'taskDragStart'>;
   onTaskDrag?: GanttEventHandler<'taskDrag'>;
@@ -329,8 +339,14 @@ export interface GanttChartProps extends GanttCallbacks {
   showTaskList?: boolean;
   /** Show the middle start/end date columns panel. Default true. */
   showDateColumns?: boolean;
-  /** Show a tooltip with task name and start/end date+time on hover. Default false. */
+  /** Show the built-in task tooltip on hover. Default false. */
   showTooltip?: boolean;
+  /**
+   * Custom task tooltip renderer. When set, tooltips are enabled and replace the built-in UI.
+   * Position updates during hover/drag are applied imperatively (no chart re-renders).
+   * Content re-renders only when the hovered task data changes.
+   */
+  renderTaskTooltip?: TaskTooltipRenderer;
   /** Highlight weekends and specific holiday dates on the timeline. */
   holidays?: HolidayMarking;
   /** Blocked date ranges shown in light rose on the timeline. */

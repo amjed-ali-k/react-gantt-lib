@@ -14,6 +14,19 @@ interface CustomRowsTimelineProps {
   emit: EventEmitter;
 }
 
+function customRowsTimelinePropsEqual(
+  prev: CustomRowsTimelineProps,
+  next: CustomRowsTimelineProps,
+): boolean {
+  if (prev.rows !== next.rows) return false;
+  if (prev.metrics !== next.metrics) return false;
+  if (prev.timelineWidth !== next.timelineWidth) return false;
+  if (prev.columnCount !== next.columnCount) return false;
+  if (prev.rowHeight !== next.rowHeight) return false;
+  if (prev.emit !== next.emit) return false;
+  return true;
+}
+
 export const CustomRowsTimeline = memo(function CustomRowsTimeline({
   rows,
   rowHeight,
@@ -49,4 +62,4 @@ export const CustomRowsTimeline = memo(function CustomRowsTimeline({
       })}
     </div>
   );
-});
+}, customRowsTimelinePropsEqual);

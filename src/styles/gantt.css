@@ -542,6 +542,17 @@
   box-shadow: var(--rg-tooltip-shadow);
 }
 
+/** Position-only shell for `renderTaskTooltip` — styling is owned by the custom component. */
+.rg-task-tooltip-shell {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.rg-task-tooltip-shell > * {
+  pointer-events: auto;
+}
+
 .rg-task-tooltip-name {
   font-weight: 600;
   margin-bottom: 6px;

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
-import type { BlockDateRange, EventMarker, GanttTask, HolidayDateEntry } from '../src/types';
+import type { BlockDateRange, EventMarker, GanttTask, HolidayDateEntry, TaskTooltipChangeHandler } from '../src/types';
 import { PRESET_SCALES } from '../src/core/scale';
 import { PlaygroundSection } from './PlaygroundSection';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
@@ -94,6 +94,7 @@ export function PlaygroundApp() {
   const [showTaskList, setShowTaskList] = useState(true);
   const [showDateColumns, setShowDateColumns] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [customTooltip, setCustomTooltip] = useState(false);
   const [highlightWeekends, setHighlightWeekends] = useState(true);
   const [holidayDates, setHolidayDates] = useState<HolidayDateEntry[]>(PLAYGROUND_HOLIDAYS);
   const [newHolidayDate, setNewHolidayDate] = useState('');
@@ -195,6 +196,27 @@ export function PlaygroundApp() {
     [sectionEnabled.holidays, highlightWeekends, holidayDates],
   );
 
+  const renderTaskTooltip = useCallback(
+    (task: GanttTask, onChange: TaskTooltipChangeHandler) => (
+      <div className="playground-custom-tooltip">
+        <div className="playground-custom-tooltip-title">{task.name}</div>
+        <div className="playground-custom-tooltip-meta">
+          {task.start} → {task.end}
+        </div>
+        <button
+          type="button"
+          className="playground-custom-tooltip-btn"
+          onClick={() =>
+            onChange({ progress: Math.min(100, (task.progress ?? 0) + 10) })
+          }
+        >
+          +10% progress
+        </button>
+      </div>
+    ),
+    [],
+  );
+
   const customRows = useMemo(
     () => (sectionEnabled.customRow ? [DAILY_COLOR_STRIP_ROW] : []),
     [sectionEnabled.customRow],
@@ -258,6 +280,14 @@ export function PlaygroundApp() {
               onChange={(e) => setShowTooltip(e.target.checked)}
             />
             Task tooltip
+          </label>
+          <label className="playground-checkbox">
+            <input
+              type="checkbox"
+              checked={customTooltip}
+              onChange={(e) => setCustomTooltip(e.target.checked)}
+            />
+            Custom tooltip UI
           </label>
         </PlaygroundSection>
 
@@ -521,7 +551,10 @@ export function PlaygroundApp() {
           snapToGrid={sectionEnabled.drag ? snapToGrid : false}
           showTaskList={sectionEnabled.display ? showTaskList : true}
           showDateColumns={sectionEnabled.display ? showDateColumns : true}
-          showTooltip={sectionEnabled.display && showTooltip}
+          showTooltip={sectionEnabled.display && showTooltip && !customTooltip}
+          renderTaskTooltip={
+            sectionEnabled.display && customTooltip ? renderTaskTooltip : undefined
+          }
           holidays={holidays}
           blockDates={sectionEnabled.blocks && blockRanges.length > 0 ? blockRanges : undefined}
           eventMarkers={sectionEnabled.events && eventMarkers.length > 0 ? eventMarkers : undefined}

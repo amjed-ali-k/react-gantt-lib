@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { CustomRowDefinition, GanttTask, GanttTheme, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
@@ -206,6 +206,11 @@ function ExamplesDemo() {
     setLogs((prev) => [{ id: ++logId, event, detail }, ...prev].slice(0, 20));
   }, []);
 
+  const largeCustomRows = useMemo(
+    () => [GRADIENT_BAND_ROW, CALCULATED_COLUMN_ROW],
+    [],
+  );
+
   return (
     <>
       <header className="demo-header">
@@ -246,7 +251,7 @@ function ExamplesDemo() {
         snapToGrid
         onLog={log}
         height={720}
-        customRows={[GRADIENT_BAND_ROW, CALCULATED_COLUMN_ROW]}
+        customRows={largeCustomRows}
         columnScrollBufferPercent={10}
         theme={chartTheme}
       />

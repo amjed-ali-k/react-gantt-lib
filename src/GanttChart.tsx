@@ -24,7 +24,7 @@ import { computeDateMarkingRects } from './core/dateMarkings';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
 import { computeRowLayouts, totalRowLayoutHeight } from './core/rowLayout';
 import { maintainBufferedColumnRange, getViewportColumnRange, DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT } from './core/visibleColumns';
-import { stableTimelineRange } from './core/stableValue';
+import { stableTimelineRange, timelineMetricsSignature } from './core/stableValue';
 import { toDate } from './core/dates';
 import { TaskListPanel, MiddlePanel } from './components/TaskList/TaskListPanel';
 import { TimelineHeader } from './components/Timeline/TimelineHeader';
@@ -33,7 +33,7 @@ import { ZoomToolbar } from './components/Toolbar/ZoomToolbar';
 import { CustomRowsTimeline } from './components/CustomRows/CustomRowsTimeline';
 import { GanttTimelineProvider } from './context/GanttChartContext';
 import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
-import { TaskTooltip } from './components/Tooltip/TaskTooltip';
+import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
   { key: 'name', title: 'Task', flex: 2, minWidth: 120 },
@@ -63,6 +63,7 @@ export function GanttChart({
   showTaskList = true,
   showDateColumns = true,
   showTooltip = false,
+  renderTaskTooltip,
   holidays,
   blockDates,
   eventMarkers,
@@ -91,11 +92,6 @@ export function GanttChart({
   const scrollRafRef = useRef<number | null>(null);
   const pendingScrollLeftRef = useRef(0);
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
-  const [tooltip, setTooltip] = useState<{
-    task: GanttTask;
-    x: number;
-    y: number;
-  } | null>(null);
   const pendingCenterDateRef = useRef<Date | null>(null);
 
   const availableScales = useMemo(
@@ -105,21 +101,12 @@ export function GanttChart({
 
   const scale = useMemo(() => resolveScale(scaleId), [scaleId]);
 
-  const handleTaskHover = useCallback(
-    (detail: GanttEventMap['taskHover']) => {
-      if (showTooltip && detail.task && detail.clientX != null && detail.clientY != null) {
-        setTooltip({ task: detail.task, x: detail.clientX, y: detail.clientY });
-      } else {
-        setTooltip(null);
-      }
-      onTaskHover?.(detail);
-    },
-    [showTooltip, onTaskHover],
-  );
+  const onTaskHoverRef = useRef(onTaskHover);
+  onTaskHoverRef.current = onTaskHover;
 
-  useEffect(() => {
-    if (!showTooltip) setTooltip(null);
-  }, [showTooltip]);
+  const handleTaskHover = useCallback((detail: GanttEventMap['taskHover']) => {
+    onTaskHoverRef.current?.(detail);
+  }, []);
 
   const effectiveSelectedIds = selectedTaskIds ?? internalSelectedIds;
 
@@ -334,6 +321,37 @@ export function GanttChart({
     ],
   );
 
+  const metricsSignature = timelineMetricsSignature({
+    zoomLevel: scaleId,
+    columnWidth,
+    timelineWidth,
+    msPerPixel,
+    rangeStart: range.start,
+    rangeEnd: range.end,
+    rangeColumnCount: range.columnCount,
+    rowHeight,
+    scrollLeft,
+    viewportWidth,
+    visibleStart: visibleColumns.startIndex,
+    visibleEnd: visibleColumns.endIndex,
+    viewportStart: viewportColumns.startIndex,
+    viewportEnd: viewportColumns.endIndex,
+    columnScrollBufferPercent,
+  });
+
+  const metricsSignatureRef = useRef(metricsSignature);
+  const timelineContextRef = useRef(timelineContext);
+  const customRowMetricsRef = useRef(customRowMetrics);
+
+  if (metricsSignatureRef.current !== metricsSignature) {
+    metricsSignatureRef.current = metricsSignature;
+    timelineContextRef.current = timelineContext;
+    customRowMetricsRef.current = customRowMetrics;
+  }
+
+  const stableTimelineContext = timelineContextRef.current;
+  const stableCustomRowMetrics = customRowMetricsRef.current;
+
   const dateMarkings = useMemo(
     () => computeDateMarkingRects(range, scale, columnWidth, holidays, blockDates),
     [range, scale, columnWidth, holidays, blockDates],
@@ -496,8 +514,48 @@ export function GanttChart({
     [updateTask, onTasksChange, tasks, timelineBounds],
   );
 
+  const handleTooltipTaskChange = useCallback(
+    (taskId: string, patch: Partial<GanttTask>) => {
+      const source = tasks.find((t) => t.id === taskId);
+      if (source?.readOnly) return;
+
+      const mapped: Record<string, unknown> = {};
+      if (patch.name !== undefined) mapped.name = patch.name;
+      if (patch.progress !== undefined) mapped.progress = patch.progress;
+      if (patch.color !== undefined) mapped.color = patch.color;
+      if (patch.borderColor !== undefined) mapped.borderColor = patch.borderColor;
+
+      const hasStart = patch.start !== undefined;
+      const hasEnd = patch.end !== undefined;
+      if (hasStart || hasEnd) {
+        const start = hasStart ? toDate(patch.start!) : toDate(source.start);
+        const end = hasEnd ? toDate(patch.end!) : toDate(source.end);
+        if (timelineBounds) {
+          const clamped = clampTaskDates(start, end, timelineBounds, 'move');
+          mapped.start = clamped.start.toISOString();
+          mapped.end = clamped.end.toISOString();
+        } else {
+          if (hasStart) mapped.start = start.toISOString();
+          if (hasEnd) mapped.end = end.toISOString();
+        }
+      }
+
+      if (Object.keys(mapped).length === 0) return;
+
+      updateTask(taskId, mapped);
+      if (onTasksChange) {
+        onTasksChange(
+          tasks.map((t) => (t.id === taskId ? { ...t, ...mapped } : t)),
+        );
+      }
+    },
+    [tasks, updateTask, onTasksChange, timelineBounds],
+  );
+
+  const tooltipEnabled = showTooltip || !!renderTaskTooltip;
+
   return (
-    <GanttTimelineProvider value={timelineContext}>
+    <GanttTimelineProvider value={stableTimelineContext}>
     <div
       ref={containerRef}
       className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
@@ -507,6 +565,11 @@ export function GanttChart({
       data-sidebar-middle={middleWidth}
       data-timeline-left={timelineLeft}
     >
+      <TaskTooltipProvider
+        enabled={tooltipEnabled}
+        renderTaskTooltip={renderTaskTooltip}
+        onTaskChange={handleTooltipTaskChange}
+      >
       <div className="rg-gantt-toolbar-row">
         <ZoomToolbar
           scale={scale}
@@ -534,7 +597,7 @@ export function GanttChart({
                 onToggleCollapse={handleToggleCollapse}
                 emit={emit}
                 customRows={customRows}
-                customRowMetrics={customRowMetrics}
+                customRowMetrics={stableCustomRowMetrics}
               />
             </div>
           )}
@@ -564,7 +627,7 @@ export function GanttChart({
                 rowLayouts={rowLayouts}
                 width={middleWidth}
                 customRows={customRows}
-                customRowMetrics={customRowMetrics}
+                customRowMetrics={stableCustomRowMetrics}
                 columnOffset={columns.length}
                 emit={emit}
               />
@@ -641,7 +704,7 @@ export function GanttChart({
                   rows={customRows}
                   rowHeight={rowHeight}
                   timelineWidth={timelineWidth}
-                  metrics={customRowMetrics}
+                  metrics={stableCustomRowMetrics}
                   columnCount={columns.length + middleColumns.length}
                   emit={emit}
                 />
@@ -650,10 +713,7 @@ export function GanttChart({
           </div>
         </div>
       </div>
-
-      {showTooltip && tooltip && (
-        <TaskTooltip task={tooltip.task} x={tooltip.x} y={tooltip.y} />
-      )}
+      </TaskTooltipProvider>
     </div>
     </GanttTimelineProvider>
   );

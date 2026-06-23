@@ -5,6 +5,7 @@ import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { CustomRowMetrics } from '../CustomRows/customRowMetrics';
 import { taskSupportsCollapse } from '../../core/groupTasks';
 import { CustomRowLeftRows, CustomRowMiddleRows } from '../CustomRows/CustomRowSidebarRows';
+import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 
 interface TaskListPanelProps {
   tasks: ResolvedTask[];
@@ -42,6 +43,8 @@ export const TaskListPanel = memo(function TaskListPanel({
   customRows = [],
   customRowMetrics,
 }: TaskListPanelProps) {
+  const tooltip = useTaskTooltipOptional();
+
   return (
     <div className="rg-task-list" style={{ width }} data-testid="task-list-left">
       <div className="rg-task-list-header">
@@ -65,23 +68,20 @@ export const TaskListPanel = memo(function TaskListPanel({
               data-task-id={task.id}
               className={`rg-task-row ${selected ? 'rg-task-row--selected' : ''}`}
               style={{ height: h, paddingLeft: 8 + task._level * 16 }}
-              onMouseEnter={(e) =>
+              onMouseEnter={(e) => {
                 emit('taskHover', {
                   task,
                   rowIndex: task._rowIndex,
                   clientX: e.clientX,
                   clientY: e.clientY,
-                })
-              }
-              onMouseMove={(e) =>
-                emit('taskHover', {
-                  task,
-                  rowIndex: task._rowIndex,
-                  clientX: e.clientX,
-                  clientY: e.clientY,
-                })
-              }
-              onMouseLeave={() => emit('taskHover', { task: null, rowIndex: null })}
+                });
+                tooltip?.show(task, e.clientX, e.clientY);
+              }}
+              onMouseMove={(e) => tooltip?.move(e.clientX, e.clientY)}
+              onMouseLeave={() => {
+                emit('taskHover', { task: null, rowIndex: null });
+                tooltip?.hide();
+              }}
               onClick={(e) =>
                 emit('taskClick', {
                   task,

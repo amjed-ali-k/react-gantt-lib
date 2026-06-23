@@ -289,6 +289,40 @@
   background: var(--demo-surface);
 }
 
+.playground-custom-tooltip {
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+}
+
+.playground-custom-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.playground-custom-tooltip-meta {
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.playground-custom-tooltip-btn {
+  border: 1px solid #475569;
+  border-radius: 4px;
+  background: #334155;
+  color: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.playground-custom-tooltip-btn:hover {
+  background: #475569;
+}
+
 @media (max-width: 900px) {
   .playground-page {
     grid-template-columns: 1fr;

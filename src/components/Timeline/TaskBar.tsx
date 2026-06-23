@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ResolvedTask, BarGeometry } from '../../types';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { TaskStore } from '../../hooks/useTaskStore';
@@ -9,11 +9,14 @@ import {
   pixelDeltaToDates,
   finalizeDragDates,
   clampTaskDates,
+  computeBarXExact,
+  computeBarWidthExact,
   type TimelineBounds,
 } from '../../core/zoom';
 import type { ViewScale } from '../../core/scale';
 import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
+import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 
 export interface TaskBarProps {
   task: ResolvedTask;
@@ -43,6 +46,12 @@ interface DragSession {
   barRect: DOMRect;
 }
 
+interface DragPreview {
+  start?: Date;
+  end?: Date;
+  progress?: number;
+}
+
 const HANDLE_WIDTH = 10;
 
 function TaskBarInner({
@@ -66,58 +75,134 @@ function TaskBarInner({
   const groupRef = useRef<SVGGElement>(null);
   const dragRef = useRef<DragSession | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const taskRef = useRef(task);
   taskRef.current = task;
 
   const msPerPixel = getMsPerPixel(scale, columnWidth);
+  const tooltip = useTaskTooltipOptional();
+
+  const resolveHoverTask = useCallback(
+    (t: ResolvedTask, start?: Date, end?: Date) => {
+      return start &&
+        end &&
+        Number.isFinite(start.getTime()) &&
+        Number.isFinite(end.getTime())
+        ? { ...t, start: start.toISOString(), end: end.toISOString() }
+        : t;
+    },
+    [],
+  );
 
   const emitTaskHover = useCallback(
     (t: ResolvedTask, clientX: number, clientY: number, start?: Date, end?: Date) => {
-      const hoverTask =
-        start && end
-          ? { ...t, start: start.toISOString(), end: end.toISOString() }
-          : t;
+      const hoverTask = resolveHoverTask(t, start, end);
       emit('taskHover', {
         task: hoverTask,
         rowIndex: t._rowIndex,
         clientX,
         clientY,
       });
+      return hoverTask;
     },
-    [emit],
+    [emit, resolveHoverTask],
+  );
+
+  const syncTooltip = useCallback(
+    (t: ResolvedTask, clientX: number, clientY: number, start?: Date, end?: Date) => {
+      const hoverTask = resolveHoverTask(t, start, end);
+      tooltip?.show(hoverTask, clientX, clientY);
+      return hoverTask;
+    },
+    [tooltip, resolveHoverTask],
+  );
+
+  const resolveDragDates = useCallback(
+    (session: DragSession, clientX: number) => {
+      const t = taskRef.current;
+      if (session.mode === 'progress') {
+        return { start: session.start, end: session.end };
+      }
+      const dx = clientX - session.originClientX;
+      let { start, end } = pixelDeltaToDates(
+        session.mode,
+        session.start,
+        session.end,
+        dx,
+        msPerPixel,
+      );
+      if (timelineBounds) {
+        ({ start, end } = clampTaskDates(
+          start,
+          end,
+          timelineBounds,
+          session.mode === 'move' ? 'move' : session.mode,
+        ));
+      }
+      if (t.type === 'milestone') {
+        end = new Date(start.getTime());
+      }
+      return { start, end };
+    },
+    [msPerPixel, timelineBounds],
   );
 
   const endDrag = useCallback(
     (session: DragSession, pointer?: { clientX: number; clientY: number }) => {
       const t = taskRef.current;
-      let start = toDate(t.start);
-      let end = toDate(t.end);
 
-      if (session.mode === 'move' || session.mode.startsWith('resize')) {
-        const finalized = finalizeDragDates(start, end, scale, snapToGrid, rangeStart);
-        start = finalized.start;
-        end = finalized.end;
-        if (timelineBounds) {
-          const clamped = clampTaskDates(
-            start,
-            end,
-            timelineBounds,
-            session.mode === 'resize-start'
-              ? 'resize-start'
-              : session.mode === 'resize-end'
-                ? 'resize-end'
-                : 'move',
-          );
-          start = clamped.start;
-          end = clamped.end;
-        }
-        if (t.type === 'milestone') {
-          end = new Date(start.getTime());
-        }
-        onTaskUpdate(t.id, { start, end });
+      if (session.mode === 'progress') {
+        let progress = session.progress;
         if (pointer) {
-          emitTaskHover(t, pointer.clientX, pointer.clientY, start, end);
+          const relX = pointer.clientX - session.barRect.left;
+          progress = Math.max(
+            0,
+            Math.min(100, Math.round((relX / session.barRect.width) * 100)),
+          );
+        } else if (dragPreview?.progress != null) {
+          progress = dragPreview.progress;
         }
+        onTaskUpdate(t.id, { progress });
+        emit('progressChange', { task: t, progress, previousProgress: session.progress });
+        setDragPreview(null);
+        dragRef.current = null;
+        setIsDragging(false);
+        return;
+      }
+
+      let start = session.start;
+      let end = session.end;
+      if (pointer) {
+        ({ start, end } = resolveDragDates(session, pointer.clientX));
+      } else if (dragPreview?.start && dragPreview?.end) {
+        start = dragPreview.start;
+        end = dragPreview.end;
+      }
+
+      const finalized = finalizeDragDates(start, end, scale, snapToGrid, rangeStart);
+      start = finalized.start;
+      end = finalized.end;
+      if (timelineBounds) {
+        const clamped = clampTaskDates(
+          start,
+          end,
+          timelineBounds,
+          session.mode === 'resize-start'
+            ? 'resize-start'
+            : session.mode === 'resize-end'
+              ? 'resize-end'
+              : 'move',
+        );
+        start = clamped.start;
+        end = clamped.end;
+      }
+      if (t.type === 'milestone') {
+        end = new Date(start.getTime());
+      }
+
+      onTaskUpdate(t.id, { start, end });
+      if (pointer) {
+        syncTooltip(t, pointer.clientX, pointer.clientY, start, end);
       }
 
       if (session.mode === 'move') {
@@ -139,10 +224,21 @@ function TaskBarInner({
         });
       }
 
+      setDragPreview(null);
       dragRef.current = null;
       setIsDragging(false);
     },
-    [scale, snapToGrid, timelineBounds, rangeStart, onTaskUpdate, emit, emitTaskHover],
+    [
+      scale,
+      snapToGrid,
+      timelineBounds,
+      rangeStart,
+      onTaskUpdate,
+      emit,
+      syncTooltip,
+      dragPreview,
+      resolveDragDates,
+    ],
   );
 
   useEffect(() => {
@@ -152,7 +248,6 @@ function TaskBarInner({
       if (!session) return;
 
       const t = taskRef.current;
-      const dx = e.clientX - session.originClientX;
 
       if (session.mode === 'progress') {
         const relX = e.clientX - session.barRect.left;
@@ -160,31 +255,15 @@ function TaskBarInner({
           0,
           Math.min(100, Math.round((relX / session.barRect.width) * 100)),
         );
-        onTaskUpdate(t.id, { progress });
+        setDragPreview({ progress });
         emit('progressChange', { task: t, progress, previousProgress: session.progress });
         return;
       }
 
-      let { start, end } = pixelDeltaToDates(
-        session.mode,
-        session.start,
-        session.end,
-        dx,
-        msPerPixel,
-      );
-      if (timelineBounds) {
-        ({ start, end } = clampTaskDates(
-          start,
-          end,
-          timelineBounds,
-          session.mode === 'move' ? 'move' : session.mode,
-        ));
-      }
-      if (t.type === 'milestone') {
-        end = new Date(start.getTime());
-      }
-      onTaskUpdate(t.id, { start, end });
-      emitTaskHover(t, e.clientX, e.clientY, start, end);
+      const { start, end } = resolveDragDates(session, e.clientX);
+      if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return;
+      setDragPreview({ start, end });
+      syncTooltip(t, e.clientX, e.clientY, start, end);
 
       if (session.mode === 'move') {
         emit('taskDrag', {
@@ -217,7 +296,7 @@ function TaskBarInner({
       document.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [isDragging, msPerPixel, timelineBounds, onTaskUpdate, emit, endDrag, emitTaskHover]);
+  }, [isDragging, emit, endDrag, syncTooltip, resolveDragDates]);
 
   const beginDrag = useCallback(
     (mode: DragMode) => (e: React.PointerEvent) => {
@@ -239,7 +318,7 @@ function TaskBarInner({
       }
 
       if (mode === 'move' || mode.startsWith('resize')) {
-        emitTaskHover(task, e.clientX, e.clientY, start, end);
+        syncTooltip(task, e.clientX, e.clientY, start, end);
       }
 
       dragRef.current = {
@@ -250,13 +329,23 @@ function TaskBarInner({
         progress: task.progress ?? 0,
         barRect,
       };
+      setDragPreview(null);
       setIsDragging(true);
     },
-    [task, enableDrag, enableResize, enableProgressDrag, emit, emitTaskHover],
+    [task, enableDrag, enableResize, enableProgressDrag, emit, syncTooltip],
   );
 
-  const progress = task.progress ?? 0;
-  const progressWidth = (geometry.width * progress) / 100;
+  const renderGeometry = useMemo((): BarGeometry => {
+    if (!dragPreview?.start || !dragPreview?.end) return geometry;
+    return {
+      ...geometry,
+      x: computeBarXExact(dragPreview.start, rangeStart, scale, columnWidth),
+      width: computeBarWidthExact(dragPreview.start, dragPreview.end, scale, columnWidth),
+    };
+  }, [dragPreview, geometry, rangeStart, scale, columnWidth]);
+
+  const progress = dragPreview?.progress ?? task.progress ?? 0;
+  const progressWidth = (renderGeometry.width * progress) / 100;
   const isMilestone = task.type === 'milestone';
   const isGroup = task.type === 'group';
   const taskElement = isMilestone ? 'milestone' : 'bar';
@@ -310,12 +399,16 @@ function TaskBarInner({
       className={`rg-bar ${selected ? 'rg-bar--selected' : ''} ${isGroup ? 'rg-bar--group' : ''} ${isReadOnly ? 'rg-bar--readonly' : ''}`}
       data-task-id={task.id}
       data-selected={selected || undefined}
-      transform={`translate(${geometry.x}, ${geometry.y})`}
-      onMouseEnter={(e) => emitTaskHover(task, e.clientX, e.clientY)}
-      onMouseMove={(e) => emitTaskHover(task, e.clientX, e.clientY)}
+      transform={`translate(${renderGeometry.x}, ${renderGeometry.y})`}
+      onMouseEnter={(e) => {
+        const hoverTask = emitTaskHover(task, e.clientX, e.clientY);
+        tooltip?.show(hoverTask, e.clientX, e.clientY);
+      }}
+      onMouseMove={(e) => tooltip?.move(e.clientX, e.clientY)}
       onMouseLeave={() => {
         if (dragRef.current) return;
         emit('taskHover', { task: null, rowIndex: null });
+        tooltip?.hide();
       }}
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
@@ -325,7 +418,7 @@ function TaskBarInner({
         <>
           <polygon
             className="rg-bar-milestone"
-            points={milestoneDiamondPoints(geometry.width, geometry.height)}
+            points={milestoneDiamondPoints(renderGeometry.width, renderGeometry.height)}
             fill={accentColor}
             stroke={barStroke}
             strokeWidth={barStrokeWidth}
@@ -336,8 +429,8 @@ function TaskBarInner({
               className="rg-bar-focus-ring"
               x={-4}
               y={-4}
-              width={geometry.width + 8}
-              height={geometry.height + 8}
+              width={renderGeometry.width + 8}
+              height={renderGeometry.height + 8}
               fill="none"
               stroke={accentColor}
               strokeWidth={2}
@@ -346,8 +439,8 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={geometry.width + 6}
-            y={geometry.height / 2}
+            x={renderGeometry.width + 6}
+            y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
             pointerEvents="none"
@@ -359,8 +452,8 @@ function TaskBarInner({
         <>
           <rect
             className="rg-bar-bg"
-            width={geometry.width}
-            height={geometry.height}
+            width={renderGeometry.width}
+            height={renderGeometry.height}
             rx={4}
             fill={task.color ? accentColor : 'var(--rg-bar-bg)'}
             fillOpacity={task.color ? 0.35 : 1}
@@ -371,7 +464,7 @@ function TaskBarInner({
           <rect
             className="rg-bar-progress"
             width={progressWidth}
-            height={geometry.height}
+            height={renderGeometry.height}
             rx={4}
             fill={accentColor}
             pointerEvents="none"
@@ -383,16 +476,16 @@ function TaskBarInner({
                 x={0}
                 y={0}
                 width={HANDLE_WIDTH}
-                height={geometry.height}
+                height={renderGeometry.height}
                 rx={2}
                 onPointerDown={beginDrag('resize-start')}
               />
               <rect
                 className="rg-bar-handle rg-bar-handle--end"
-                x={geometry.width - HANDLE_WIDTH}
+                x={renderGeometry.width - HANDLE_WIDTH}
                 y={0}
                 width={HANDLE_WIDTH}
-                height={geometry.height}
+                height={renderGeometry.height}
                 rx={2}
                 onPointerDown={beginDrag('resize-end')}
               />
@@ -402,7 +495,7 @@ function TaskBarInner({
             <rect
               className="rg-bar-progress-handle"
               x={Math.max(0, progressWidth - 4)}
-              y={geometry.height - 6}
+              y={renderGeometry.height - 6}
               width={8}
               height={10}
               rx={2}
@@ -414,8 +507,8 @@ function TaskBarInner({
               className="rg-bar-focus-ring"
               x={-4}
               y={-4}
-              width={geometry.width + 8}
-              height={geometry.height + 8}
+              width={renderGeometry.width + 8}
+              height={renderGeometry.height + 8}
               rx={6}
               fill="none"
               stroke={accentColor}
@@ -425,8 +518,8 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={geometry.width + 6}
-            y={geometry.height / 2}
+            x={renderGeometry.width + 6}
+            y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
             pointerEvents="none"

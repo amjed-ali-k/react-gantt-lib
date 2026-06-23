@@ -1,6 +1,6 @@
 # react-gantt-lib — AI agent reference
 
-Package: react-gantt-lib v0.1.1
+Package: react-gantt-lib v0.1.7
 Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
 
 ## Agent discovery (installed package)
@@ -58,6 +58,7 @@ GanttTarget, GanttPointerDetail, GanttHoverDetail, GanttTheme,
 CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
 HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
 GanttDependency, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
+TaskTooltipRenderer, TaskTooltipChangeHandler,
 SidebarLayoutState, SidebarWidths, TimelineRange, TimelineRangeBounds,
 ResolvedTask, BarGeometry, ColumnRenderContext, DateMarkingLayers, DateMarkingRect,
 GanttTimelineContextValue
@@ -208,7 +209,7 @@ Milestones: draggable (move only); no resize handles.
 Interaction:
 - Click row (sidebar) or bar → onTaskClick + selection; Ctrl/⌘+click toggles multi-select
 - Double-click bar → onTaskDoubleClick
-- Hover bar → onTaskHover; resize handles appear (CSS .rg-bar:hover)
+- Hover bar or sidebar row → onTaskHover (enter/leave only; see Tooltip); resize handles appear (CSS .rg-bar:hover)
 - Drag emits taskDragStart → taskDrag → taskDragEnd
 - Resize emits taskResizeStart → taskResize → taskResizeEnd
 - Progress emits progressChange
@@ -322,8 +323,57 @@ Layers render in timeline header grid (holidays/blocks) and full-height overlay 
 
 ## Tooltip
 
-showTooltip: default false
-Floating tooltip on bar hover: name, start, end (time shown when non-midnight).
+Built-in and custom task tooltips share an optimized overlay: position updates are imperative (no chart re-render on mousemove).
+
+Props:
+- showTooltip?: boolean — default false. Built-in floating tooltip: name, start, end (time when non-midnight).
+- renderTaskTooltip?: TaskTooltipRenderer — custom tooltip UI. When set, tooltips are enabled and replace the built-in content.
+
+Types:
+```ts
+type TaskTooltipChangeHandler = (patch: Partial<GanttTask>) => void;
+
+type TaskTooltipRenderer = (
+  task: GanttTask,
+  onChange: TaskTooltipChangeHandler,
+) => React.ReactNode;
+```
+
+renderTaskTooltip(task, onChange):
+- task — hovered task (live dates during drag/resize)
+- onChange(patch) — apply Partial<GanttTask> to the task (updates store + onTasksChange). Supports name, progress, start, end, color, borderColor. readOnly tasks ignored.
+
+Tooltip enabled when: showTooltip || renderTaskTooltip
+
+Built-in example:
+<GanttChart tasks={tasks} showTooltip onTasksChange={setTasks} />
+
+Custom example:
+<GanttChart
+  tasks={tasks}
+  onTasksChange={setTasks}
+  renderTaskTooltip={(task, onChange) => (
+    <MyTooltip task={task} onChange={onChange} />
+  )}
+/>
+
+Custom tooltips: style your own component. Shell uses .rg-task-tooltip-shell (position only); child gets pointer-events: auto for buttons/inputs.
+Built-in uses .rg-task-tooltip (themed via --rg-tooltip-* on .rg-gantt).
+
+Performance (tooltip overlay only — chart/timeline do NOT re-render):
+| Event | Chart | Tooltip content |
+|-------|-------|-----------------|
+| mousemove (hover) | no | no — position via DOM |
+| drag / resize move | no | only when start/end/progress/name change |
+| mouse enter / leave | no | show / hide |
+| onChange from tooltip | no | only when patched fields change |
+
+onTaskHover: fires on mouse enter and leave only (task: null on leave). NOT fired on mousemove.
+clientX/clientY included on enter. Use for external hover state — do not setState on every move from this hook.
+
+During drag/resize, tooltip content (built-in or custom) updates via internal syncTooltip — not via onTaskHover.
+
+Implementation: TaskTooltipProvider + imperative TaskTooltipController (src/components/Tooltip/). useTaskTooltipOptional() available inside chart tree (internal; not exported from package entry).
 
 ## Selection
 
@@ -376,7 +426,7 @@ Custom rows render below task rows in sidebar + timeline footer (.rg-custom-rows
 | onGanttClick | ganttClick | GanttPointerDetail — unified click on any timeline target |
 | onGanttContextMenu | ganttContextMenu | GanttPointerDetail — right-click; call preventDefault() to suppress browser menu |
 | onGanttHover | ganttHover | GanttHoverDetail — hover on blocks, holidays, etc. |
-| onTaskHover | taskHover | task \| null, rowIndex, clientX?, clientY? |
+| onTaskHover | taskHover | task \| null, rowIndex, clientX?, clientY? — enter/leave only (not mousemove) |
 | onTaskDragStart | taskDragStart | task, start, end |
 | onTaskDrag | taskDrag | task, start, end, deltaMs |
 | onTaskDragEnd | taskDragEnd | task, start, end, previousStart, previousEnd |
@@ -398,6 +448,8 @@ TaskStore: external store; per-task version counters.
 TaskBar: React.memo + custom comparator; subscribes to single task version via useTaskVersion.
 Drag/resize: updateTask() bumps one version → only that bar re-renders.
 Grid, headers, dependency layer: separate memoized components.
+Timeline context (scroll/zoom/range): ref-stabilized via metricsSignature — consumers skip re-render when values unchanged.
+Task tooltip: isolated TaskTooltipOverlay; GanttChart does not hold tooltip position state. Memoized panels (TimelineBody, TaskListPanel, etc.) skip re-render during tooltip mousemove.
 
 Advanced: import TaskStore directly for custom integrations.
 
@@ -532,6 +584,7 @@ Use onTasksChange to persist collapsed state.
   availableZoomLevels={['day', '2day', '6hour', '3hour', '1hour']}
   snapToGrid
   showTooltip
+  renderTaskTooltip={(task, onChange) => <MyTooltip task={task} onChange={onChange} />}
   showBaseline
   holidays={{ weekends: true, dates: [{ date: '2026-04-10', label: 'Holiday' }] }}
   blockDates={[{ start: '2026-04-14', end: '2026-04-16', label: 'Offsite' }]}
@@ -552,7 +605,7 @@ npm run demo → http://localhost:5173
 
 demo/App.tsx — Examples tab: grid snap, custom row, smooth drag, advanced interactions (multi-select, groups, read-only, block hover)
 demo/advancedFeaturesDemo.tsx — multi-select, group folders/summary bars, collapse toggles, read-only task, onGanttHover
-demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row
+demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row, built-in vs custom task tooltip
 
 Reference implementations:
 - demo/dailyColorStripRow.tsx — customRows + useGanttTimeline() daily color bands
@@ -564,7 +617,7 @@ Reference implementations:
 - onGanttHover for blocks may not fire when pointer is over a task bar (bars sit above block hit layer)
 - GanttChartProps.children unused
 - No built-in context menu UI (use onGanttContextMenu + your own menu component)
-- No built-in task creation/editing forms
+- No built-in task creation/editing forms (use renderTaskTooltip + onChange for inline edits)
 - No resource assignment / multi-project views
 - Middle panel start/end show date only (not time) via toLocaleDateString
 - Week starts Monday (date-fns weekStartsOn: 1)

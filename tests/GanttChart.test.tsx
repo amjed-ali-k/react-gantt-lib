@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { GanttChart } from '../src/GanttChart';
 import type { CustomRowDefinition, GanttTask } from '../src/types';
 
@@ -341,5 +341,128 @@ describe('GanttChart', () => {
 
     expect(sidebarGen).toHaveBeenCalledTimes(1);
     expect(timelineGen).toHaveBeenCalledTimes(1);
+  });
+
+  it('defers onTasksChange until drag ends', () => {
+    const onTasksChange = vi.fn();
+    const dragTasks = [
+      { id: 't1', name: 'Drag me', start: '2026-01-01', end: '2026-01-10', progress: 0 },
+    ];
+
+    const { container } = render(
+      <GanttChart
+        tasks={dragTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        onTasksChange={onTasksChange}
+        height={400}
+      />,
+    );
+
+    const bar = container.querySelector('[data-task-id="t1"] .rg-bar-bg');
+    expect(bar).toBeTruthy();
+    fireEvent.pointerDown(bar!, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(document, { clientX: 160, pointerId: 1 });
+    expect(onTasksChange).not.toHaveBeenCalled();
+  });
+
+  it('fires onTaskHover on enter and leave only, not mousemove', () => {
+    const onTaskHover = vi.fn();
+    const { container } = render(
+      <GanttChart tasks={sampleTasks} height={400} onTaskHover={onTaskHover} />,
+    );
+
+    const bar = container.querySelector('[data-task-id="t1"]');
+    expect(bar).toBeTruthy();
+
+    fireEvent.mouseEnter(bar!, { clientX: 100, clientY: 50 });
+    expect(onTaskHover).toHaveBeenCalledTimes(1);
+    expect(onTaskHover).toHaveBeenLastCalledWith(
+      expect.objectContaining({ task: expect.objectContaining({ id: 't1' }) }),
+    );
+
+    onTaskHover.mockClear();
+    for (let i = 0; i < 10; i++) {
+      fireEvent.mouseMove(bar!, { clientX: 100 + i, clientY: 50 + i });
+    }
+    expect(onTaskHover).not.toHaveBeenCalled();
+
+    fireEvent.mouseLeave(bar!);
+    expect(onTaskHover).toHaveBeenCalledTimes(1);
+    expect(onTaskHover).toHaveBeenLastCalledWith({ task: null, rowIndex: null });
+  });
+
+  it('shows built-in tooltip on hover when showTooltip is enabled', () => {
+    const { container } = render(
+      <GanttChart tasks={sampleTasks} height={400} showTooltip />,
+    );
+
+    const bar = container.querySelector('[data-task-id="t1"]');
+    fireEvent.mouseEnter(bar!, { clientX: 100, clientY: 50 });
+
+    const tooltip = container.querySelector('.rg-task-tooltip');
+    expect(tooltip).toBeTruthy();
+    expect(tooltip?.closest('[data-testid="gantt-chart"]')).toBeTruthy();
+    expect(tooltip?.textContent).toContain('Design');
+
+    fireEvent.mouseMove(bar!, { clientX: 120, clientY: 60 });
+    expect((tooltip as HTMLElement).style.left).toBe('132px');
+    expect((tooltip as HTMLElement).style.top).toBe('72px');
+
+    fireEvent.mouseLeave(bar!);
+    expect((tooltip as HTMLElement).style.display).toBe('none');
+  });
+
+  it('renders custom task tooltip via renderTaskTooltip', () => {
+    const renderTaskTooltip = vi.fn((task: GanttTask) => (
+      <div data-testid="custom-tooltip">{task.name} custom</div>
+    ));
+    const { container } = render(
+      <GanttChart
+        tasks={sampleTasks}
+        height={400}
+        renderTaskTooltip={renderTaskTooltip}
+      />,
+    );
+
+    const bar = container.querySelector('[data-task-id="t1"]');
+    fireEvent.mouseEnter(bar!, { clientX: 100, clientY: 50 });
+
+    expect(renderTaskTooltip).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('custom-tooltip').textContent).toBe('Design custom');
+    expect(container.querySelector('.rg-task-tooltip-shell')).toBeTruthy();
+  });
+
+  it('passes stable onChange to renderTaskTooltip that updates the task', () => {
+    let capturedOnChange: ((patch: Partial<GanttTask>) => void) | null = null;
+    const onTasksChange = vi.fn();
+    const renderTaskTooltip = vi.fn((task: GanttTask, onChange) => {
+      capturedOnChange = onChange;
+      return <div data-testid="custom-tooltip">{task.name}</div>;
+    });
+
+    const { container } = render(
+      <GanttChart
+        tasks={sampleTasks}
+        height={400}
+        renderTaskTooltip={renderTaskTooltip}
+        onTasksChange={onTasksChange}
+      />,
+    );
+
+    const bar = container.querySelector('[data-task-id="t1"]');
+    fireEvent.mouseEnter(bar!, { clientX: 100, clientY: 50 });
+    expect(capturedOnChange).toBeTruthy();
+
+    act(() => {
+      capturedOnChange!({ name: 'Renamed' });
+    });
+
+    expect(onTasksChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 't1', name: 'Renamed' }),
+      ]),
+    );
+    expect(screen.getByTestId('custom-tooltip').textContent).toBe('Renamed');
   });
 });
