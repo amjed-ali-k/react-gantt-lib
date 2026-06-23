@@ -1,6 +1,6 @@
 # react-gantt-lib — AI agent reference
 
-Package: react-gantt-lib v0.1.7
+Package: react-gantt-lib v0.1.8
 Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
 
 ## Agent discovery (installed package)
@@ -399,20 +399,28 @@ Cell keys:
 - Match columns[].key and middleColumns[].key for sidebar cells
 - '__timeline__' — full-width band inside .rg-timeline-inner (scrolls/zooms with chart)
 
-CustomRowCellContext:
-{ rowId, columnKey, columnIndex, rowIndex, zoomLevel, rangeStart, rangeEnd, scale, columnWidth, timelineWidth, msPerPixel, rowHeight, meta? }
+CustomRowCellContext (snapshot when the cell generator runs):
+{ rowId, columnKey, columnIndex, rowIndex, zoomLevel, rangeStart, rangeEnd, scale, columnWidth, timelineWidth, msPerPixel, rowHeight, scrollLeft, viewportWidth, visibleColumnStart, visibleColumnEnd, viewportColumnStart, viewportColumnEnd, columnScrollBufferPercent, meta? }
 
-Async cells: Promise supported; shows loading ellipsis; onCustomRowCellReady / onCustomRowCellError
+Async cells:
+- Promise supported; fires onCustomRowCellReady / onCustomRowCellError
+- First load: shows loading ellipsis (`.rg-custom-cell--loading`)
+- Reload (zoom, range, row height, etc.): keeps previous content visible until the new result arrives (no flash)
+- Generator re-runs when structural metrics change (zoom, columnWidth, timelineWidth, msPerPixel, range, rowHeight, row meta/height) — NOT on horizontal scroll or virtual column window shifts
 
-Timeline band pattern — use hook inside component:
+Timeline band pattern — return a component that uses the hook for scroll/window:
 function MyStrip() {
-  const { range, msPerPixel, columnWidth, scale, timelineWidth, zoomLevel, rowHeight } = useGanttTimeline();
+  const { range, msPerPixel, columnWidth, scale, timelineWidth, zoomLevel, rowHeight, visibleColumns } = useGanttTimeline();
   const width = range.pixelWidth ?? range.columnCount * columnWidth;
+  // visibleColumns.startX/endX, scrollLeft, etc. update on scroll — do not rely on ctx for that
   return <div style={{ width }}>...</div>;
 }
 cells: { name: () => 'Label', start: () => '—', end: () => '—', __timeline__: () => <MyStrip /> }
 
-useGanttTimeline() — must be descendant of GanttChart (GanttTimelineProvider)
+useGanttTimeline() — must be descendant of GanttChart (GanttTimelineProvider).
+Returns: zoomLevel, scale, columnWidth, timelineWidth, range, rowHeight, msPerPixel, scrollLeft, viewportWidth, visibleColumns (buffered window), viewportColumns (tight viewport), columnScrollBufferPercent.
+For __timeline__ cells: use this hook (not CustomRowCellContext) for scroll position and visible column window.
+
 useGanttTimelineOptional() — returns null outside chart
 
 Custom rows render below task rows in sidebar + timeline footer (.rg-custom-rows-timeline).
@@ -612,7 +620,7 @@ Reference implementations:
 
 ## Limitations (do not assume)
 
-- Dependency types other than FS not rendered
+- __timeline__ custom cells do not re-run their generator on scroll; use useGanttTimeline() for live scroll/window data (ctx.visibleColumnStart etc. are snapshots)
 - lag on GanttDependency ignored
 - onGanttHover for blocks may not fire when pointer is over a task bar (bars sit above block hit layer)
 - GanttChartProps.children unused
