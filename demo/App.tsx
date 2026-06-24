@@ -13,12 +13,19 @@ import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
 import { TimezoneDemo } from './timezoneDemo';
 import { PlaygroundApp } from './playground';
+import {
+  STICKY_DEMO_CUSTOM_ROWS,
+  STICKY_DEMO_MAX_DATE,
+  STICKY_DEMO_MIN_DATE,
+  STICKY_DEMO_TASKS,
+} from './stickyRowsDemo';
 import { DemoThemeProvider } from './chartTheme';
 import { ThemeToggle } from './ThemeToggle';
 import './demo.css';
 import './playground.css';
 import './dailyColorStripRow.css';
 import './largeTimelineDemo.css';
+import './stickyRowsDemo.css';
 
 const SNAPPED_TASKS: GanttTask[] = [
   { id: 'phase-1', name: 'Discovery', start: '2026-01-06', end: '2026-01-17', progress: 100 },
@@ -198,9 +205,11 @@ function ExamplesDemo() {
   const [snappedTasks, setSnappedTasks] = useState(SNAPPED_TASKS);
   const [smoothTasks, setSmoothTasks] = useState(SMOOTH_TASKS);
   const [largeTasks, setLargeTasks] = useState(LARGE_TIMELINE_TASKS);
+  const [stickyTasks, setStickyTasks] = useState(STICKY_DEMO_TASKS);
   const [snappedZoom, setSnappedZoom] = useState<string>('week');
   const [smoothZoom, setSmoothZoom] = useState<string>('day');
   const [largeZoom, setLargeZoom] = useState<string>('week');
+  const [stickyZoom, setStickyZoom] = useState<string>('month');
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const log = useCallback((event: string, detail: string) => {
@@ -221,6 +230,24 @@ function ExamplesDemo() {
           edge handles — drag the left/right grips to resize.
         </p>
       </header>
+
+      <ChartSection
+        title="Sticky rows — pinned top bar + bottom custom rows"
+        subtitle="The indigo baseline bar stays pinned below the header while you scroll 32 work packages. Two custom footer rows stick to the bottom of the viewport."
+        badge="sticky rows"
+        badgeClassName="demo-badge--sticky"
+        tasks={stickyTasks}
+        onTasksChange={setStickyTasks}
+        zoomLevel={stickyZoom}
+        onZoomChange={setStickyZoom}
+        minDate={STICKY_DEMO_MIN_DATE}
+        maxDate={STICKY_DEMO_MAX_DATE}
+        snapToGrid
+        onLog={log}
+        height={520}
+        customRows={STICKY_DEMO_CUSTOM_ROWS}
+        theme={chartTheme}
+      />
 
       <ChartSection
         title="Grid snap (default)"
@@ -298,6 +325,7 @@ function ExamplesDemo() {
         <div className="demo-tips">
           <h3>Try it</h3>
           <ul>
+            <li>Sticky rows: baseline bar pinned top; two custom rows pinned bottom while scrolling</li>
             <li>Hover a bar — blue edge handles appear for resize</li>
             <li>Drag the bar body to move; drag edges to change start/end</li>
             <li>Bottom chart: no grid snap — bars follow the cursor smoothly</li>

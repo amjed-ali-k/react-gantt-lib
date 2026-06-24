@@ -29,6 +29,7 @@
   --rg-collapse-color: #64748b;
   --rg-collapse-hover-bg: #f1f5f9;
   --rg-collapse-hover-color: #334155;
+  --rg-sticky-row-bg: #ffffff;
   --rg-holiday-fill: #f2f2f2;
   --rg-block-fill: rgba(251, 207, 232, 0.55);
   --rg-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -377,6 +378,11 @@
   flex-shrink: 0;
 }
 
+.rg-timeline-rows {
+  position: relative;
+  width: 100%;
+}
+
 .rg-timeline-body {
   position: relative;
   overflow: hidden;
@@ -516,6 +522,25 @@
   background: var(--rg-surface-muted);
 }
 
+.rg-row--sticky {
+  box-shadow: 0 1px 0 var(--rg-border);
+}
+
+.rg-sticky-task-timeline-row {
+  background: var(--rg-sticky-row-bg, var(--rg-surface));
+  border-bottom: 1px solid var(--rg-border);
+}
+
+.rg-row--sticky.rg-custom-row-timeline-band {
+  background: var(--rg-sticky-row-bg, var(--rg-surface-muted));
+  box-shadow: 0 1px 0 var(--rg-border);
+}
+
+.rg-sticky-task-timeline-bars {
+  display: block;
+  overflow: visible;
+}
+
 .rg-custom-row-timeline-band .rg-custom-cell {
   display: flex;
   align-items: stretch;
@@ -603,6 +628,7 @@
   --rg-collapse-color: #94a3b8;
   --rg-collapse-hover-bg: rgba(255, 255, 255, 0.08);
   --rg-collapse-hover-color: #e2e8f0;
+  --rg-sticky-row-bg: #0c1222;
   --rg-holiday-fill: rgba(255, 255, 255, 0.06);
   --rg-block-fill: rgba(244, 114, 182, 0.22);
 }
@@ -642,6 +668,7 @@
     --rg-collapse-color: #94a3b8;
     --rg-collapse-hover-bg: rgba(255, 255, 255, 0.08);
     --rg-collapse-hover-color: #e2e8f0;
+    --rg-sticky-row-bg: #0c1222;
     --rg-holiday-fill: rgba(255, 255, 255, 0.06);
     --rg-block-fill: rgba(244, 114, 182, 0.22);
   }

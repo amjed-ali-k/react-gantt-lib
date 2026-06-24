@@ -353,6 +353,11 @@ body {
   color: var(--demo-badge-timezone-text);
 }
 
+.demo-badge--sticky {
+  background: rgba(99, 102, 241, 0.15);
+  color: #4f46e5;
+}
+
 .demo-timezone-controls {
   display: flex;
   flex-wrap: wrap;

@@ -51,6 +51,8 @@ export interface GanttTask {
   /** Bar height in px (within the row). */
   width?: number;
   collapsed?: boolean;
+  /** Pin this row to the top or bottom of the scroll viewport so it stays visible. */
+  sticky?: 'top' | 'bottom';
   meta?: Record<string, unknown>;
 }
 
@@ -128,6 +130,8 @@ export interface CustomRowDefinition<TMeta = unknown> {
   meta?: TMeta;
   /** Row height in px. Falls back to the chart `rowHeight` when omitted. */
   height?: number;
+  /** Pin this custom row to the top or bottom of the scroll viewport. */
+  sticky?: 'top' | 'bottom';
   /** Per-column async data/renderer. Key = column key from columns config */
   cells: Record<string, CustomRowCellGenerator<TMeta>>;
 }

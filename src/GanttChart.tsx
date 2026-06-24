@@ -22,7 +22,17 @@ import {
 import { resolveScale, resolveScales } from './core/scale';
 import { computeDateMarkingRects } from './core/dateMarkings';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
-import { computeRowLayouts, totalRowLayoutHeight } from './core/rowLayout';
+import { computeRowLayouts } from './core/rowLayout';
+import {
+  partitionTasksBySticky,
+  partitionCustomRowsBySticky,
+  computeStickyTopOffsets,
+  computeStickyBottomOffsets,
+  taskSectionHeights,
+  customRowHeights,
+  totalStickyTimelineBodyHeight,
+  rowLayoutsForTasks,
+} from './core/stickyRows';
 import { maintainBufferedColumnRange, getViewportColumnRange, DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT } from './core/visibleColumns';
 import { stableTimelineRange, timelineMetricsSignature } from './core/stableValue';
 import { toDate } from './core/dates';
@@ -31,6 +41,7 @@ import { TimelineHeader } from './components/Timeline/TimelineHeader';
 import { TimelineBody } from './components/Timeline/TimelineBody';
 import { ZoomToolbar } from './components/Toolbar/ZoomToolbar';
 import { CustomRowsTimeline } from './components/CustomRows/CustomRowsTimeline';
+import { StickyTaskTimelineRows } from './components/Timeline/StickyTaskTimelineRows';
 import { GanttTimelineProvider } from './context/GanttChartContext';
 import { GanttDisplayProvider } from './context/GanttDisplayContext';
 import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
@@ -205,10 +216,63 @@ export function GanttChart({
   const resolvedTasks = useMemo(() => resolveTasks(tasks), [tasks]);
   const columnWidth = getColumnWidth(scale, columnWidthProp);
 
+  const stickyTaskPartitions = useMemo(
+    () => partitionTasksBySticky(resolvedTasks),
+    [resolvedTasks],
+  );
+  const stickyCustomRowPartitions = useMemo(
+    () => partitionCustomRowsBySticky(customRows),
+    [customRows],
+  );
+
   const rowLayouts = useMemo(
     () => computeRowLayouts(resolvedTasks, rowHeight, showBaseline),
     [resolvedTasks, rowHeight, showBaseline],
   );
+
+  const stickyRowLayouts = useMemo(
+    () => ({
+      top: rowLayoutsForTasks(stickyTaskPartitions.top, rowHeight, showBaseline),
+      scroll: rowLayoutsForTasks(stickyTaskPartitions.scroll, rowHeight, showBaseline),
+      bottom: rowLayoutsForTasks(stickyTaskPartitions.bottom, rowHeight, showBaseline),
+    }),
+    [stickyTaskPartitions, rowHeight, showBaseline],
+  );
+
+  const stickyOffsets = useMemo(() => {
+    const topTaskHeights = taskSectionHeights(
+      stickyTaskPartitions.top,
+      rowHeight,
+      showBaseline,
+    );
+    const topCustomHeights = customRowHeights(stickyCustomRowPartitions.top, rowHeight);
+    const topTaskOffsets = computeStickyTopOffsets(topTaskHeights, TIMELINE_HEADER_HEIGHT);
+    const topCustomOffsets = computeStickyTopOffsets(
+      topCustomHeights,
+      TIMELINE_HEADER_HEIGHT + topTaskHeights.reduce((sum, h) => sum + h, 0),
+    );
+
+    const bottomCustomHeights = customRowHeights(stickyCustomRowPartitions.bottom, rowHeight);
+    const bottomTaskHeights = taskSectionHeights(
+      stickyTaskPartitions.bottom,
+      rowHeight,
+      showBaseline,
+    );
+    const bottomSectionHeights = [...bottomCustomHeights, ...bottomTaskHeights];
+    const bottomSectionOffsets = computeStickyBottomOffsets(bottomSectionHeights);
+
+    return {
+      topTasks: topTaskOffsets,
+      topCustomRows: topCustomOffsets,
+      bottomCustomRows: bottomSectionOffsets.slice(0, bottomCustomHeights.length),
+      bottomTasks: bottomSectionOffsets.slice(bottomCustomHeights.length),
+    };
+  }, [
+    stickyTaskPartitions,
+    stickyCustomRowPartitions,
+    rowHeight,
+    showBaseline,
+  ]);
 
   const timelineBounds = useMemo(() => {
     if (minDate == null || maxDate == null) return undefined;
@@ -235,7 +299,16 @@ export function GanttChart({
 
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
   const msPerPixel = getMsPerPixel(scale, columnWidth);
-  const timelineBodyHeight = totalRowLayoutHeight(rowLayouts);
+  const timelineBodyHeight = totalStickyTimelineBodyHeight(
+    stickyTaskPartitions.top,
+    stickyTaskPartitions.scroll,
+    stickyTaskPartitions.bottom,
+    stickyCustomRowPartitions.top,
+    stickyCustomRowPartitions.inline,
+    stickyCustomRowPartitions.bottom,
+    rowHeight,
+    showBaseline,
+  );
   const timelineContentHeight = TIMELINE_HEADER_HEIGHT + timelineBodyHeight;
 
   const visibleColumns = useMemo(() => {
@@ -591,16 +664,20 @@ export function GanttChart({
             >
               <TaskListPanel
                 tasks={resolvedTasks}
+                stickyTasks={stickyTaskPartitions}
                 sourceTasks={tasks}
                 columns={columns}
                 rowHeight={rowHeight}
                 rowLayouts={rowLayouts}
+                stickyRowLayouts={stickyRowLayouts}
                 width={leftWidth}
                 selectedTaskIds={effectiveSelectedIds}
                 onToggleCollapse={handleToggleCollapse}
                 emit={emit}
                 customRows={customRows}
+                stickyCustomRows={stickyCustomRowPartitions}
                 customRowMetrics={stableCustomRowMetrics}
+                stickyOffsets={stickyOffsets}
               />
             </div>
           )}
@@ -625,14 +702,18 @@ export function GanttChart({
             >
               <MiddlePanel
                 tasks={resolvedTasks}
+                stickyTasks={stickyTaskPartitions}
                 columns={middleColumns}
                 rowHeight={rowHeight}
                 rowLayouts={rowLayouts}
+                stickyRowLayouts={stickyRowLayouts}
                 width={middleWidth}
                 customRows={customRows}
+                stickyCustomRows={stickyCustomRowPartitions}
                 customRowMetrics={stableCustomRowMetrics}
                 columnOffset={columns.length}
                 emit={emit}
+                stickyOffsets={stickyOffsets}
               />
             </div>
           )}
@@ -682,13 +763,44 @@ export function GanttChart({
                   interactive={interactionsEnabled}
                   emit={emit}
                 />
+                <div className="rg-timeline-rows">
+                <StickyTaskTimelineRows
+                  tasks={stickyTaskPartitions.top}
+                  rowLayouts={stickyRowLayouts.top}
+                  allTasks={resolvedTasks}
+                  position="top"
+                  stickyOffsets={stickyOffsets.topTasks}
+                  range={range}
+                  scale={scale}
+                  columnWidth={columnWidth}
+                  store={store}
+                  enableDrag={enableDrag}
+                  enableResize={enableResize}
+                  enableProgressDrag={enableProgressDrag}
+                  snapToGrid={snapToGrid}
+                  timelineBounds={timelineBounds}
+                  showBaseline={showBaseline}
+                  selectedTaskIds={effectiveSelectedIds}
+                  emit={emit}
+                  onTaskUpdate={handleTaskUpdate}
+                />
+                <CustomRowsTimeline
+                  rows={stickyCustomRowPartitions.top}
+                  rowHeight={rowHeight}
+                  timelineWidth={timelineWidth}
+                  metrics={stableCustomRowMetrics}
+                  columnCount={columns.length + middleColumns.length}
+                  emit={emit}
+                  stickyPosition="top"
+                  stickyOffsets={stickyOffsets.topCustomRows}
+                />
                 <TimelineBody
-                  tasks={resolvedTasks}
+                  tasks={stickyTaskPartitions.scroll}
                   range={range}
                   scale={scale}
                   columnWidth={columnWidth}
                   visibleColumns={visibleColumns}
-                  rowLayouts={rowLayouts}
+                  rowLayouts={stickyRowLayouts.scroll}
                   store={store}
                   enableDrag={enableDrag}
                   enableResize={enableResize}
@@ -704,13 +816,44 @@ export function GanttChart({
                   onTaskUpdate={handleTaskUpdate}
                 />
                 <CustomRowsTimeline
-                  rows={customRows}
+                  rows={stickyCustomRowPartitions.inline}
                   rowHeight={rowHeight}
                   timelineWidth={timelineWidth}
                   metrics={stableCustomRowMetrics}
                   columnCount={columns.length + middleColumns.length}
                   emit={emit}
                 />
+                <CustomRowsTimeline
+                  rows={stickyCustomRowPartitions.bottom}
+                  rowHeight={rowHeight}
+                  timelineWidth={timelineWidth}
+                  metrics={stableCustomRowMetrics}
+                  columnCount={columns.length + middleColumns.length}
+                  emit={emit}
+                  stickyPosition="bottom"
+                  stickyOffsets={stickyOffsets.bottomCustomRows}
+                />
+                <StickyTaskTimelineRows
+                  tasks={stickyTaskPartitions.bottom}
+                  rowLayouts={stickyRowLayouts.bottom}
+                  allTasks={resolvedTasks}
+                  position="bottom"
+                  stickyOffsets={stickyOffsets.bottomTasks}
+                  range={range}
+                  scale={scale}
+                  columnWidth={columnWidth}
+                  store={store}
+                  enableDrag={enableDrag}
+                  enableResize={enableResize}
+                  enableProgressDrag={enableProgressDrag}
+                  snapToGrid={snapToGrid}
+                  timelineBounds={timelineBounds}
+                  showBaseline={showBaseline}
+                  selectedTaskIds={effectiveSelectedIds}
+                  emit={emit}
+                  onTaskUpdate={handleTaskUpdate}
+                />
+                </div>
               </div>
             </div>
           </div>

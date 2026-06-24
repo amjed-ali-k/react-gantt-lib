@@ -1,7 +1,7 @@
 # react-gantt-lib — AI agent reference
 
-Package: react-gantt-lib v0.1.9
-Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom footer rows. date-fns for all date math.
+Package: react-gantt-lib v0.1.10
+Purpose: High-performance React Gantt chart. Granular per-task bar updates (not full-chart re-render). Three draggable sidebar panels. Async custom rows (inline footer or sticky top/bottom). Sticky task bars and custom rows stay visible while scrolling large schedules. date-fns for all date math.
 
 ## Agent discovery (installed package)
 
@@ -110,6 +110,7 @@ Optional:
 - color: string — bar fill / milestone color
 - borderColor: string — bar outline
 - width: number — bar height in px within row (not bar length)
+- sticky: 'top' | 'bottom' — pin row to top (below header) or bottom of scroll viewport; stays visible while scrolling
 - meta: Record<string, unknown>
 
 Task order in array = row order. Hidden descendants filtered by resolveTasks when any ancestor has collapsed: true.
@@ -419,12 +420,52 @@ CustomRowDefinition:
   id: string,
   meta?: TMeta,
   height?: number,  // px; defaults to chart rowHeight
+  sticky?: 'top' | 'bottom',  // pin row below header or above viewport bottom; omit = inline (scrolls with tasks, rendered after task rows)
   cells: Record<columnKey, (ctx) => ReactNode | Promise<ReactNode>>
 }
 
+Row placement (display order inside scroll area):
+1. sticky top tasks (GanttTask.sticky: 'top')
+2. sticky top custom rows (CustomRowDefinition.sticky: 'top')
+3. scrollable tasks (no sticky)
+4. inline custom rows (no sticky — default footer behavior)
+5. sticky bottom custom rows (CustomRowDefinition.sticky: 'bottom')
+6. sticky bottom tasks (GanttTask.sticky: 'bottom')
+
+Sticky rows use CSS position: sticky. Top rows stack below the 52px column header (top offset 52px + prior sticky row heights). Bottom rows stack from the viewport bottom. Sidebar, middle panel, and timeline stay height-synced via `.rg-sync-scroll`.
+
+Timeline DOM (sticky requires a tall row container — same pattern as sidebar):
+.rg-timeline-scroll (scroll container)
+  .rg-timeline-inner
+    .rg-timeline-header (sticky top: 0)
+    .rg-timeline-rows (full content height — all row sections)
+      StickyTaskTimelineRows (top) — .rg-sticky-task-timeline-row per task, no short wrapper
+      CustomRowsTimeline sticky top — .rg-custom-row-timeline-band per row, no .rg-custom-rows-timeline wrapper
+      .rg-timeline-body (scrollable tasks only)
+      CustomRowsTimeline inline — .rg-custom-rows-timeline wrapper (footer border)
+      CustomRowsTimeline sticky bottom — bands only
+      StickyTaskTimelineRows (bottom)
+
+Sidebar equivalent: .rg-task-list-body holds all row sections (sticky top → scroll → sticky bottom) in one tall block.
+
+Implementation note: sticky timeline rows must NOT be wrapped in a short-height parent (e.g. a div sized only to the pinned rows). CSS sticky is clipped to ancestor bounds; a ~36px wrapper prevents gantt bars from pinning while sidebar labels still stick inside .rg-task-list-body.
+
+Sticky task bars render via StickyTaskTimelineRows (per-row SVG + TaskBar) outside TimelineBody. Sticky top/bottom tasks are excluded from TimelineBody (scroll section) but remain in the full tasks array for resolveTasks, dependencies, and callbacks.
+
+Example — baseline bar pinned top + footer bands pinned bottom:
+const tasks = [
+  { id: 'baseline', name: 'Project baseline', start: '2026-01-01', end: '2026-12-31', sticky: 'top', color: '#6366f1', readOnly: true },
+  /* ...many scrollable tasks... */
+];
+const customRows = [
+  { id: 'legend', sticky: 'bottom', height: 32, cells: { name: () => 'Legend', __timeline__: () => <FooterLegend /> } },
+  { id: 'totals', sticky: 'bottom', height: 28, cells: { name: () => 'Totals', __timeline__: () => <FooterTotals /> } },
+];
+<GanttChart tasks={tasks} customRows={customRows} height={520} />
+
 Cell keys:
 - Match columns[].key and middleColumns[].key for sidebar cells
-- '__timeline__' — full-width band inside .rg-timeline-inner (scrolls/zooms with chart)
+- '__timeline__' — full-width band inside .rg-timeline-rows (scrolls/zooms with chart; sticky bands pin within .rg-timeline-scroll)
 
 CustomRowCellContext (snapshot when the cell generator runs):
 { rowId, columnKey, columnIndex, rowIndex, zoomLevel, rangeStart, rangeEnd, scale, columnWidth, timelineWidth, msPerPixel, rowHeight, scrollLeft, viewportWidth, visibleColumnStart, visibleColumnEnd, viewportColumnStart, viewportColumnEnd, columnScrollBufferPercent, meta? }
@@ -450,7 +491,31 @@ For __timeline__ cells: use this hook (not CustomRowCellContext) for scroll posi
 
 useGanttTimelineOptional() — returns null outside chart
 
-Custom rows render below task rows in sidebar + timeline footer (.rg-custom-rows-timeline).
+Inline custom rows (no sticky) render below scrollable task rows in sidebar + timeline. Sticky custom rows render in top/bottom zones (see Row placement above).
+
+## Sticky rows (tasks + custom)
+
+GanttTask.sticky and CustomRowDefinition.sticky: 'top' | 'bottom'
+
+| sticky | Behavior |
+|--------|----------|
+| 'top' | Row pinned below the 52px header; remains visible when scrolling down through large task lists |
+| 'bottom' | Row pinned to the viewport bottom; remains visible when scrolling up |
+| (omit) | Scrolls with main content |
+
+Works for both task rows (sidebar + gantt bar) and custom rows (sidebar cells + __timeline__ band).
+
+Multiple sticky rows on the same edge stack with computed offsets (top: 52px + heights above; bottom: heights below).
+
+readOnly sticky top tasks are a common pattern for project baselines / summary bars spanning the full range.
+
+DOM: data-sticky="top" | "bottom" on .rg-task-row, .rg-custom-row-timeline-band, .rg-sticky-task-timeline-row
+CSS: .rg-timeline-rows, .rg-row--sticky, .rg-sticky-task-timeline-row (timeline task bars); .rg-custom-row-timeline-band.rg-row--sticky (timeline custom bands)
+Token: --rg-sticky-row-bg (opaque background so scrolled content does not show through)
+
+data-testid: sticky-task-timeline-top, sticky-task-timeline-bottom (first band in each sticky section), custom-rows-sticky-top, custom-rows-sticky-bottom, custom-rows (inline footer only)
+
+Demo: demo/stickyRowsDemo.tsx — 32 scrollable work packages, indigo baseline bar (sticky top), two sticky bottom custom footer rows.
 
 ## Event hooks (complete)
 
@@ -536,8 +601,8 @@ CSS variables (--rg-*): semantic tokens for bg, text, borders, bars, tooltips, s
 Theme overrides all --rg-* tokens on `.rg-theme-dark` and `.rg-theme-auto` (in dark media query).
 
 Key classes:
-.rg-gantt, .rg-gantt-body, .rg-panels, .rg-timeline-panel, .rg-timeline-scroll, .rg-timeline-inner
-.rg-task-list, .rg-task-row, .rg-task-row--selected, .rg-task-cell, .rg-task-collapse
+.rg-gantt, .rg-gantt-body, .rg-panels, .rg-timeline-panel, .rg-timeline-scroll, .rg-timeline-inner, .rg-timeline-rows
+.rg-task-list, .rg-task-list-body, .rg-task-row, .rg-task-row--selected, .rg-task-cell, .rg-task-collapse
 .rg-timeline-header, .rg-timeline-body, .rg-timeline-grid
 .rg-bar, .rg-bar--selected, .rg-bar--group, .rg-bar--readonly, .rg-bar-handle, .rg-bar-progress-handle, .rg-bar-milestone
 .rg-baseline-layer, .rg-baseline-bar, .rg-baseline-milestone, .rg-baseline-hit
@@ -547,13 +612,14 @@ Key classes:
 .rg-timeline-header--interactive
 .rg-dependency-layer, .rg-dependency-arrow
 .rg-toolbar, .rg-divider
-.rg-custom-rows-timeline, .rg-custom-cell
+.rg-custom-rows-timeline, .rg-custom-row-timeline-band, .rg-custom-cell
+.rg-row--sticky, .rg-sticky-task-timeline-row, .rg-sticky-task-timeline-bars
 .rg-task-tooltip, .rg-task-tooltip-shell
 
-data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows
+data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows, sticky-task-timeline-top, sticky-task-timeline-bottom, custom-rows-sticky-top, custom-rows-sticky-bottom
 
 Bars: data-task-id, data-selected (timeline SVG)
-Sidebar rows: data-task-id on .rg-task-row (left + middle panels)
+Sidebar rows: data-task-id on .rg-task-row (left + middle panels); data-sticky on pinned rows
 Collapse button: aria-label "Collapse group" / "Expand group"
 
 ## Controlled state patterns
@@ -642,13 +708,15 @@ Use onTasksChange to persist collapsed state.
 
 npm run demo → http://localhost:5173
 
-demo/App.tsx — Examples tab: grid snap, custom row, smooth drag, display timezone, advanced interactions (multi-select, groups, read-only, block hover)
+demo/App.tsx — Examples tab: sticky rows, grid snap, large timeline, custom row, smooth drag, display timezone, advanced interactions (multi-select, groups, read-only, block hover)
+demo/stickyRowsDemo.tsx — sticky top baseline gantt bar + two sticky bottom custom footer rows over 32 scrollable tasks
 demo/timezoneDemo.tsx — timezone selector, live browser vs chart clocks, UTC tasks with hour zoom, showTooltip
 demo/advancedFeaturesDemo.tsx — multi-select, group folders/summary bars, collapse toggles, read-only task, onGanttHover
 demo/playground.tsx — interactive controls: timeline range, display, holidays, blocks, events, baseline, snap, zoom presets, custom row, built-in vs custom task tooltip
 
 Reference implementations:
 - demo/dailyColorStripRow.tsx — customRows + useGanttTimeline() daily color bands
+- demo/stickyRowsDemo.tsx — sticky: 'top' on GanttTask + sticky: 'bottom' on customRows
 
 ## Limitations (do not assume)
 
@@ -660,6 +728,9 @@ Reference implementations:
 - No built-in task creation/editing forms (use renderTaskTooltip + onChange for inline edits)
 - No resource assignment / multi-project views
 - Middle panel start/end show date only (not time); formatted in `timezone` when set, else browser locale
+- Sticky tasks are excluded from scrollable TimelineBody hit layer; timeline empty-area clicks (rowIndex) refer to scroll-section rows only
+- When extending sticky timeline rendering: keep pinned rows as direct children of .rg-timeline-rows; do not wrap in a container sized only to pinned row height
+- Dependency arrows use full task list row indices; pinned rows may affect visual arrow paths when sticky tasks are not adjacent to dependents in scroll order
 - Week starts Monday (date-fns weekStartsOn: 1)
 
 ## Build / test
