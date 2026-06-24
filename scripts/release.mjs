@@ -60,16 +60,14 @@ run(`npm version ${bump}`);
 const newVersion = readVersion();
 const newTag = `v${newVersion}`;
 
+
 run(
   `node scripts/release-notes.mjs --from ${oldTag} --to HEAD --version ${newTag} --out RELEASE_NOTES.md`,
   { inherit: !dryRun },
 );
 
-if (!skipPublish) {
-  run('npm publish');
-} else {
-  console.log('\n> skip npm publish (--skip-publish)');
-}
+run(`git add RELEASE_NOTES.md`);
+run(`git commit -m "Release ${newTag}"`);
 
 if (!skipGh) {
   run(
@@ -78,6 +76,13 @@ if (!skipGh) {
 } else {
   console.log('\n> skip gh release (--skip-gh)');
 }
+
+if (!skipPublish) {
+  run('npm publish');
+} else {
+  console.log('\n> skip npm publish (--skip-publish)');
+}
+
 
 if (!skipPush) {
   run(`git push origin ${branch} --tags`);
