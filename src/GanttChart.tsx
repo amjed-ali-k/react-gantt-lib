@@ -6,7 +6,13 @@ import {
   useEffect,
   useLayoutEffect,
 } from 'react';
-import type { GanttChartProps, GanttColumn, GanttEventMap, GanttTask } from './types';
+import type {
+  CustomRowDefinition,
+  GanttChartProps,
+  GanttColumn,
+  GanttEventMap,
+  GanttTask,
+} from './types';
 import { useGanttEmitter } from './hooks/useGanttEmitter';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useTaskStore } from './hooks/useTaskStore';
@@ -58,6 +64,10 @@ const DEFAULT_MIDDLE_COLUMNS: GanttColumn[] = [
   { key: 'end', title: 'End', flex: 1, minWidth: 90 },
 ];
 
+// Stable empty reference so an omitted `customRows` prop does not allocate a new
+// array on every render (which would defeat memoisation of the sidebar panels).
+const EMPTY_CUSTOM_ROWS: CustomRowDefinition[] = [];
+
 export function GanttChart({
   tasks: externalTasks,
   columns = DEFAULT_COLUMNS,
@@ -89,7 +99,7 @@ export function GanttChart({
   snapToGrid = true,
   minDate,
   maxDate,
-  customRows = [],
+  customRows = EMPTY_CUSTOM_ROWS,
   columnScrollBufferPercent = DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT,
   onTasksChange,
   onSidebarLayoutChange,
@@ -434,6 +444,29 @@ export function GanttChart({
   const stableTimelineContext = timelineContextRef.current;
   const stableCustomRowMetrics = customRowMetricsRef.current;
 
+  // The left/middle sidebars are horizontally fixed: their content (task names,
+  // start/end dates, custom sidebar cells) never depends on horizontal scroll or
+  // the visible-column window. Give them a metrics object whose identity only
+  // changes when a non-scroll field changes, so scrolling the timeline does not
+  // re-render the sidebar panels.
+  const sidebarMetricsSignature = [
+    scaleId,
+    columnWidth,
+    timelineWidth,
+    msPerPixel,
+    range.start.getTime(),
+    range.end.getTime(),
+    rowHeight,
+    columnScrollBufferPercent,
+  ].join('|');
+  const sidebarMetricsSignatureRef = useRef(sidebarMetricsSignature);
+  const sidebarMetricsRef = useRef(customRowMetrics);
+  if (sidebarMetricsSignatureRef.current !== sidebarMetricsSignature) {
+    sidebarMetricsSignatureRef.current = sidebarMetricsSignature;
+    sidebarMetricsRef.current = customRowMetrics;
+  }
+  const stableSidebarMetrics = sidebarMetricsRef.current;
+
   const dateMarkings = useMemo(
     () => computeDateMarkingRects(range, scale, columnWidth, holidays, blockDates),
     [range, scale, columnWidth, holidays, blockDates],
@@ -472,19 +505,45 @@ export function GanttChart({
     setScrollLeft(left);
   }, [timelineWidth, viewportWidth, clampTimelineScroll]);
 
+  // Keep zoom-change inputs in a ref so the handler identity stays stable across
+  // scroll/drag renders. Without this, the `...callbacks` rest object (recreated
+  // every render) would change the callback identity each render and force the
+  // memoised ZoomToolbar to re-render on every GanttChart render.
+  const zoomChangeInputsRef = useRef({
+    scale,
+    columnWidth,
+    rangeStart: range.start,
+    columnWidthProp,
+    onZoomChange: callbacks.onZoomChange,
+  });
+  zoomChangeInputsRef.current = {
+    scale,
+    columnWidth,
+    rangeStart: range.start,
+    columnWidthProp,
+    onZoomChange: callbacks.onZoomChange,
+  };
+
   const handleZoomChange = useCallback(
     (newScaleId: string) => {
+      const {
+        scale: curScale,
+        columnWidth: curColumnWidth,
+        rangeStart,
+        columnWidthProp: curColumnWidthProp,
+        onZoomChange,
+      } = zoomChangeInputsRef.current;
       const scrollEl = timelineScrollRef.current;
       if (scrollEl && scrollEl.clientWidth > 0) {
         const centerPx = scrollEl.scrollLeft + scrollEl.clientWidth / 2;
-        const msPerPixel = getMsPerPixel(scale, columnWidth);
+        const msPerPixel = getMsPerPixel(curScale, curColumnWidth);
         pendingCenterDateRef.current = new Date(
-          range.start.getTime() + centerPx * msPerPixel,
+          rangeStart.getTime() + centerPx * msPerPixel,
         );
       }
       setScaleId(newScaleId);
       const nextScale = resolveScale(newScaleId);
-      const cw = getColumnWidth(nextScale, columnWidthProp);
+      const cw = getColumnWidth(nextScale, curColumnWidthProp);
       const detail = {
         zoomLevel: newScaleId,
         scaleId: newScaleId,
@@ -492,9 +551,9 @@ export function GanttChart({
         columnWidth: cw,
       };
       emit('zoomChange', detail);
-      callbacks.onZoomChange?.(detail);
+      onZoomChange?.(detail);
     },
-    [emit, columnWidthProp, callbacks, scale, columnWidth, range.start],
+    [emit],
   );
 
   useLayoutEffect(() => {
@@ -684,7 +743,7 @@ export function GanttChart({
                 emit={emit}
                 customRows={customRows}
                 stickyCustomRows={stickyCustomRowPartitions}
-                customRowMetrics={stableCustomRowMetrics}
+                customRowMetrics={stableSidebarMetrics}
                 stickyOffsets={stickyOffsets}
               />
             </div>
@@ -718,7 +777,7 @@ export function GanttChart({
                 width={middleWidth}
                 customRows={customRows}
                 stickyCustomRows={stickyCustomRowPartitions}
-                customRowMetrics={stableCustomRowMetrics}
+                customRowMetrics={stableSidebarMetrics}
                 columnOffset={columns.length}
                 emit={emit}
                 stickyOffsets={stickyOffsets}
