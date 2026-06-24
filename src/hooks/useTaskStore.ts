@@ -52,7 +52,7 @@ export class TaskStore {
     this.notify();
   }
 
-  replaceTasks(tasks: GanttTask[]): void {
+  private applyReplace(tasks: GanttTask[]): boolean {
     const changed = new Set<string>();
     const oldMap = new Map(this.tasks.map((t) => [t.id, t]));
     for (const t of tasks) {
@@ -60,11 +60,31 @@ export class TaskStore {
       if (!old || JSON.stringify(old) !== JSON.stringify(t)) changed.add(t.id);
     }
     const lengthChanged = tasks.length !== oldMap.size;
-    if (changed.size === 0 && !lengthChanged) return;
+    if (changed.size === 0 && !lengthChanged) return false;
 
     this.tasks = tasks;
     for (const id of changed) this.bumpTask(id);
-    this.notify();
+    return true;
+  }
+
+  replaceTasks(tasks: GanttTask[]): void {
+    if (this.applyReplace(tasks)) this.notify();
+  }
+
+  /**
+   * Sync tasks from props *during render*. Updates the snapshot and per-task
+   * versions immediately so the owning component renders fresh data, but does
+   * NOT call listeners — notifying here would trigger setState in subscribed
+   * descendants (e.g. TaskBar) while the parent is still rendering, which React
+   * forbids ("Cannot update a component while rendering a different one").
+   *
+   * No deferred notify is needed: the owning component re-renders with the new
+   * snapshot and hands each TaskBar its updated task object, and TaskBar's memo
+   * comparator inspects the rendered task fields, so changed bars re-render and
+   * unchanged bars stay memoised.
+   */
+  syncExternalTasks(tasks: GanttTask[]): void {
+    this.applyReplace(tasks);
   }
 }
 
@@ -76,7 +96,7 @@ export function useTaskStore(externalTasks: GanttTask[]) {
   const prevExternal = useRef(externalTasks);
 
   if (prevExternal.current !== externalTasks) {
-    store.replaceTasks(externalTasks);
+    store.syncExternalTasks(externalTasks);
     prevExternal.current = externalTasks;
   }
 

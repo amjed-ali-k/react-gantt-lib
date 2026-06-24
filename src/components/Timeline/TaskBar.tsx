@@ -545,6 +545,7 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.geometry.x !== next.geometry.x) return false;
   if (prev.geometry.width !== next.geometry.width) return false;
   if (prev.geometry.y !== next.geometry.y) return false;
+  if (prev.geometry.height !== next.geometry.height) return false;
   if (prev.columnWidth !== next.columnWidth) return false;
   if (prev.scale.id !== next.scale.id) return false;
   if (prev.snapToGrid !== next.snapToGrid) return false;
@@ -556,6 +557,8 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   }
   if (prev.task.color !== next.task.color) return false;
   if (prev.task.borderColor !== next.task.borderColor) return false;
+  if (prev.task.name !== next.task.name) return false;
+  if (prev.task.progress !== next.task.progress) return false;
   if (prev.enableDrag !== next.enableDrag) return false;
   if (prev.enableResize !== next.enableResize) return false;
   if (prev.enableProgressDrag !== next.enableProgressDrag) return false;
