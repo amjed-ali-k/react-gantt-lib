@@ -366,6 +366,47 @@ describe('GanttChart', () => {
     expect(onTasksChange).not.toHaveBeenCalled();
   });
 
+  it('updates dependency arrows during drag without calling onTasksChange', async () => {
+    const onTasksChange = vi.fn();
+    const linkedTasks = [
+      { id: 't1', name: 'First', start: '2026-01-01', end: '2026-01-05', progress: 0 },
+      {
+        id: 't2',
+        name: 'Second',
+        start: '2026-01-06',
+        end: '2026-01-10',
+        progress: 0,
+        dependencies: ['t1'],
+      },
+    ];
+
+    const { container } = render(
+      <GanttChart
+        tasks={linkedTasks}
+        minDate="2026-01-01"
+        maxDate="2026-01-31"
+        onTasksChange={onTasksChange}
+        height={400}
+      />,
+    );
+
+    const arrow = container.querySelector('.rg-dependency-arrow');
+    expect(arrow).toBeTruthy();
+    const pathBefore = arrow!.getAttribute('d');
+
+    const bar = container.querySelector('.rg-timeline-bars [data-task-id="t1"] .rg-bar-bg');
+    expect(bar).toBeTruthy();
+    fireEvent.pointerDown(bar!, { clientX: 100, pointerId: 1, buttons: 1 });
+    fireEvent.pointerMove(document, { clientX: 220, pointerId: 1, buttons: 1 });
+
+    const pathDuring = container.querySelector('.rg-dependency-arrow')!.getAttribute('d');
+    expect(pathDuring).not.toBe(pathBefore);
+    expect(onTasksChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(document, { clientX: 220, pointerId: 1, buttons: 1 });
+    expect(onTasksChange).toHaveBeenCalledTimes(1);
+  });
+
   it('fires onTaskHover on enter and leave only, not mousemove', () => {
     const onTaskHover = vi.fn();
     const { container } = render(

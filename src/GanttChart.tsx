@@ -10,6 +10,8 @@ import type { GanttChartProps, GanttColumn, GanttEventMap, GanttTask } from './t
 import { useGanttEmitter } from './hooks/useGanttEmitter';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useTaskStore } from './hooks/useTaskStore';
+import { DragPreviewStore } from './hooks/useDragPreviewStore';
+import { DragPreviewProvider } from './context/DragPreviewContext';
 import {
   computeTimelineRange,
   getColumnWidth,
@@ -99,6 +101,11 @@ export function GanttChart({
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const dragPreviewStoreRef = useRef<DragPreviewStore | null>(null);
+  if (!dragPreviewStoreRef.current) {
+    dragPreviewStoreRef.current = new DragPreviewStore();
+  }
+  const dragPreviewStore = dragPreviewStoreRef.current;
   const [scaleId, setScaleId] = useState(zoomProp);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -632,6 +639,7 @@ export function GanttChart({
   return (
     <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
+    <DragPreviewProvider store={dragPreviewStore}>
     <div
       ref={containerRef}
       className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
@@ -813,6 +821,7 @@ export function GanttChart({
                   selectedTaskIds={effectiveSelectedIds}
                   interactionsEnabled={interactionsEnabled}
                   emit={emit}
+                  dragPreviewStore={dragPreviewStore}
                   onTaskUpdate={handleTaskUpdate}
                 />
                 <CustomRowsTimeline
@@ -861,6 +870,7 @@ export function GanttChart({
       </div>
       </TaskTooltipProvider>
     </div>
+    </DragPreviewProvider>
     </GanttTimelineProvider>
     </GanttDisplayProvider>
   );

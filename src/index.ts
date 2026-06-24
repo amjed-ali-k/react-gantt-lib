@@ -20,3 +20,5 @@ export {
 } from './hooks/useVirtualColumnSegments';
 export { format, toDate, addUnit, diffUnits } from './core/dates';
 export { TaskStore } from './hooks/useTaskStore';
+export { DragPreviewStore } from './hooks/useDragPreviewStore';
+export type { DragPreviewSnapshot, DragPreviewDates } from './hooks/useDragPreviewStore';

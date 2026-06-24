@@ -17,6 +17,7 @@ import type { ViewScale } from '../../core/scale';
 import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
+import { useDragPreviewStoreOptional } from '../../context/DragPreviewContext';
 
 export interface TaskBarProps {
   task: ResolvedTask;
@@ -81,6 +82,7 @@ function TaskBarInner({
 
   const msPerPixel = getMsPerPixel(scale, columnWidth);
   const tooltip = useTaskTooltipOptional();
+  const dragPreviewStore = useDragPreviewStoreOptional();
 
   const resolveHoverTask = useCallback(
     (t: ResolvedTask, start?: Date, end?: Date) => {
@@ -164,6 +166,7 @@ function TaskBarInner({
         }
         onTaskUpdate(t.id, { progress });
         emit('progressChange', { task: t, progress, previousProgress: session.progress });
+        dragPreviewStore?.clear(t.id);
         setDragPreview(null);
         dragRef.current = null;
         setIsDragging(false);
@@ -224,6 +227,7 @@ function TaskBarInner({
         });
       }
 
+      dragPreviewStore?.clear(t.id);
       setDragPreview(null);
       dragRef.current = null;
       setIsDragging(false);
@@ -238,6 +242,7 @@ function TaskBarInner({
       syncTooltip,
       dragPreview,
       resolveDragDates,
+      dragPreviewStore,
     ],
   );
 
@@ -263,6 +268,7 @@ function TaskBarInner({
       const { start, end } = resolveDragDates(session, e.clientX);
       if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return;
       setDragPreview({ start, end });
+      dragPreviewStore?.setPreview(t.id, start, end);
       syncTooltip(t, e.clientX, e.clientY, start, end);
 
       if (session.mode === 'move') {
@@ -296,7 +302,7 @@ function TaskBarInner({
       document.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [isDragging, emit, endDrag, syncTooltip, resolveDragDates]);
+  }, [isDragging, emit, endDrag, syncTooltip, resolveDragDates, dragPreviewStore]);
 
   const beginDrag = useCallback(
     (mode: DragMode) => (e: React.PointerEvent) => {
@@ -321,6 +327,7 @@ function TaskBarInner({
         syncTooltip(task, e.clientX, e.clientY, start, end);
       }
 
+      dragPreviewStore?.clear();
       dragRef.current = {
         mode,
         originClientX: e.clientX,
@@ -332,7 +339,7 @@ function TaskBarInner({
       setDragPreview(null);
       setIsDragging(true);
     },
-    [task, enableDrag, enableResize, enableProgressDrag, emit, syncTooltip],
+    [task, enableDrag, enableResize, enableProgressDrag, emit, syncTooltip, dragPreviewStore],
   );
 
   const renderGeometry = useMemo((): BarGeometry => {

@@ -4,6 +4,7 @@ import type { ViewScale } from '../../core/scale';
 import type { VisibleColumnRange } from '../../core/visibleColumns';
 import type { TimelineBounds } from '../../core/zoom';
 import type { TaskStore } from '../../hooks/useTaskStore';
+import type { DragPreviewStore } from '../../hooks/useDragPreviewStore';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import { computeBarXExact, computeBarWidthExact } from '../../core/zoom';
 import {
@@ -41,6 +42,7 @@ interface TimelineBodyProps {
   selectedTaskIds?: string[];
   interactionsEnabled?: boolean;
   emit: EventEmitter;
+  dragPreviewStore: DragPreviewStore;
   onTaskUpdate: (taskId: string, patch: { start?: Date; end?: Date; progress?: number }) => void;
 }
 
@@ -63,6 +65,7 @@ export const TimelineBody = memo(function TimelineBody({
   selectedTaskIds,
   interactionsEnabled = false,
   emit,
+  dragPreviewStore,
   onTaskUpdate,
 }: TimelineBodyProps) {
   const taskIndexMap = useMemo(() => {
@@ -138,6 +141,7 @@ export const TimelineBody = memo(function TimelineBody({
         columnWidth={columnWidth}
         rowLayouts={rowLayouts}
         showBaseline={showBaseline}
+        dragPreviewStore={dragPreviewStore}
       />
       {showBaseline && (
         <BaselineLayer
