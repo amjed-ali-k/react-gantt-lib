@@ -1,7 +1,15 @@
-import type { GanttTask, ResolvedTask, TimelineRange, TimelineRangeBounds } from '../types';
+import type { GanttTask, GroupSummaryRollup, ResolvedTask, TimelineRange, TimelineRangeBounds } from '../types';
 import { endOfDay } from 'date-fns';
 import { toDate } from './dates';
-import { groupShowsSummaryBar, isGroupTask, rollUpGroupDates } from './groupTasks';
+import {
+  buildTaskMap,
+  computeGroupSummaryRollup,
+  groupShowsSummaryBar,
+  isGroupTask,
+  shouldRollupGroupBaseline,
+  shouldRollupGroupDates,
+  shouldRollupGroupProgress,
+} from './groupTasks';
 import {
   resolveScale,
   startOfScaleUnit,
@@ -228,7 +236,12 @@ export function clampTaskDates(
   return { start: new Date(s), end: new Date(e) };
 }
 
-export function resolveTasks(tasks: GanttTask[]): ResolvedTask[] {
+export function resolveTasks(
+  tasks: GanttTask[],
+  options?: { groupSummaryRollup?: GroupSummaryRollup },
+): ResolvedTask[] {
+  const rollupDefaults = options?.groupSummaryRollup;
+  const taskMap = buildTaskMap(tasks);
   const collapsedParents = new Set<string>();
   for (const t of tasks) {
     if (t.collapsed) collapsedParents.add(t.id);
@@ -260,23 +273,41 @@ export function resolveTasks(tasks: GanttTask[]): ResolvedTask[] {
     .map((task, rowIndex) => {
       let start = toDate(task.start);
       let end = toDate(task.end);
+      let progress = task.progress ?? 0;
+      let baselineStart = task.baseline ? toDate(task.baseline.start) : undefined;
+      let baselineEnd = task.baseline ? toDate(task.baseline.end) : undefined;
+
       if (isGroupTask(task) && groupShowsSummaryBar(task)) {
-        const rollup = rollUpGroupDates(task, tasks);
-        if (rollup) {
-          start = rollup.start;
-          end = rollup.end;
+        const rollupValues = computeGroupSummaryRollup(task, tasks, taskMap);
+
+        if (shouldRollupGroupDates(task, rollupDefaults) && rollupValues.dates) {
+          start = rollupValues.dates.start;
+          end = rollupValues.dates.end;
+        }
+        if (shouldRollupGroupProgress(task, rollupDefaults) && rollupValues.progress != null) {
+          progress = rollupValues.progress;
+        }
+        if (shouldRollupGroupBaseline(task, rollupDefaults)) {
+          if (rollupValues.baseline) {
+            baselineStart = rollupValues.baseline.start;
+            baselineEnd = rollupValues.baseline.end;
+          } else {
+            baselineStart = undefined;
+            baselineEnd = undefined;
+          }
         }
       }
+
       return {
         ...task,
         _start: start,
         _end: end,
-        _baselineStart: task.baseline ? toDate(task.baseline.start) : undefined,
-        _baselineEnd: task.baseline ? toDate(task.baseline.end) : undefined,
+        _baselineStart: baselineStart,
+        _baselineEnd: baselineEnd,
         _rowIndex: rowIndex,
         _level: level(task),
         _visible: true,
-        progress: task.progress ?? 0,
+        progress,
       };
     });
 }

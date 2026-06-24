@@ -93,6 +93,7 @@ export function GanttChart({
   blockDates,
   eventMarkers,
   showBaseline = true,
+  groupSummaryRollup,
   enableDrag = true,
   enableResize = true,
   enableProgressDrag = true,
@@ -230,7 +231,10 @@ export function GanttChart({
 
   const { tasks, updateTask, store } = useTaskStore(externalTasks);
 
-  const resolvedTasks = useMemo(() => resolveTasks(tasks), [tasks]);
+  const resolvedTasks = useMemo(
+    () => resolveTasks(tasks, { groupSummaryRollup }),
+    [tasks, groupSummaryRollup],
+  );
   const columnWidth = getColumnWidth(scale, columnWidthProp);
 
   const stickyTaskPartitions = useMemo(
@@ -844,6 +848,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
                   showBaseline={showBaseline}
@@ -872,6 +877,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
                   dateMarkings={dateMarkings}
@@ -914,6 +920,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
                   showBaseline={showBaseline}

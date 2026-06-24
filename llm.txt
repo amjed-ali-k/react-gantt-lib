@@ -103,6 +103,7 @@ Optional:
 - collapsed: boolean — hide descendant rows and timeline bars when true
 - type: 'task' | 'milestone' | 'group' — milestone = diamond; group = parent/summary row
 - showSummaryBar: boolean — on group rows only; default true. false = sidebar folder only (no summary bar; children keep their own bars)
+- rollup?: GroupSummaryRollup — per-group summary bar roll-up overrides (see Group rows & collapse)
 - readOnly: boolean — disables drag, resize, and progress edits for this task
 - enableDrag, enableResize, enableProgressDrag: boolean — per-task overrides (fall back to chart-level props)
 - dependencies: string[] | GanttDependency[] — see Dependencies
@@ -121,25 +122,52 @@ type: 'group' — parent row for hierarchy and optional summary timeline bar.
 
 | showSummaryBar | Timeline behavior |
 |----------------|-------------------|
-| true (default) | One rolled-up bar spanning descendant dates; child bars hidden |
+| true (default) | One rolled-up summary bar spanning descendant dates; child bars hidden |
 | false | No bar on group row; children render their own bars |
 
 Sidebar collapse/expand (built-in):
 - Parent rows with type: 'group' OR any task with children show a ▸/▾ button in the first column
 - Click toggles task.collapsed; updates via onTasksChange when used with controlled tasks
 - Collapsed ancestors hide all descendant rows (sidebar + timeline)
+- Summary bar on collapsed groups still reflects all descendants (dates, progress, baseline)
 
-Roll-up dates for summary groups: min(start) / max(end) of visible descendant leaf bars (computed in resolveTasks).
+### Summary bar roll-up
 
-Helpers (internal, not exported from package entry): isGroupTask, groupShowsSummaryBar, shouldRenderTaskBar, taskHasChildren, taskSupportsCollapse in src/core/groupTasks.ts
+For `type: 'group'` with `showSummaryBar: true` (default), the group header bar rolls up:
 
-Example — folder vs summary group:
+| Field | Default | Override |
+|-------|---------|----------|
+| Dates | min(child start) / max(child end) | `rollup: { dates: false }` — use `start` / `end` on the group row |
+| Progress | duration-weighted average of children | set `progress` on the group row, or `rollup: { progress: false }` |
+| Baseline | min/max of child baselines | set `baseline` on the group row, or `rollup: { baseline: false }` |
+
+Force roll-up even when a value is set on the group: `rollup: { progress: true }` or `rollup: { baseline: true }`.
+
+Chart-level defaults: `groupSummaryRollup?: GroupSummaryRollup` on GanttChart (per-task `rollup` overrides).
+
+When a field is rolled up, drag/resize/progress edits for that field are disabled on the group bar. Set the matching `rollup.*` flag to false (or set an explicit value for progress/baseline) to make it editable.
+
+Roll-up uses all descendants in the tasks array (not only visible rows), so collapsed groups keep the full summary.
+
+Helpers (internal, not exported from package entry): isGroupTask, groupShowsSummaryBar, shouldRenderTaskBar, taskHasChildren, taskSupportsCollapse, computeGroupSummaryRollup in src/core/groupTasks.ts
+
+Example — folder vs summary group with roll-up:
 [
   { id: 'phase', name: 'Phase 1', type: 'group', showSummaryBar: false, start: '2026-04-01', end: '2026-04-01' },
-  { id: 'a', name: 'Task A', parentId: 'phase', start: '2026-04-02', end: '2026-04-06' },
-  { id: 'envelope', name: 'Envelope', type: 'group', start: '2026-04-10', end: '2026-04-10' },
-  { id: 'roof', name: 'Roofing', parentId: 'envelope', start: '2026-04-10', end: '2026-04-12' },
+  { id: 'a', name: 'Task A', parentId: 'phase', start: '2026-04-02', end: '2026-04-06', progress: 100 },
+  {
+    id: 'envelope',
+    name: 'Envelope',
+    type: 'group',
+    start: '2026-04-10',
+    end: '2026-04-10',
+    progress: 35,
+    baseline: { start: '2026-04-08', end: '2026-04-14' },
+  },
+  { id: 'roof', name: 'Roofing', parentId: 'envelope', start: '2026-04-10', end: '2026-04-12', progress: 30, baseline: { start: '2026-04-09', end: '2026-04-11' } },
 ]
+
+`envelope` uses explicit progress (35) and baseline unless `rollup.progress: true` / `rollup.baseline: true`. Dates still roll up from children unless `rollup.dates: false`.
 
 ## Columns
 
@@ -323,6 +351,7 @@ GanttDependency.type (FS|FF|SS|SF) and lag: typed but NOT implemented — always
 
 task.baseline: { start, end, color? }
 showBaseline: default true
+groupSummaryRollup?: { dates?, progress?, baseline? } — chart default for group summary roll-up (see Group rows & collapse)
 
 Tasks with baseline: extra row height; amber line below bar (or behind milestone diamond).
 Toggle: showBaseline={false}

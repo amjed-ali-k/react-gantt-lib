@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { BlockDateRange, DateMarkingLayers, ResolvedTask, TimelineRange } from '../../types';
+import type { BlockDateRange, DateMarkingLayers, GroupSummaryRollup, ResolvedTask, TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
 import type { VisibleColumnRange } from '../../core/visibleColumns';
 import type { TimelineBounds } from '../../core/zoom';
@@ -34,6 +34,7 @@ interface TimelineBodyProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
   dateMarkings?: DateMarkingLayers;
@@ -57,6 +58,7 @@ export const TimelineBody = memo(function TimelineBody({
   enableDrag,
   enableResize,
   enableProgressDrag,
+  groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
   dateMarkings,
@@ -170,6 +172,7 @@ export const TimelineBody = memo(function TimelineBody({
             enableDrag: enableDrag ?? true,
             enableResize: enableResize ?? true,
             enableProgressDrag: enableProgressDrag ?? true,
+            groupSummaryRollup,
           });
           return (
             <TaskBar

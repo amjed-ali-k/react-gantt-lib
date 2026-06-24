@@ -46,6 +46,7 @@ export const ADVANCED_FEATURES_TASKS: GanttTask[] = [
     end: '2026-04-17',
     progress: 30,
     color: '#818cf8',
+    baseline: { start: '2026-04-15', end: '2026-04-17' },
   },
   {
     id: 'envelope-seal',
@@ -55,6 +56,7 @@ export const ADVANCED_FEATURES_TASKS: GanttTask[] = [
     end: '2026-04-18',
     progress: 10,
     color: '#818cf8',
+    baseline: { start: '2026-04-16', end: '2026-04-18' },
   },
   {
     id: 'staging',
@@ -156,8 +158,8 @@ export function AdvancedFeaturesDemo({ onLog, theme }: AdvancedFeaturesDemoProps
           &quot;Pour slab A&quot; cannot be dragged or resized
         </div>
         <div className="demo-stat">
-          <strong>Collapse</strong>
-          Use ▸/▾ on group rows to hide or show children
+          <strong>Group summary</strong>
+          &quot;Building envelope&quot; rolls up dates, progress, and baseline — collapse it to preview
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { ResolvedTask, TimelineRange } from '../../types';
+import type { GroupSummaryRollup, ResolvedTask, TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
 import type { TimelineBounds } from '../../core/zoom';
 import type { TaskStore } from '../../hooks/useTaskStore';
@@ -29,6 +29,7 @@ interface StickyTaskTimelineRowsProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
   showBaseline?: boolean;
@@ -50,6 +51,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
   enableDrag,
   enableResize,
   enableProgressDrag,
+  groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
   showBaseline = true,
@@ -100,6 +102,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
           enableDrag: enableDrag ?? true,
           enableResize: enableResize ?? true,
           enableProgressDrag: enableProgressDrag ?? true,
+          groupSummaryRollup,
         });
         const stickyOffset = stickyOffsets[i] ?? 0;
 

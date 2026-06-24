@@ -25,6 +25,16 @@ export interface GanttDependency {
   lag?: number;
 }
 
+/** Roll-up behavior for group summary bars (`type: 'group'`, `showSummaryBar` true). */
+export interface GroupSummaryRollup {
+  /** Span min/max child dates. Default true. Set false to use `start` / `end` on the group row. */
+  dates?: boolean;
+  /** Duration-weighted average of child progress when unset. Set `progress` on the group to override, or `rollup.progress: false`. */
+  progress?: boolean;
+  /** Min/max of child baselines when unset. Set `baseline` on the group to override, or `rollup.baseline: false`. */
+  baseline?: boolean;
+}
+
 export interface GanttTask {
   id: string;
   name: string;
@@ -36,6 +46,8 @@ export interface GanttTask {
   type?: 'task' | 'milestone' | 'group';
   /** On group rows: show a spanning summary bar (default true). Set false for sidebar-only group rows. */
   showSummaryBar?: boolean;
+  /** Per-group overrides for summary bar roll-up (dates, progress, baseline). */
+  rollup?: GroupSummaryRollup;
   /** Prevent drag, resize, and progress edits for this task. */
   readOnly?: boolean;
   /** Per-task overrides for interaction (fall back to chart-level props). */
@@ -365,6 +377,8 @@ export interface GanttChartProps extends GanttCallbacks {
   eventMarkers?: EventMarker[];
   /** Show baseline markers for tasks that define `baseline`. Default true. */
   showBaseline?: boolean;
+  /** Default roll-up behavior for group summary bars. Per-task `rollup` overrides these. */
+  groupSummaryRollup?: GroupSummaryRollup;
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
