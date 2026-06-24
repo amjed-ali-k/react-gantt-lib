@@ -122,7 +122,7 @@ type: 'group' — parent row for hierarchy and optional summary timeline bar.
 
 | showSummaryBar | Timeline behavior |
 |----------------|-------------------|
-| true (default) | One rolled-up summary bar spanning descendant dates; child bars hidden |
+| true (default) | Summary bar on the group row (rolled-up dates/progress/baseline); child bars render when the group is expanded |
 | false | No bar on group row; children render their own bars |
 
 Sidebar collapse/expand (built-in):

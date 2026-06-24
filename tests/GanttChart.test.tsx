@@ -225,7 +225,7 @@ describe('GanttChart', () => {
     );
   });
 
-  it('hides child bars when parent is a summary group', () => {
+  it('shows child bars alongside the parent summary bar', () => {
     const groupTasks = [
       { id: 'g1', name: 'Phase', start: '2026-01-01', end: '2026-01-01', type: 'group' as const },
       { id: 'c1', name: 'Child', start: '2026-01-05', end: '2026-01-10', parentId: 'g1' },
@@ -234,7 +234,7 @@ describe('GanttChart', () => {
       <GanttChart tasks={groupTasks} minDate="2026-01-01" maxDate="2026-01-31" height={400} />,
     );
     expect(container.querySelector('.rg-timeline-bars [data-task-id="g1"]')).toBeTruthy();
-    expect(container.querySelector('.rg-timeline-bars [data-task-id="c1"]')).toBeNull();
+    expect(container.querySelector('.rg-timeline-bars [data-task-id="c1"]')).toBeTruthy();
   });
 
   it('collapses and expands group children from sidebar toggle', () => {

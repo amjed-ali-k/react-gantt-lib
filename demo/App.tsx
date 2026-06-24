@@ -11,6 +11,7 @@ import {
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
+import { GroupSummaryDemo } from './groupSummaryDemo';
 import { TimezoneDemo } from './timezoneDemo';
 import { PlaygroundApp } from './playground';
 import {
@@ -226,10 +227,12 @@ function ExamplesDemo() {
       <header className="demo-header">
         <h2>Examples</h2>
         <p>
-          Two charts: grid snapping on release vs fully smooth drag/resize. Hover a bar to reveal
-          edge handles — drag the left/right grips to resize.
+          Group summary bars, grid snapping, sticky rows, large timelines, and more. Hover a bar to
+          reveal edge handles — drag the left/right grips to resize.
         </p>
       </header>
+
+      <GroupSummaryDemo onLog={log} theme={chartTheme} />
 
       <ChartSection
         title="Sticky rows — pinned top bar + bottom custom rows"
@@ -325,6 +328,10 @@ function ExamplesDemo() {
         <div className="demo-tips">
           <h3>Try it</h3>
           <ul>
+            <li>
+              <strong>Group summary:</strong> 20 tasks in 5 groups — rolled-up dates, progress,
+              baselines; collapse/expand with ▸/▾
+            </li>
             <li>Sticky rows: baseline bar pinned top; two custom rows pinned bottom while scrolling</li>
             <li>Hover a bar — blue edge handles appear for resize</li>
             <li>Drag the bar body to move; drag edges to change start/end</li>

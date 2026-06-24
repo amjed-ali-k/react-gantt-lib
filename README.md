@@ -231,7 +231,7 @@ Set `type: 'group'` on parent rows for hierarchy and optional summary timeline b
 
 | `showSummaryBar` | Timeline behavior |
 |------------------|-------------------|
-| `true` (default) | One rolled-up bar spanning descendant dates; child bars hidden |
+| `true` (default) | Summary bar on the group row (rolled-up dates/progress/baseline); child bars render when expanded |
 | `false` | No bar on the group row; children render their own bars |
 
 **Sidebar collapse:** Parent rows with `type: 'group'` or any task with children show a ▸/▾ button in the first column. Click toggles `task.collapsed` and updates via `onTasksChange` when tasks are controlled.

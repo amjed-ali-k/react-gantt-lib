@@ -69,9 +69,9 @@ describe('groupTasks', () => {
     expect(rollup?.end.getTime()).toBe(toDate('2026-01-22').getTime());
   });
 
-  it('hides child bars under summary groups', () => {
-    expect(shouldRenderTaskBar(tasks[1], tasks)).toBe(false);
-    expect(isBarHiddenByGroupAncestor(tasks[1], tasks)).toBe(true);
+  it('shows child bars alongside the parent summary bar', () => {
+    expect(shouldRenderTaskBar(tasks[1], tasks)).toBe(true);
+    expect(isBarHiddenByGroupAncestor(tasks[1], tasks)).toBe(false);
   });
 
   it('shows sidebar-only group without a bar but keeps child bars', () => {

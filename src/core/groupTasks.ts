@@ -93,15 +93,9 @@ export function shouldRollupGroupBaseline(
   return true;
 }
 
-export function isBarHiddenByGroupAncestor(task: GanttTask, tasks: GanttTask[]): boolean {
-  const taskMap = buildTaskMap(tasks);
-  let parentId = task.parentId;
-  while (parentId) {
-    const parent = taskMap.get(parentId);
-    if (!parent) break;
-    if (groupShowsSummaryBar(parent)) return true;
-    parentId = parent.parentId;
-  }
+export function isBarHiddenByGroupAncestor(_task: GanttTask, _tasks: GanttTask[]): boolean {
+  // Child rows stay visible when a summary group is expanded; collapsed descendants are
+  // already removed by resolveTasks, so summary and child bars can render together.
   return false;
 }
 

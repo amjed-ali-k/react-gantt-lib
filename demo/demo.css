@@ -358,6 +358,11 @@ body {
   color: #4f46e5;
 }
 
+.demo-badge--group {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
 .demo-timezone-controls {
   display: flex;
   flex-wrap: wrap;
