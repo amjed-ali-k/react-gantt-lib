@@ -1,12 +1,13 @@
-## v0.1.13
+## v0.1.14
 
-* [Update RELEASE_NOTES.md for version 0.1.12, detailing enhancements including DragPreview functionality, optimizations in custom rows handling, and improvements to TaskBar props comparison. Added links to relevant commits for further reference.](https://github.com/amjed-ali-k/react-gantt-lib/commit/abb0470a02b192c34ddee9b63bbb7445ee198b7e) ([abb0470](https://github.com/amjed-ali-k/react-gantt-lib/commit/abb0470a02b192c34ddee9b63bbb7445ee198b7e))
-* [Implement group summary roll-up functionality in GanttChart](https://github.com/amjed-ali-k/react-gantt-lib/commit/d46005775949aabe783fa83fce26980db57f0a5c) ([d460057](https://github.com/amjed-ali-k/react-gantt-lib/commit/d46005775949aabe783fa83fce26980db57f0a5c))
-  * Added `GroupSummaryRollup` interface to define roll-up behavior for group summary bars.
-  * Enhanced `GanttChart` and related components to support per-group summary bar roll-up options for dates, progress, and baselines.
-  * Updated task resolution logic to compute roll-up values from child tasks, ensuring accurate summary representation even when groups are collapsed.
-  * Introduced helper functions to determine roll-up flags and compute summary values, improving task interaction management.
-  * Added tests to validate roll-up behavior and ensure correct functionality across various scenarios.
-* [0.1.13](https://github.com/amjed-ali-k/react-gantt-lib/commit/c1bc64fb8550c65d8d881c4d49da99c289c6677e) ([c1bc64f](https://github.com/amjed-ali-k/react-gantt-lib/commit/c1bc64fb8550c65d8d881c4d49da99c289c6677e))
+* [Update documentation and tests for group summary bar functionality](https://github.com/amjed-ali-k/react-gantt-lib/commit/f8594478c863cf86faa7f84e330bf32a63d64eec) ([f859447](https://github.com/amjed-ali-k/react-gantt-lib/commit/f8594478c863cf86faa7f84e330bf32a63d64eec))
+  * Revised `README.md` and `llm.txt` to clarify the behavior of the `showSummaryBar` property, emphasizing that child bars render when the group is expanded.
+  * Updated tests to reflect the new behavior, ensuring child bars are displayed alongside the parent summary bar.
+  * Enhanced demo examples to showcase group summary features, including visual indicators for rolled-up dates and progress.
+* [Refactor release script to improve versioning and release notes handling](https://github.com/amjed-ali-k/react-gantt-lib/commit/a3ea800eac23d5f0f3d11995f8268b5a33f1fd15) ([a3ea800](https://github.com/amjed-ali-k/react-gantt-lib/commit/a3ea800eac23d5f0f3d11995f8268b5a33f1fd15))
+  * Added automatic git commit for RELEASE_NOTES.md after generating release notes.
+  * Rearranged the npm publish logic to enhance clarity and maintainability.
+  * Ensured that the skipPublish option is handled correctly, providing appropriate console output.
+* [0.1.14](https://github.com/amjed-ali-k/react-gantt-lib/commit/975e7783bcf45f73943d30514425422576c960eb) ([975e778](https://github.com/amjed-ali-k/react-gantt-lib/commit/975e7783bcf45f73943d30514425422576c960eb))
 
-**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.12...v0.1.13
+**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.13...v0.1.14
