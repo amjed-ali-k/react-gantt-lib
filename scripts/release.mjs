@@ -69,9 +69,16 @@ run(
 run(`git add RELEASE_NOTES.md`);
 run(`git commit -m "Release ${newTag}"`);
 
+if (!skipPush) {
+  run(`git push origin ${branch} --tags`);
+} else {
+  console.log('\n> skip git push (--skip-push)');
+}
+
 if (!skipGh) {
+  const ghTarget = skipPush ? ' --target HEAD' : '';
   run(
-    `gh release create ${newTag} --title "${newTag}" --notes-file RELEASE_NOTES.md`,
+    `gh release create ${newTag}${ghTarget} --title "${newTag}" --notes-file RELEASE_NOTES.md`,
   );
 } else {
   console.log('\n> skip gh release (--skip-gh)');
@@ -81,13 +88,6 @@ if (!skipPublish) {
   run('npm publish');
 } else {
   console.log('\n> skip npm publish (--skip-publish)');
-}
-
-
-if (!skipPush) {
-  run(`git push origin ${branch} --tags`);
-} else {
-  console.log(`\n> skip git push (--skip-push)`);
 }
 
 console.log(`\nDone. Released ${newTag}.`);
