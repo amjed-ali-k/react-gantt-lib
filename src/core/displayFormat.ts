@@ -39,6 +39,14 @@ function partMap(
 /** Date-only string for sidebar middle columns. */
 export function formatDisplayDate(date: Date, timeZone?: string): string {
   if (!timeZone) return date.toLocaleDateString();
+  if (
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getMilliseconds() === 0
+  ) {
+    return date.toLocaleDateString('en-US');
+  }
   return date.toLocaleDateString('en-US', { timeZone });
 }
 

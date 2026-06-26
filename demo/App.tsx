@@ -149,6 +149,7 @@ function ChartSection({
   height = 360,
   customRows,
   holidays,
+  timezone,
   theme,
   badgeClassName,
   columnScrollBufferPercent,
@@ -169,6 +170,7 @@ function ChartSection({
   height?: number;
   customRows?: CustomRowDefinition[];
   holidays?: HolidayMarking;
+  timezone?: string;
   theme: GanttTheme;
   badgeClassName?: string;
   columnScrollBufferPercent?: number;
@@ -195,6 +197,7 @@ function ChartSection({
           snapToGrid={snapToGrid}
           customRows={customRows}
           holidays={holidays}
+          timezone={timezone}
           onTasksChange={onTasksChange}
           onZoomChange={(e) => onZoomChange(e.zoomLevel)}
           columnScrollBufferPercent={columnScrollBufferPercent}
@@ -302,6 +305,7 @@ function ExamplesDemo() {
         height={720}
         customRows={largeCustomRows}
         holidays={LARGE_TIMELINE_US_HOLIDAYS}
+        timezone="America/New_York"
         columnScrollBufferPercent={10}
         theme={chartTheme}
       />

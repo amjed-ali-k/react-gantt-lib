@@ -21,7 +21,8 @@ import {
   dateToScalePixel,
   scalePixelToDate,
 } from '../src/core/zoom';
-import { resolveScale } from '../src/core/scale';
+import { formatScaleHeader, formatScaleSubHeader, resolveScale } from '../src/core/scale';
+import { formatDisplayDate } from '../src/core/displayFormat';
 import { TaskStore } from '../src/hooks/useTaskStore';
 
 describe('dates', () => {
@@ -192,6 +193,31 @@ describe('zoom', () => {
 });
 
 describe('buildUpperHeaderBands', () => {
+  it('does not shift calendar month headers when display timezone is behind browser timezone', () => {
+    const scale = resolveScale('month');
+    const jan = new Date(2024, 0, 1);
+    expect(formatScaleHeader(jan, scale, 'America/New_York')).toBe('Jan 2024');
+    expect(formatScaleSubHeader(jan, scale, 'America/New_York')).toBe('2024');
+  });
+
+  it('does not shift day headers for calendar grid dates with display timezone', () => {
+    const scale = resolveScale('day');
+    const jan = new Date(2024, 0, 1);
+    expect(formatScaleHeader(jan, scale, 'America/New_York')).toBe('1');
+    expect(formatScaleSubHeader(jan, scale, 'America/New_York')).toBe('January 2024');
+  });
+
+  it('keeps timezone conversion for hour scale labels', () => {
+    const scale = resolveScale('1hour');
+    expect(formatScaleHeader(new Date('2026-06-23T13:00:00Z'), scale, 'America/New_York')).toBe(
+      '09:00',
+    );
+  });
+
+  it('does not shift local date-only sidebar values when display timezone is set', () => {
+    expect(formatDisplayDate(new Date(2024, 0, 1), 'America/New_York')).toBe('1/1/2024');
+  });
+
   it('spans month label across all week columns in that month', async () => {
     const { buildUpperHeaderBands } = await import('../src/components/Timeline/TimelineHeader');
     const columnWidth = 140;
