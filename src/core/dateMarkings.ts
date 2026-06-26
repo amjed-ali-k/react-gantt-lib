@@ -2,7 +2,7 @@ import { addDays, endOfDay, format, startOfDay } from 'date-fns';
 import type { BlockDateRange, DateMarkingLayers, DateMarkingRect, HolidayMarking } from '../types';
 import { toDate } from './dates';
 import type { ViewScale } from './scale';
-import { dateToPixel, getMsPerPixel, resolveTimelineWidth } from './zoom';
+import { dateToScalePixel, resolveTimelineWidth } from './zoom';
 import type { TimelineRange } from '../types';
 
 export const DEFAULT_HOLIDAY_COLOR = '#f2f2f2';
@@ -22,15 +22,19 @@ function clipToTimelinePixels(
   segmentEnd: Date,
   rangeStart: Date,
   rangeEnd: Date,
-  msPerPixel: number,
+  scale: ViewScale,
+  columnWidth: number,
   timelineWidth: number,
 ): { x: number; width: number } | null {
   const startMs = Math.max(segmentStart.getTime(), rangeStart.getTime());
   const endMs = Math.min(segmentEnd.getTime(), rangeEnd.getTime());
   if (startMs >= endMs) return null;
 
-  const x = Math.max(0, dateToPixel(new Date(startMs), rangeStart, msPerPixel));
-  const xEnd = Math.min(timelineWidth, dateToPixel(new Date(endMs), rangeStart, msPerPixel));
+  const x = Math.max(0, dateToScalePixel(new Date(startMs), rangeStart, scale, columnWidth));
+  const xEnd = Math.min(
+    timelineWidth,
+    dateToScalePixel(new Date(endMs), rangeStart, scale, columnWidth),
+  );
   const width = xEnd - x;
   if (width <= 0) return null;
   return { x, width };
@@ -69,7 +73,6 @@ export function computeDateMarkingRects(
   blockDates?: BlockDateRange[],
 ): DateMarkingLayers {
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
   const holidayColor = holidays?.color;
   const isWeekend = holidays?.isWeekend ?? defaultIsWeekend;
   const holidayDateMap = normalizeHolidayDates(holidays?.dates);
@@ -87,7 +90,8 @@ export function computeDateMarkingRects(
       endOfDay(day),
       range.start,
       range.end,
-      msPerPixel,
+      scale,
+      columnWidth,
       timelineWidth,
     );
     if (!geom) return;
@@ -127,7 +131,8 @@ export function computeDateMarkingRects(
       blockEnd,
       range.start,
       range.end,
-      msPerPixel,
+      scale,
+      columnWidth,
       timelineWidth,
     );
     if (!geom) return;

@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { BlockDateRange, GanttEventMap, GanttTask, GanttTheme } from '../src/types';
+import { DemoSectionShell } from './DemoSectionShell';
+import { exampleSources } from './exampleSources';
 
 export const ADVANCED_FEATURES_TASKS: GanttTask[] = [
   {
@@ -132,18 +134,19 @@ export function AdvancedFeaturesDemo({ onLog, theme }: AdvancedFeaturesDemoProps
   );
 
   return (
-    <section className="demo-section">
-      <div className="demo-section-header">
-        <div>
-          <h2>Advanced interactions</h2>
-          <p>
-            Multi-select with Ctrl/⌘+click, group rows with collapse toggles, per-task read-only,
-            blocked-date hover tooltips, and <code>data-task-id</code> on sidebar rows.
-          </p>
-        </div>
-        <span className="demo-badge demo-badge--smooth">no snap</span>
-      </div>
-
+    <DemoSectionShell
+      title="Advanced interactions"
+      subtitle={
+        <>
+          Multi-select with Ctrl/⌘+click, group rows with collapse toggles, per-task read-only,
+          blocked-date hover tooltips, and <code>data-task-id</code> on sidebar rows.
+        </>
+      }
+      badge="no snap"
+      badgeClassName="demo-badge--smooth"
+      sourceCode={exampleSources.advancedFeatures.code}
+      sourceFilename={exampleSources.advancedFeatures.filename}
+    >
       <div className="demo-stats demo-stats--advanced">
         <div className="demo-stat">
           <strong>Selected ({selectedIds.length})</strong>
@@ -191,6 +194,6 @@ export function AdvancedFeaturesDemo({ onLog, theme }: AdvancedFeaturesDemoProps
           }
         />
       </div>
-    </section>
+    </DemoSectionShell>
   );
 }

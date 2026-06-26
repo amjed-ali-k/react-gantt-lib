@@ -100,7 +100,7 @@ export const TimelineBody = memo(function TimelineBody({
       return {
         taskId: task.id,
         x: computeBarXExact(task._start, range.start, scale, columnWidth),
-        width: computeBarWidthExact(task._start, task._end, scale, columnWidth),
+        width: computeBarWidthExact(task._start, task._end, scale, columnWidth, range.start),
         y: row.y + barPad,
         height: barHeight,
       };

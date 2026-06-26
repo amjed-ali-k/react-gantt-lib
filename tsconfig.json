@@ -14,8 +14,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@demo/*": ["./demo/*"]
+    }
   },
-  "include": ["src", "tests", "demo"],
+  "include": ["src", "tests", "demo", "docs/.vitepress"],
   "exclude": ["node_modules", "dist"]
 }

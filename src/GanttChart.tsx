@@ -24,7 +24,8 @@ import {
   resolveTasks,
   clampTaskDates,
   getMsPerPixel,
-  dateToPixel,
+  dateToScalePixel,
+  scalePixelToDate,
   resolveTimelineWidth,
 } from './core/zoom';
 import { resolveScale, resolveScales } from './core/scale';
@@ -540,9 +541,11 @@ export function GanttChart({
       const scrollEl = timelineScrollRef.current;
       if (scrollEl && scrollEl.clientWidth > 0) {
         const centerPx = scrollEl.scrollLeft + scrollEl.clientWidth / 2;
-        const msPerPixel = getMsPerPixel(curScale, curColumnWidth);
-        pendingCenterDateRef.current = new Date(
-          rangeStart.getTime() + centerPx * msPerPixel,
+        pendingCenterDateRef.current = scalePixelToDate(
+          centerPx,
+          rangeStart,
+          curScale,
+          curColumnWidth,
         );
       }
       setScaleId(newScaleId);
@@ -568,8 +571,7 @@ export function GanttChart({
     const scrollEl = timelineScrollRef.current;
     if (!scrollEl) return;
 
-    const msPerPixel = getMsPerPixel(scale, columnWidth);
-    const centerPx = dateToPixel(centerDate, range.start, msPerPixel);
+    const centerPx = dateToScalePixel(centerDate, range.start, scale, columnWidth);
     const maxScroll = Math.max(0, timelineWidth - scrollEl.clientWidth);
     scrollEl.scrollLeft = Math.min(maxScroll, Math.max(0, centerPx - scrollEl.clientWidth / 2));
     setScrollLeft(scrollEl.scrollLeft);

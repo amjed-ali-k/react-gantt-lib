@@ -347,12 +347,19 @@ function TaskBarInner({
     return {
       ...geometry,
       x: computeBarXExact(dragPreview.start, rangeStart, scale, columnWidth),
-      width: computeBarWidthExact(dragPreview.start, dragPreview.end, scale, columnWidth),
+      width: computeBarWidthExact(
+        dragPreview.start,
+        dragPreview.end,
+        scale,
+        columnWidth,
+        rangeStart,
+      ),
     };
   }, [dragPreview, geometry, rangeStart, scale, columnWidth]);
 
-  const progress = dragPreview?.progress ?? task.progress ?? 0;
-  const progressWidth = (renderGeometry.width * progress) / 100;
+  const progress = Math.max(0, Math.min(100, dragPreview?.progress ?? task.progress ?? 0));
+  const progressWidth =
+    progress >= 100 ? renderGeometry.width : (renderGeometry.width * progress) / 100;
   const isMilestone = task.type === 'milestone';
   const isGroup = task.type === 'group';
   const taskElement = isMilestone ? 'milestone' : 'bar';

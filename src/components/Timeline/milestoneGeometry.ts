@@ -50,7 +50,7 @@ export function taskConnectorX(
   }
   const x = computeBarXExact(task._start, rangeStart, scale, columnWidth);
   if (edge === 'end') {
-    return x + computeBarWidthExact(task._start, task._end, scale, columnWidth);
+    return x + computeBarWidthExact(task._start, task._end, scale, columnWidth, rangeStart);
   }
   return x;
 }

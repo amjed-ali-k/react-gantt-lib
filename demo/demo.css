@@ -212,6 +212,10 @@ body {
   color: inherit;
 }
 
+.demo-tab--link {
+  text-decoration: none;
+}
+
 .demo-tab-badge {
   font-size: 0.6875rem;
   font-weight: 600;

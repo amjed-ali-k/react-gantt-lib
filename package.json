@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/amjed-ali-k/react-gantt-lib/issues"
   },
-  "homepage": "https://github.com/amjed-ali-k/react-gantt-lib#readme",
+  "homepage": "https://amjed-ali-k.github.io/react-gantt-lib/",
   "keywords": [
     "react",
     "gantt",
@@ -44,10 +44,14 @@
   "scripts": {
     "dev": "vite --config vite.demo.config.ts",
     "demo": "vite --config vite.demo.config.ts",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build",
     "release:notes": "node scripts/release-notes.mjs",
@@ -67,12 +71,16 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^3.2.6",
     "jsdom": "^26.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tsdown": "^0.15.12",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
+    "vitepress": "^1.6.4",
     "vitest": "^3.2.4"
   },
   "engines": {

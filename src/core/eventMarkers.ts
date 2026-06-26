@@ -1,7 +1,7 @@
 import type { EventMarker, TimelineRange } from '../types';
 import { toDate } from './dates';
 import type { ViewScale } from './scale';
-import { dateToPixel, getMsPerPixel, resolveTimelineWidth } from './zoom';
+import { dateToScalePixel, resolveTimelineWidth } from './zoom';
 
 export const DEFAULT_EVENT_MARKER_COLOR = '#64748b';
 export const TIMELINE_HEADER_HEIGHT = 52;
@@ -26,7 +26,6 @@ export function computeEventMarkerPositions(
 ): ResolvedEventMarker[] {
   if (!markers?.length) return [];
 
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
   const result: ResolvedEventMarker[] = [];
 
@@ -34,7 +33,7 @@ export function computeEventMarkerPositions(
     const date = toDate(marker.date);
     if (date < range.start || date > range.end) return;
 
-    const x = dateToPixel(date, range.start, msPerPixel);
+    const x = dateToScalePixel(date, range.start, scale, columnWidth);
     if (x < 0 || x > timelineWidth) return;
 
     result.push({

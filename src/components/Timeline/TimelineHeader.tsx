@@ -4,8 +4,7 @@ import { addScaleSteps, formatScaleHeader, formatScaleSubHeader } from '../../co
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
 import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
-import { getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
-import { pixelToDate } from '../../core/timelineInteraction';
+import { resolveTimelineWidth, scalePixelToDate } from '../../core/zoom';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import {
   buildUpperHeaderBandsForVisibleRange,
@@ -102,12 +101,11 @@ export const TimelineHeader = memo(function TimelineHeader({
   }, [dateMarkings, visibleColumns.startX, visibleColumns.endX]);
 
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
 
   const resolveHeaderTarget = (clientX: number, headerEl: HTMLDivElement) => {
     const rect = headerEl.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * timelineWidth;
-    const date = pixelToDate(x, range.start, msPerPixel);
+    const date = scalePixelToDate(x, range.start, scale, columnWidth);
     return { type: 'timeline' as const, date, rowIndex: null };
   };
 

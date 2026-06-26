@@ -1,0 +1,189 @@
+/**
+ * VitePress theme — indigo/slate brand aligned with the Gantt chart palette.
+ */
+
+:root {
+  --vp-c-brand-1: #6366f1;
+  --vp-c-brand-2: #4f46e5;
+  --vp-c-brand-3: #4338ca;
+  --vp-c-brand-soft: rgba(99, 102, 241, 0.12);
+
+  --vp-c-bg: #f8fafc;
+  --vp-c-bg-alt: #f1f5f9;
+  --vp-c-bg-soft: #ffffff;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #6366f1 0%, #0ea5e9 55%, #8b5cf6 100%);
+  --vp-home-hero-image-background-image: radial-gradient(
+    ellipse 80% 60% at 50% -10%,
+    rgba(99, 102, 241, 0.18),
+    transparent 70%
+  );
+  --vp-home-hero-image-filter: none;
+
+  --docs-prose-width: 72ch;
+}
+
+.dark {
+  --vp-c-brand-1: #818cf8;
+  --vp-c-brand-2: #6366f1;
+  --vp-c-brand-3: #a5b4fc;
+  --vp-c-brand-soft: rgba(129, 140, 248, 0.14);
+
+  --vp-c-bg: #0c1222;
+  --vp-c-bg-alt: #151b2e;
+  --vp-c-bg-soft: #1a1f3a;
+
+  --vp-home-hero-image-background-image: radial-gradient(
+    ellipse 80% 60% at 50% -10%,
+    rgba(56, 189, 248, 0.12),
+    transparent 70%
+  );
+}
+
+/* ── Home page ─────────────────────────────────────────────── */
+
+.VPHero .VPImage.image-src {
+  max-width: 220px;
+}
+
+.VPFeature {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-soft);
+  box-shadow: var(--vp-shadow-1);
+}
+
+.VPHome .vp-gantt-demo {
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.VPHome .home-demo-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
+  margin: -0.25rem auto 2rem;
+  max-width: 960px;
+  font-size: 14px;
+}
+
+.VPHome .home-demo-links span {
+  color: var(--vp-c-text-3);
+}
+
+.VPHome .home-demo-links a {
+  color: var(--vp-c-brand-1);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.VPHome .home-demo-links a:hover {
+  text-decoration: underline;
+}
+
+/* ── Doc prose ───────────────────────────────────────────── */
+
+.vp-doc h1 {
+  letter-spacing: -0.02em;
+}
+
+.vp-doc h2 {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 2rem;
+}
+
+.vp-doc .custom-block.tip {
+  border-color: var(--vp-c-brand-1);
+}
+
+.vp-doc .custom-block.tip .custom-block-title {
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Wide pages: full-width demos, readable prose */
+.Layout.docs-wide .vp-doc > p,
+.Layout.docs-wide .vp-doc > ul,
+.Layout.docs-wide .vp-doc > ol,
+.Layout.docs-wide .vp-doc > blockquote,
+.Layout.docs-wide .vp-doc > h2,
+.Layout.docs-wide .vp-doc > h3,
+.Layout.docs-wide .vp-doc > h4,
+.Layout.docs-wide .vp-doc > .custom-block {
+  max-width: var(--docs-prose-width);
+}
+
+.Layout.docs-wide .vp-doc > h1 {
+  max-width: none;
+}
+
+/* ── Wide layout (examples, guide, playground, api) ──────── */
+
+.Layout.docs-wide .VPDoc,
+.Layout.docs-wide .VPDoc .container,
+.Layout.docs-wide .VPDoc .content,
+.Layout.docs-wide .VPDoc .content-container,
+.Layout.docs-wide main,
+.Layout.docs-wide main .vp-doc {
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 960px) {
+  .Layout.docs-wide .VPDoc {
+    width: calc(100vw - var(--vp-sidebar-width, 272px) - 24px);
+  }
+
+  .Layout.docs-wide .VPDoc .content-container,
+  .Layout.docs-wide main {
+    width: calc(100vw - var(--vp-sidebar-width, 272px) - 64px);
+    max-width: none;
+  }
+}
+
+.Layout.docs-wide .vp-gantt-demo,
+.Layout.docs-wide .vp-gantt-demo__host,
+.Layout.docs-wide .docs-demo-frame__chart,
+.Layout.docs-wide .rg-gantt,
+.Layout.docs-wide .vp-playground {
+  width: 100%;
+}
+
+/* ── Footer on home ──────────────────────────────────────── */
+
+.layout-home + .VPFooter,
+.VPHome + .VPFooter {
+  margin-top: 0;
+}
+
+@media (min-width: 960px) {
+  .VPHero .container {
+    max-width: 1152px;
+  }
+}
+
+@media (max-width: 640px) {
+  .VPHome .home-demo-links {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .VPHome .home-demo-links span {
+    display: none;
+  }
+}

@@ -1,0 +1,87 @@
+/* ── Demo / playground embed shells ─────────────────────── */
+
+.vp-gantt-demo,
+.vp-playground {
+  margin: 1.25rem 0 1.75rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--vp-c-bg-soft);
+  box-shadow: var(--vp-shadow-1);
+}
+
+.vp-gantt-demo--loading,
+.vp-playground--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  gap: 10px;
+}
+
+.vp-gantt-demo--loading::before,
+.vp-playground--loading::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--vp-c-divider);
+  border-top-color: var(--vp-c-brand-1);
+  border-radius: 50%;
+  animation: vp-demo-spin 0.7s linear infinite;
+}
+
+@keyframes vp-demo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vp-gantt-demo__host {
+  min-height: var(--vp-gantt-height, 320px);
+}
+
+.vp-gantt-demo__error {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+}
+
+.dark .vp-gantt-demo__error {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.25);
+  border-bottom-color: rgba(248, 113, 113, 0.3);
+}
+
+.vp-playground__host {
+  min-height: 720px;
+}
+
+/* Allow horizontal scroll for wide charts on small screens */
+.docs-demo-root .rg-gantt,
+.docs-demo-root .demo-chart-wrap,
+.docs-demo-root .docs-demo-frame__chart {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.docs-demo-root .rg-gantt {
+  min-width: min(100%, 480px);
+}
+
+@media (max-width: 640px) {
+  .vp-gantt-demo,
+  .vp-playground {
+    margin-inline: -4px;
+    border-radius: 10px;
+  }
+
+  .vp-playground__host {
+    min-height: 560px;
+  }
+}

@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
-import { dateToPixel, getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
+import { dateToScalePixel, resolveTimelineWidth } from '../../core/zoom';
 import {
   filterRectsInXRange,
   getVisibleVerticalLines,
@@ -100,8 +100,7 @@ const TodayMarker = memo(function TodayMarker({
   const today = new Date();
   if (today < range.start || today > range.end) return null;
 
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
-  const x = dateToPixel(today, range.start, msPerPixel);
+  const x = dateToScalePixel(today, range.start, scale, columnWidth);
 
   return (
     <line

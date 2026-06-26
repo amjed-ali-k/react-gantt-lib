@@ -1,10 +1,10 @@
 import type { MouseEvent } from 'react';
 import type { RowLayout } from '../../core/rowLayout';
-import { pixelToDate, resolveRowAtY } from '../../core/timelineInteraction';
+import { resolveRowAtY } from '../../core/timelineInteraction';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
-import { getMsPerPixel, resolveTimelineWidth } from '../../core/zoom';
+import { resolveTimelineWidth, scalePixelToDate } from '../../core/zoom';
 import { createPointerDetail } from './pointerDetail';
 
 interface TimelineHitLayerProps {
@@ -29,14 +29,13 @@ export function TimelineHitLayer({
   if (!interactive) return null;
 
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
 
   const resolveTarget = (clientX: number, clientY: number, svg: SVGSVGElement) => {
     const rect = svg.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * timelineWidth;
     const y = ((clientY - rect.top) / rect.height) * height;
     const rowIndex = resolveRowAtY(y, rowLayouts);
-    const date = pixelToDate(x, range.start, msPerPixel);
+    const date = scalePixelToDate(x, range.start, scale, columnWidth);
     return { type: 'timeline' as const, date, rowIndex };
   };
 

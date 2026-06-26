@@ -83,7 +83,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
       return {
         taskId: task.id,
         x: computeBarXExact(task._start, range.start, scale, columnWidth),
-        width: computeBarWidthExact(task._start, task._end, scale, columnWidth),
+        width: computeBarWidthExact(task._start, task._end, scale, columnWidth, range.start),
         y: barPad,
         height: barHeight,
       };

@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
 import type { CustomRowDefinition } from '../src/types';
 import { useGanttTimeline } from '../src/context/GanttChartContext';
-import { dateToPixel } from '../src/core/zoom';
+import { dateToScalePixel } from '../src/core/zoom';
 import { useBufferedSegmentCache } from '../src/hooks/useBufferedSegmentCache';
 import './dailyColorStripRow.css';
 
@@ -17,12 +17,16 @@ function daySegmentWidth(
   day: Date,
   rangeStart: Date,
   rangeEnd: Date,
-  msPerPixel: number,
+  scale: ReturnType<typeof useGanttTimeline>['scale'],
+  columnWidth: number,
 ): number {
   const segmentStart = Math.max(startOfDay(day).getTime(), rangeStart.getTime());
   const segmentEnd = Math.min(endOfDay(day).getTime(), rangeEnd.getTime());
   if (segmentEnd <= segmentStart) return 0;
-  return (segmentEnd - segmentStart) / msPerPixel;
+  return (
+    dateToScalePixel(new Date(segmentEnd), rangeStart, scale, columnWidth) -
+    dateToScalePixel(new Date(segmentStart), rangeStart, scale, columnWidth)
+  );
 }
 
 interface DaySegment {
@@ -35,7 +39,7 @@ interface DaySegment {
 
 /** Timeline band — uses `useGanttTimeline()` so it scrolls and zooms with the chart. */
 export const DailyColorStrip = memo(function DailyColorStrip() {
-  const { range, msPerPixel, timelineWidth, visibleColumns } = useGanttTimeline();
+  const { range, scale, columnWidth, timelineWidth, visibleColumns } = useGanttTimeline();
   const [hoveredKey, setHoveredKey] = useState<number | null>(null);
 
   const dayKeys = useMemo(() => {
@@ -44,15 +48,15 @@ export const DailyColorStrip = memo(function DailyColorStrip() {
     let day = startOfDay(range.start);
     const last = startOfDay(range.end);
     while (day.getTime() <= last.getTime()) {
-      const x = dateToPixel(startOfDay(day), range.start, msPerPixel);
-      const width = daySegmentWidth(day, range.start, range.end, msPerPixel);
+      const x = dateToScalePixel(startOfDay(day), range.start, scale, columnWidth);
+      const width = daySegmentWidth(day, range.start, range.end, scale, columnWidth);
       if (width > 0 && x + width >= startX && x <= endX) {
         keys.push(day.getTime());
       }
       day = addDays(day, 1);
     }
     return keys;
-  }, [visibleColumns.startIndex, visibleColumns.endIndex, range.start, range.end, msPerPixel]);
+  }, [visibleColumns.startIndex, visibleColumns.endIndex, range.start, range.end, scale, columnWidth]);
 
   const segments = useBufferedSegmentCache<number, DaySegment>(
     dayKeys,
@@ -61,12 +65,12 @@ export const DailyColorStrip = memo(function DailyColorStrip() {
       return {
         key: ms,
         label: day.toDateString(),
-        x: dateToPixel(startOfDay(day), range.start, msPerPixel),
-        width: daySegmentWidth(day, range.start, range.end, msPerPixel),
+        x: dateToScalePixel(startOfDay(day), range.start, scale, columnWidth),
+        width: daySegmentWidth(day, range.start, range.end, scale, columnWidth),
         color: colorForDate(day),
       };
     },
-    `${range.start.getTime()}|${range.end.getTime()}|${msPerPixel}`,
+    `${range.start.getTime()}|${range.end.getTime()}|${scale.id}|${columnWidth}`,
   );
 
   return (

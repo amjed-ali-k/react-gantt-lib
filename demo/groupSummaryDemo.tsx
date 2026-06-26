@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { GanttColumn, GanttTask, GanttTheme } from '../src/types';
+import { DemoSectionShell } from './DemoSectionShell';
+import { exampleSources } from './exampleSources';
 
 export const GROUP_SUMMARY_MIN_DATE = '2026-06-01';
 export const GROUP_SUMMARY_MAX_DATE = '2026-08-15';
@@ -288,20 +290,21 @@ export function GroupSummaryDemo({ onLog, theme }: GroupSummaryDemoProps) {
   const [tasks, setTasks] = useState(GROUP_SUMMARY_TASKS);
 
   return (
-    <section className="demo-section">
-      <div className="demo-section-header">
-        <div>
-          <h2>Group summary bars</h2>
-          <p>
-            20 tasks in 5 groups of 4 — each group has a summary bar plus child task bars when
-            expanded. Roll-up covers dates, duration-weighted progress, and baselines.{' '}
-            &quot;MEP rough-in&quot; uses an explicit <code>progress</code> override;{' '}
-            &quot;Building envelope&quot; starts collapsed. Dependencies chain across groups.
-          </p>
-        </div>
-        <span className="demo-badge demo-badge--group">group rollup</span>
-      </div>
-
+    <DemoSectionShell
+      title="Group summary bars"
+      subtitle={
+        <>
+          20 tasks in 5 groups of 4 — each group has a summary bar plus child task bars when
+          expanded. Roll-up covers dates, duration-weighted progress, and baselines.{' '}
+          &quot;MEP rough-in&quot; uses an explicit <code>progress</code> override;{' '}
+          &quot;Building envelope&quot; starts collapsed. Dependencies chain across groups.
+        </>
+      }
+      badge="group rollup"
+      badgeClassName="demo-badge--group"
+      sourceCode={exampleSources.groupSummary.code}
+      sourceFilename={exampleSources.groupSummary.filename}
+    >
       <div className="demo-stats demo-stats--advanced">
         <div className="demo-stat">
           <strong>5 groups × 4 tasks</strong>
@@ -339,6 +342,6 @@ export function GroupSummaryDemo({ onLog, theme }: GroupSummaryDemoProps) {
           onProgressChange={(e) => onLog('progressChange', `${e.task.name}: ${e.progress}%`)}
         />
       </div>
-    </section>
+    </DemoSectionShell>
   );
 }

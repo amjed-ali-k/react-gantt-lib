@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
 import type { GanttTask, GanttTheme } from '../src/types';
+import { DemoSectionShell } from './DemoSectionShell';
+import { exampleSources } from './exampleSources';
 
 /** UTC instants that read differently across common office timezones. */
 export const TIMEZONE_DEMO_TASKS: GanttTask[] = [
@@ -98,19 +100,20 @@ export function TimezoneDemo({ onLog, theme }: TimezoneDemoProps) {
   );
 
   return (
-    <section className="demo-section">
-      <div className="demo-section-header">
-        <div>
-          <h2>Display timezone</h2>
-          <p>
-            Set <code>timezone</code> on <code>GanttChart</code> so every label — headers, start/end
-            columns, tooltips — uses the same IANA zone for all viewers. Task data and drag callbacks
-            stay in real UTC instants; only formatting changes.
-          </p>
-        </div>
-        <span className="demo-badge demo-badge--timezone">display only</span>
-      </div>
-
+    <DemoSectionShell
+      title="Display timezone"
+      subtitle={
+        <>
+          Set <code>timezone</code> on <code>GanttChart</code> so every label — headers, start/end
+          columns, tooltips — uses the same IANA zone for all viewers. Task data and drag callbacks
+          stay in real UTC instants; only formatting changes.
+        </>
+      }
+      badge="display only"
+      badgeClassName="demo-badge--timezone"
+      sourceCode={exampleSources.timezone.code}
+      sourceFilename={exampleSources.timezone.filename}
+    >
       <div className="demo-timezone-controls">
         <label className="demo-timezone-field" htmlFor="demo-timezone-select">
           <span>Chart timezone</span>
@@ -166,6 +169,6 @@ export function TimezoneDemo({ onLog, theme }: TimezoneDemoProps) {
           }
         />
       </div>
-    </section>
+    </DemoSectionShell>
   );
 }

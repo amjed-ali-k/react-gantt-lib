@@ -11,6 +11,7 @@ import {
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
+import { GroupCompletedDemo } from './groupCompletedDemo';
 import { GroupSummaryDemo } from './groupSummaryDemo';
 import { TimezoneDemo } from './timezoneDemo';
 import { PlaygroundApp } from './playground';
@@ -21,6 +22,8 @@ import {
   STICKY_DEMO_TASKS,
 } from './stickyRowsDemo';
 import { DemoThemeProvider } from './chartTheme';
+import { DemoSectionShell } from './DemoSectionShell';
+import { exampleSources } from './exampleSources';
 import { ThemeToggle } from './ThemeToggle';
 import './demo.css';
 import './playground.css';
@@ -119,10 +122,13 @@ const SMOOTH_TASKS: GanttTask[] = [
 type LogEntry = { id: number; event: string; detail: string };
 type DemoTab = 'examples' | 'playground';
 
+const DOCS_URL = 'https://amjed-ali-k.github.io/react-gantt-lib/';
+
 let logId = 0;
 
 function readTabFromLocation(): DemoTab {
-  if (window.location.hash === '#playground') return 'playground';
+  const hash = window.location.hash;
+  if (hash === '#playground') return 'playground';
   if (window.location.pathname.endsWith('playground.html')) return 'playground';
   return 'examples';
 }
@@ -144,6 +150,8 @@ function ChartSection({
   theme,
   badgeClassName,
   columnScrollBufferPercent,
+  sourceCode,
+  sourceFilename,
 }: {
   title: string;
   subtitle: string;
@@ -161,20 +169,18 @@ function ChartSection({
   theme: GanttTheme;
   badgeClassName?: string;
   columnScrollBufferPercent?: number;
+  sourceCode?: string;
+  sourceFilename?: string;
 }) {
   return (
-    <section className="demo-section">
-      <div className="demo-section-header">
-        <div>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-        <span
-          className={`demo-badge ${badgeClassName ?? (snapToGrid ? 'demo-badge--snap' : 'demo-badge--smooth')}`}
-        >
-          {badge}
-        </span>
-      </div>
+    <DemoSectionShell
+      title={title}
+      subtitle={subtitle}
+      badge={badge}
+      badgeClassName={badgeClassName ?? (snapToGrid ? 'demo-badge--snap' : 'demo-badge--smooth')}
+      sourceCode={sourceCode}
+      sourceFilename={sourceFilename}
+    >
       <div className="demo-chart-wrap">
         <GanttChart
           tasks={tasks}
@@ -197,7 +203,7 @@ function ChartSection({
           onProgressChange={(e) => onLog('progressChange', `${e.task.name}: ${e.progress}%`)}
         />
       </div>
-    </section>
+    </DemoSectionShell>
   );
 }
 
@@ -232,6 +238,8 @@ function ExamplesDemo() {
         </p>
       </header>
 
+      <GroupCompletedDemo onLog={log} theme={chartTheme} />
+
       <GroupSummaryDemo onLog={log} theme={chartTheme} />
 
       <ChartSection
@@ -239,6 +247,8 @@ function ExamplesDemo() {
         subtitle="The indigo baseline bar stays pinned below the header while you scroll 32 work packages. Two custom footer rows stick to the bottom of the viewport."
         badge="sticky rows"
         badgeClassName="demo-badge--sticky"
+        sourceCode={exampleSources.stickyRows.code}
+        sourceFilename={exampleSources.stickyRows.filename}
         tasks={stickyTasks}
         onTasksChange={setStickyTasks}
         zoomLevel={stickyZoom}
@@ -256,6 +266,8 @@ function ExamplesDemo() {
         title="Grid snap (default)"
         subtitle="Fixed timeline Jan–Feb 2026. Drag tasks — the grid stays put; dates clamp at the edges."
         badge="snap on release"
+        sourceCode={exampleSources.gridSnap.code}
+        sourceFilename={exampleSources.gridSnap.filename}
         tasks={snappedTasks}
         onTasksChange={setSnappedTasks}
         zoomLevel={snappedZoom}
@@ -273,6 +285,8 @@ function ExamplesDemo() {
         subtitle="Four-year range, 50 workstreams, column virtualization. Footer rows use 32 interpolated bands with 1px gaps; per-column cache only computes newly scrolled columns."
         badge="virtualized columns"
         badgeClassName="demo-badge--perf"
+        sourceCode={exampleSources.largeTimeline.code}
+        sourceFilename={exampleSources.largeTimeline.filename}
         tasks={largeTasks}
         onTasksChange={setLargeTasks}
         zoomLevel={largeZoom}
@@ -291,6 +305,8 @@ function ExamplesDemo() {
         title="Custom row + useGanttTimeline()"
         subtitle="Footer row renders inside the timeline scroll area. DailyColorStrip uses the useGanttTimeline() hook — it scrolls and zooms with the chart."
         badge="custom hook"
+        sourceCode={exampleSources.customRow.code}
+        sourceFilename={exampleSources.customRow.filename}
         tasks={snappedTasks}
         onTasksChange={setSnappedTasks}
         zoomLevel={snappedZoom}
@@ -308,6 +324,8 @@ function ExamplesDemo() {
         title="Smooth — no snapping"
         subtitle="Fixed Mar 2026 window. Smooth pixel drag with sub-day precision; timeline never grows."
         badge="no snap"
+        sourceCode={exampleSources.smoothDrag.code}
+        sourceFilename={exampleSources.smoothDrag.filename}
         tasks={smoothTasks}
         onTasksChange={setSmoothTasks}
         zoomLevel={smoothZoom}
@@ -329,6 +347,10 @@ function ExamplesDemo() {
           <h3>Try it</h3>
           <ul>
             <li>
+              <strong>Group completed:</strong> 5 tasks in one group — two at{' '}
+              <code>progress: 100</code>; verify bars are fully filled (use 0–100, not 0–1)
+            </li>
+            <li>
               <strong>Group summary:</strong> 20 tasks in 5 groups — rolled-up dates, progress,
               baselines; collapse/expand with ▸/▾
             </li>
@@ -349,6 +371,8 @@ function ExamplesDemo() {
             </li>
             <li>Sidebar rows expose <code>data-task-id</code> for E2E selectors</li>
             <li>Switch to the <strong>Playground</strong> tab for date range + zoom level controls</li>
+            <li>Read the full <strong><a href={DOCS_URL} target="_blank" rel="noreferrer">documentation site</a></strong> — guides, API, and live examples</li>
+            <li>Use the <strong>Code</strong> toggle on any example to view its source</li>
           </ul>
         </div>
 
@@ -384,7 +408,8 @@ export function App() {
     setTab(next);
     const path = window.location.pathname.replace(/\/$/, '');
     const base = path.endsWith('playground.html') ? '/index.html' : path || '/';
-    window.history.replaceState(null, '', next === 'playground' ? `${base}#playground` : base);
+    const hash = next === 'playground' ? '#playground' : '';
+    window.history.replaceState(null, '', hash ? `${base}${hash}` : base);
   };
 
   return (
@@ -409,7 +434,16 @@ export function App() {
           >
             Playground
             <span className="demo-tab-badge">controls</span>
-            </button>
+          </button>
+          <a
+            className="demo-tab demo-tab--link"
+            href={DOCS_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Docs
+            <span className="demo-tab-badge">↗</span>
+          </a>
           </nav>
         </div>
       </header>

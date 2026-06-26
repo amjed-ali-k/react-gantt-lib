@@ -61,6 +61,7 @@ export function computeBaselineGeometry(
     task._baselineEnd,
     scale,
     columnWidth,
+    rangeStart,
   );
   const y = rowY + rowHeight - BASELINE_BOTTOM_PAD - BASELINE_LINE_HEIGHT;
 

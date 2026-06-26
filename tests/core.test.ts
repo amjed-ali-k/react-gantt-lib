@@ -18,6 +18,8 @@ import {
   nextZoomLevel,
   getColumnWidth,
   resolveTimelineWidth,
+  dateToScalePixel,
+  scalePixelToDate,
 } from '../src/core/zoom';
 import { resolveScale } from '../src/core/scale';
 import { TaskStore } from '../src/hooks/useTaskStore';
@@ -106,6 +108,40 @@ describe('zoom', () => {
     const cw = getColumnWidth('day');
     expect(resolveTimelineWidth(range, cw)).toBe(range.pixelWidth);
     expect(range.pixelWidth).toBeLessThanOrEqual(range.columnCount * cw);
+  });
+
+  it('uses one column per calendar month for fixed month ranges', () => {
+    const range = computeTimelineRange([], 'month', 2, {
+      minDate: '2026-01-01',
+      maxDate: '2026-12-31',
+    });
+    const cw = getColumnWidth('month');
+    expect(range.fixed).toBe(true);
+    expect(range.columnCount).toBe(12);
+    expect(resolveTimelineWidth(range, cw)).toBe(12 * cw);
+  });
+
+  it('maps month pixels by calendar month boundaries', () => {
+    const scale = resolveScale('month');
+    const cw = getColumnWidth(scale);
+    const start = toDate('2026-01-01');
+    expect(dateToScalePixel(toDate('2026-02-01'), start, scale, cw)).toBe(cw);
+    expect(dateToScalePixel(toDate('2026-03-01'), start, scale, cw)).toBe(cw * 2);
+
+    const roundTrip = scalePixelToDate(cw * 2, start, scale, cw);
+    expect(roundTrip).toEqual(toDate('2026-03-01'));
+  });
+
+  it('measures month bar width on the same chart grid as bar x', () => {
+    const scale = resolveScale('month');
+    const cw = getColumnWidth(scale);
+    const rangeStart = toDate('2026-01-01');
+    const start = toDate('2026-01-15');
+    const end = toDate('2026-02-15');
+    const x = computeBarXExact(start, rangeStart, scale, cw);
+    const width = computeBarWidthExact(start, end, scale, cw, rangeStart);
+    const endX = computeBarXExact(end, rangeStart, scale, cw);
+    expect(x + width).toBeCloseTo(endX, 6);
   });
 
   it('supports custom 2-day scale', () => {

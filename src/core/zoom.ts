@@ -56,9 +56,7 @@ export function computeFixedTimelinePixelWidth(
   columnWidth: number,
 ): number {
   const end = endOfDay(toDate(maxDate));
-  const msPerPixel = getMsPerPixel(scale, columnWidth);
-  const spanMs = Math.max(0, end.getTime() - start.getTime());
-  return Math.max(columnWidth, Math.ceil(spanMs / msPerPixel));
+  return Math.max(columnWidth, Math.ceil(dateToScalePixel(end, start, scale, columnWidth)));
 }
 
 export function resolveTimelineWidth(
@@ -126,13 +124,59 @@ export function durationToPixel(start: Date, end: Date, msPerPixel: number): num
   return Math.max(6, (end.getTime() - start.getTime()) / msPerPixel);
 }
 
+export function dateToScalePixel(
+  date: Date,
+  rangeStart: Date,
+  scaleOrId: ViewScale | string,
+  columnWidth?: number,
+): number {
+  const scale = asScale(scaleOrId);
+  const cw = getColumnWidth(scale, columnWidth);
+  let stepIndex = diffScaleSteps(date, rangeStart, scale);
+  let stepStart = addScaleSteps(rangeStart, stepIndex, scale);
+  let nextStepStart = addScaleSteps(stepStart, 1, scale);
+
+  while (date.getTime() < stepStart.getTime()) {
+    stepIndex -= 1;
+    nextStepStart = stepStart;
+    stepStart = addScaleSteps(rangeStart, stepIndex, scale);
+  }
+
+  while (date.getTime() >= nextStepStart.getTime()) {
+    stepIndex += 1;
+    stepStart = nextStepStart;
+    nextStepStart = addScaleSteps(stepStart, 1, scale);
+  }
+
+  const stepMs = nextStepStart.getTime() - stepStart.getTime();
+  const fraction = stepMs > 0 ? (date.getTime() - stepStart.getTime()) / stepMs : 0;
+  return stepIndex * cw + fraction * cw;
+}
+
+export function scalePixelToDate(
+  x: number,
+  rangeStart: Date,
+  scaleOrId: ViewScale | string,
+  columnWidth?: number,
+): Date {
+  const scale = asScale(scaleOrId);
+  const cw = getColumnWidth(scale, columnWidth);
+  const rawStep = x / cw;
+  const stepIndex = Math.floor(rawStep);
+  const fraction = rawStep - stepIndex;
+  const stepStart = addScaleSteps(rangeStart, stepIndex, scale);
+  const nextStepStart = addScaleSteps(stepStart, 1, scale);
+  const stepMs = nextStepStart.getTime() - stepStart.getTime();
+  return new Date(stepStart.getTime() + fraction * stepMs);
+}
+
 export function computeBarXExact(
   start: Date,
   rangeStart: Date,
   scaleOrId: ViewScale | string,
   columnWidth?: number,
 ): number {
-  return dateToPixel(start, rangeStart, getMsPerPixel(scaleOrId, columnWidth));
+  return dateToScalePixel(start, rangeStart, scaleOrId, columnWidth);
 }
 
 export function computeBarWidthExact(
@@ -140,9 +184,16 @@ export function computeBarWidthExact(
   end: Date,
   scaleOrId: ViewScale | string,
   columnWidth?: number,
+  rangeStart?: Date,
 ): number {
-  const msPerPixel = getMsPerPixel(scaleOrId, columnWidth);
-  return durationToPixel(start, end, msPerPixel);
+  if (rangeStart) {
+    return Math.max(
+      6,
+      dateToScalePixel(end, rangeStart, scaleOrId, columnWidth) -
+        dateToScalePixel(start, rangeStart, scaleOrId, columnWidth),
+    );
+  }
+  return Math.max(6, dateToScalePixel(end, start, scaleOrId, columnWidth));
 }
 
 export function pixelDeltaToDates(

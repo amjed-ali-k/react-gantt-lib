@@ -2,6 +2,8 @@
 
 High-performance React Gantt chart with **granular bar updates** (only the changed task re-renders), three draggable sidebar panels, async custom rows, sticky rows, rich event hooks, and display-timezone support.
 
+**Documentation:** **[https://amjed-ali-k.github.io/react-gantt-lib/](https://amjed-ali-k.github.io/react-gantt-lib/)**
+
 Built with **date-fns** for all date math.
 
 ## Table of contents
@@ -941,18 +943,14 @@ const [zoom, setZoom] = useState('week');
 
 ## Demo & playground
 
-```bash
-npm run demo   # → http://localhost:5173
-```
+**Documentation:** [https://amjed-ali-k.github.io/react-gantt-lib/](https://amjed-ali-k.github.io/react-gantt-lib/) — guides, API reference, live examples, and interactive playground.
 
-| Demo file | Shows |
-|-----------|-------|
-| `demo/App.tsx` | Examples tab: sticky rows, grid snap, large timeline, custom row, smooth drag, timezone, advanced interactions |
-| `demo/stickyRowsDemo.tsx` | Sticky top baseline bar + sticky bottom custom footer rows |
-| `demo/timezoneDemo.tsx` | Timezone selector, live clocks, hour zoom, tooltips |
-| `demo/advancedFeaturesDemo.tsx` | Multi-select, group folders/summary bars, collapse, read-only, block hover |
-| `demo/playground.tsx` | Interactive controls for all major props |
-| `demo/dailyColorStripRow.tsx` | Custom row with `useGanttTimeline()` daily color bands |
+Local dev:
+
+```bash
+npm run docs:dev   # VitePress docs → http://localhost:5173/react-gantt-lib/
+npm run demo       # Standalone demo app
+```
 
 ## Limitations
 

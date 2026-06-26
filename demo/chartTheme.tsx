@@ -72,6 +72,27 @@ export function DemoThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** For embedding demos in external hosts (e.g. VitePress) without touching document theme classes. */
+export function EmbeddedDemoThemeProvider({
+  children,
+  chartTheme,
+}: {
+  children: ReactNode;
+  chartTheme: GanttTheme;
+}) {
+  const value = useMemo(
+    () => ({
+      preference: 'system' as const,
+      chartTheme,
+      setPreference: () => {},
+      cyclePreference: () => {},
+    }),
+    [chartTheme],
+  );
+
+  return <DemoThemeContext.Provider value={value}>{children}</DemoThemeContext.Provider>;
+}
+
 export function useDemoTheme() {
   const ctx = useContext(DemoThemeContext);
   if (!ctx) {
