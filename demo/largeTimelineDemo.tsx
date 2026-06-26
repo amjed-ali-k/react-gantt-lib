@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { CustomRowDefinition, GanttTask } from '../src/types';
+import type { CustomRowDefinition, GanttTask, HolidayMarking } from '../src/types';
 import { useGanttTimeline } from '../src/context/GanttChartContext';
 import { useVirtualColumnSegments, VirtualColumnCell } from '../src/hooks/useVirtualColumnSegments';
 import './largeTimelineDemo.css';
@@ -213,3 +213,54 @@ export const LARGE_TIMELINE_TASKS: GanttTask[] = generateLargeTimelineTasks(50);
 
 export const LARGE_TIMELINE_MIN_DATE = '2024-01-01';
 export const LARGE_TIMELINE_MAX_DATE = '2027-12-31';
+
+export const LARGE_TIMELINE_US_HOLIDAYS: HolidayMarking = {
+  color: 'rgba(251, 191, 36, 0.24)',
+  dates: [
+    { date: '2024-01-01', label: "New Year's Day" },
+    { date: '2024-01-15', label: 'Martin Luther King Jr. Day' },
+    { date: '2024-02-19', label: "Washington's Birthday" },
+    { date: '2024-05-27', label: 'Memorial Day' },
+    { date: '2024-06-19', label: 'Juneteenth National Independence Day' },
+    { date: '2024-07-04', label: 'Independence Day' },
+    { date: '2024-09-02', label: 'Labor Day' },
+    { date: '2024-10-14', label: 'Columbus Day' },
+    { date: '2024-11-11', label: 'Veterans Day' },
+    { date: '2024-11-28', label: 'Thanksgiving Day' },
+    { date: '2024-12-25', label: 'Christmas Day' },
+    { date: '2025-01-01', label: "New Year's Day" },
+    { date: '2025-01-20', label: 'Martin Luther King Jr. Day' },
+    { date: '2025-02-17', label: "Washington's Birthday" },
+    { date: '2025-05-26', label: 'Memorial Day' },
+    { date: '2025-06-19', label: 'Juneteenth National Independence Day' },
+    { date: '2025-07-04', label: 'Independence Day' },
+    { date: '2025-09-01', label: 'Labor Day' },
+    { date: '2025-10-13', label: 'Columbus Day' },
+    { date: '2025-11-11', label: 'Veterans Day' },
+    { date: '2025-11-27', label: 'Thanksgiving Day' },
+    { date: '2025-12-25', label: 'Christmas Day' },
+    { date: '2026-01-01', label: "New Year's Day" },
+    { date: '2026-01-19', label: 'Martin Luther King Jr. Day' },
+    { date: '2026-02-16', label: "Washington's Birthday" },
+    { date: '2026-05-25', label: 'Memorial Day' },
+    { date: '2026-06-19', label: 'Juneteenth National Independence Day' },
+    { date: '2026-07-03', label: 'Independence Day (observed)' },
+    { date: '2026-09-07', label: 'Labor Day' },
+    { date: '2026-10-12', label: 'Columbus Day' },
+    { date: '2026-11-11', label: 'Veterans Day' },
+    { date: '2026-11-26', label: 'Thanksgiving Day' },
+    { date: '2026-12-25', label: 'Christmas Day' },
+    { date: '2027-01-01', label: "New Year's Day" },
+    { date: '2027-01-18', label: 'Martin Luther King Jr. Day' },
+    { date: '2027-02-15', label: "Washington's Birthday" },
+    { date: '2027-05-31', label: 'Memorial Day' },
+    { date: '2027-06-18', label: 'Juneteenth National Independence Day (observed)' },
+    { date: '2027-07-05', label: 'Independence Day (observed)' },
+    { date: '2027-09-06', label: 'Labor Day' },
+    { date: '2027-10-11', label: 'Columbus Day' },
+    { date: '2027-11-11', label: 'Veterans Day' },
+    { date: '2027-11-25', label: 'Thanksgiving Day' },
+    { date: '2027-12-24', label: 'Christmas Day (observed)' },
+    { date: '2027-12-31', label: "New Year's Day 2028 (observed)" },
+  ],
+};

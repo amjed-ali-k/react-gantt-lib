@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GanttChart } from '../src/GanttChart';
-import type { CustomRowDefinition, GanttTask, GanttTheme, ViewScaleId } from '../src/types';
+import type { CustomRowDefinition, GanttTask, GanttTheme, HolidayMarking, ViewScaleId } from '../src/types';
 import { DAILY_COLOR_STRIP_ROW } from './dailyColorStripRow';
 import {
   CALCULATED_COLUMN_ROW,
@@ -8,6 +8,7 @@ import {
   LARGE_TIMELINE_MAX_DATE,
   LARGE_TIMELINE_MIN_DATE,
   LARGE_TIMELINE_TASKS,
+  LARGE_TIMELINE_US_HOLIDAYS,
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
@@ -147,6 +148,7 @@ function ChartSection({
   onLog,
   height = 360,
   customRows,
+  holidays,
   theme,
   badgeClassName,
   columnScrollBufferPercent,
@@ -166,6 +168,7 @@ function ChartSection({
   onLog: (event: string, detail: string) => void;
   height?: number;
   customRows?: CustomRowDefinition[];
+  holidays?: HolidayMarking;
   theme: GanttTheme;
   badgeClassName?: string;
   columnScrollBufferPercent?: number;
@@ -191,6 +194,7 @@ function ChartSection({
           maxDate={maxDate}
           snapToGrid={snapToGrid}
           customRows={customRows}
+          holidays={holidays}
           onTasksChange={onTasksChange}
           onZoomChange={(e) => onZoomChange(e.zoomLevel)}
           columnScrollBufferPercent={columnScrollBufferPercent}
@@ -297,6 +301,7 @@ function ExamplesDemo() {
         onLog={log}
         height={720}
         customRows={largeCustomRows}
+        holidays={LARGE_TIMELINE_US_HOLIDAYS}
         columnScrollBufferPercent={10}
         theme={chartTheme}
       />
