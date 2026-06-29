@@ -1,11 +1,15 @@
-## v0.1.17
+## v0.1.18
 
-* [Release v0.1.16](https://github.com/amjed-ali-k/react-gantt-lib/commit/854980319442874ddeb907c67bde35337d8ac2fe) ([8549803](https://github.com/amjed-ali-k/react-gantt-lib/commit/854980319442874ddeb907c67bde35337d8ac2fe))
-* [Enhance Gantt chart demo with US holidays](https://github.com/amjed-ali-k/react-gantt-lib/commit/6809eb97bce156ba4d64f4a8a60a6b1e1f96e3c9) ([6809eb9](https://github.com/amjed-ali-k/react-gantt-lib/commit/6809eb97bce156ba4d64f4a8a60a6b1e1f96e3c9))
-  * Updated `App.tsx` and `largeTimelineDemo.tsx` to include a new `LARGE_TIMELINE_US_HOLIDAYS` constant for US holidays.
-  * Modified `ChartSection` component to accept a `holidays` prop, allowing for holiday markings in the Gantt chart.
-  * Improved type definitions to incorporate `HolidayMarking` for better type safety.
-* [Add timezone support to ChartSection component](https://github.com/amjed-ali-k/react-gantt-lib/commit/bb49a5d3bd21d67030a1b9fb825ae799ef6496ac) ([bb49a5d](https://github.com/amjed-ali-k/react-gantt-lib/commit/bb49a5d3bd21d67030a1b9fb825ae799ef6496ac))
-* [0.1.17](https://github.com/amjed-ali-k/react-gantt-lib/commit/772c5d6856680cc0c0abd0ebda5c5d8b4ab6b8fe) ([772c5d6](https://github.com/amjed-ali-k/react-gantt-lib/commit/772c5d6856680cc0c0abd0ebda5c5d8b4ab6b8fe))
+* [Release v0.1.17](https://github.com/amjed-ali-k/react-gantt-lib/commit/4c81c5340e0978abffe9a2223981059708d20518) ([4c81c53](https://github.com/amjed-ali-k/react-gantt-lib/commit/4c81c5340e0978abffe9a2223981059708d20518))
+* [Refactor date handling in Gantt chart components](https://github.com/amjed-ali-k/react-gantt-lib/commit/1449e9de188bc22055aa15208ce6d216dc9d8858) ([1449e9d](https://github.com/amjed-ali-k/react-gantt-lib/commit/1449e9de188bc22055aa15208ce6d216dc9d8858))
+  * Updated `llm.txt` to clarify the behavior of block date ranges and their rendering.
+  * Modified `computeDateMarkingRects` to use exact start and end times for block date ranges, improving precision in rendering.
+  * Added a test case to ensure correct handling of block date ranges with specific start and end times.
+* [Add draggable markers feature to Gantt chart](https://github.com/amjed-ali-k/react-gantt-lib/commit/c84882d1fd395761973e9ba03435d2655014bb48) ([c84882d](https://github.com/amjed-ali-k/react-gantt-lib/commit/c84882d1fd395761973e9ba03435d2655014bb48))
+  * Introduced `draggableMarkers` and `draggableMarkerSnapPoints` props in the Gantt chart for enhanced interactivity.
+  * Implemented drag lifecycle callbacks: `onDraggableMarkerDragStart`, `onDraggableMarkerDrag`, `onDraggableMarkerDragEnd`, and `onDraggableMarkerDragToSnapPoint`.
+  * Updated documentation to include new types and event callbacks related to draggable markers.
+  * Enhanced demo examples and styles to showcase draggable markers functionality.
+* [0.1.18](https://github.com/amjed-ali-k/react-gantt-lib/commit/e774136c2385698a203b51da034b8a78ef9dbfc4) ([e774136](https://github.com/amjed-ali-k/react-gantt-lib/commit/e774136c2385698a203b51da034b8a78ef9dbfc4))
 
-**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.16...v0.1.17
+**Full Changelog**: https://github.com/amjed-ali-k/react-gantt-lib/compare/v0.1.17...v0.1.18
