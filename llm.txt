@@ -196,7 +196,7 @@ When set, all on-screen date/time labels use that zone for every viewer worldwid
 - Middle panel start/end columns
 - Built-in task tooltip start/end (time shown when non-midnight in the display zone)
 
-Not affected: bar geometry, today marker position (current instant), holidays/blocks grid placement, event marker x position, onTaskDragEnd dates, onTasksChange data.
+Not affected: bar geometry, today marker position (current instant), holiday day placement, block range geometry, event marker x position, onTaskDragEnd dates, onTasksChange data.
 
 Example — global team sees New York time:
 <GanttChart tasks={tasks} timezone="America/New_York" showTooltip />
@@ -289,7 +289,7 @@ GanttTarget discriminated union (switch on target.type):
 |------|------|------------|
 | task | Click/right-click task bar or milestone diamond | task, rowIndex, element: 'bar' \| 'milestone' |
 | baseline | Click/right-click baseline line or diamond | task, rowIndex, element: 'bar' \| 'milestone' |
-| blockDate | Click/right-click blocked date column band | range (BlockDateRange), index |
+| blockDate | Click/right-click blocked date/time range band | range (BlockDateRange), index |
 | holiday | Click/right-click holiday/weekend band | date, label?, index? |
 | eventMarker | Click/right-click vertical event stripline | marker (EventMarker), index |
 | timeline | Click/right-click empty timeline body or header | date (at pointer x), rowIndex (number \| null; null in header) |
@@ -305,7 +305,7 @@ onTaskClick / onTaskDoubleClick include optional element: 'bar' | 'milestone' an
 
 Example — block hover tooltip:
 <GanttChart
-  blockDates={[{ start: '2026-04-07', end: '2026-04-07', label: 'Curing — no pours' }]}
+  blockDates={[{ start: '2026-04-07T06:00:00', end: '2026-04-07T18:00:00', label: 'Curing — no pours' }]}
   onGanttHover={({ target, phase }) => {
     if (target?.type === 'blockDate' && phase === 'enter') showTip(target.range.label);
     if (phase === 'leave') hideTip();
@@ -370,13 +370,13 @@ holidays?: HolidayMarking
 - isWeekend?: (date) => boolean — custom predicate
 
 blockDates?: BlockDateRange[]
-- { start, end, label?, color? } — light rose default; unavailable ranges
+- { start, end, label?, color? } — light rose default; unavailable ranges. start/end support date or datetime; datetime blocks render only from exact start time to exact end time, not as full-day bands.
 
 eventMarkers?: EventMarker[]
 - { id?, date, label, color?, labelTop? } — vertical dashed stripline + labeled callout
 - date supports datetime for sub-day placement
 
-Layers render in timeline header grid (holidays/blocks) and full-height overlay (events).
+Layers render in the timeline header/body (holidays and blocks) and full-height overlay (events).
 
 ## Tooltip
 

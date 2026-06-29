@@ -40,6 +40,15 @@ describe('computeDateMarkingRects', () => {
     expect(blocks[0].width).toBeGreaterThan(scale.columnWidth);
   });
 
+  it('uses exact start and end times for block date ranges', () => {
+    const { blocks } = computeDateMarkingRects(range, scale, scale.columnWidth, undefined, [
+      { start: '2026-04-14T06:00:00', end: '2026-04-14T18:00:00', label: 'Half day' },
+    ]);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].x).toBeCloseTo(13.25 * scale.columnWidth);
+    expect(blocks[0].width).toBeCloseTo(0.5 * scale.columnWidth);
+  });
+
   it('passes custom colors through when provided', () => {
     const { holidays, blocks } = computeDateMarkingRects(
       range,

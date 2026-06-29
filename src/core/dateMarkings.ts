@@ -124,8 +124,8 @@ export function computeDateMarkingRects(
 
   const blockRects: DateMarkingRect[] = [];
   (blockDates ?? []).forEach((block, index) => {
-    const blockStart = startOfDay(toDate(block.start));
-    const blockEnd = endOfDay(toDate(block.end));
+    const blockStart = toDate(block.start);
+    const blockEnd = toDate(block.end);
     const geom = clipToTimelinePixels(
       blockStart,
       blockEnd,
@@ -138,7 +138,7 @@ export function computeDateMarkingRects(
     if (!geom) return;
 
     blockRects.push({
-      key: `block-${dateKey(block.start)}-${dateKey(block.end)}-${block.label ?? ''}`,
+      key: `block-${blockStart.getTime()}-${blockEnd.getTime()}-${block.label ?? ''}`,
       x: geom.x,
       width: geom.width,
       ...(block.color ? { color: block.color } : {}),
