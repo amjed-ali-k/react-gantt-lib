@@ -1,5 +1,6 @@
 import advancedFeaturesDemo from './advancedFeaturesDemo.tsx?raw';
 import dailyColorStripRow from './dailyColorStripRow.tsx?raw';
+import draggableMarkersDemo from './draggableMarkersDemo.tsx?raw';
 import groupCompletedDemo from './groupCompletedDemo.tsx?raw';
 import groupSummaryDemo from './groupSummaryDemo.tsx?raw';
 import largeTimelineDemo from './largeTimelineDemo.tsx?raw';
@@ -40,4 +41,5 @@ export const exampleSources = {
   smoothDrag: { code: SMOOTH_DRAG_SOURCE, filename: 'smooth-drag example' },
   timezone: { code: timezoneDemo, filename: 'timezoneDemo.tsx' },
   advancedFeatures: { code: advancedFeaturesDemo, filename: 'advancedFeaturesDemo.tsx' },
+  draggableMarkers: { code: draggableMarkersDemo, filename: 'draggableMarkersDemo.tsx' },
 } as const;

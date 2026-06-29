@@ -376,7 +376,20 @@ eventMarkers?: EventMarker[]
 - { id?, date, label, color?, labelTop? } — vertical dashed stripline + labeled callout
 - date supports datetime for sub-day placement
 
-Layers render in the timeline header/body (holidays and blocks) and full-height overlay (events).
+draggableMarkerSnapPoints?: DraggableMarkerSnapPoint[]
+- { id, date }[] — invisible snap targets; datetime supported. Takes priority over snapToGrid.
+- Resolved only when a drag callback is registered; onDraggableMarkerDragToSnapPoint enables snap-index tracking during drag
+
+draggableMarkers?: DraggableMarker[]
+- { id, date, label?, color?, draggable? } — solid vertical line (today-marker style), draggable
+- onDraggableMarkerDragStart / onDraggableMarkerDrag / onDraggableMarkerDragEnd — opt-in; omitted handlers are not called
+- onDraggableMarkerDragToSnapPoint — opt-in snap-point callback (phase: drag | end)
+- No drag/click handlers → static lines only (no hit targets, pointer-events: none)
+- Snap on release aligns to column boundaries (same x as vertical grid lines); use local yyyy-MM-dd when persisting dates from callbacks
+- Use for history scrubbers, as-of dates, audit playback in consuming apps
+- Respects snapToGrid on drag end; clamps to minDate/maxDate when set
+
+Layers render in the timeline header/body (holidays and blocks) and full-height overlay (events, draggable markers).
 
 ## Tooltip
 

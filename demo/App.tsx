@@ -12,6 +12,7 @@ import {
 } from './largeTimelineDemo';
 import { useDemoTheme } from './chartTheme';
 import { AdvancedFeaturesDemo } from './advancedFeaturesDemo';
+import { DraggableMarkersDemo } from './draggableMarkersDemo';
 import { GroupCompletedDemo } from './groupCompletedDemo';
 import { GroupSummaryDemo } from './groupSummaryDemo';
 import { TimezoneDemo } from './timezoneDemo';
@@ -351,6 +352,8 @@ function ExamplesDemo() {
 
       <AdvancedFeaturesDemo onLog={log} theme={chartTheme} />
 
+      <DraggableMarkersDemo onLog={log} theme={chartTheme} />
+
       <div className="demo-panels">
         <div className="demo-tips">
           <h3>Try it</h3>
@@ -377,6 +380,10 @@ function ExamplesDemo() {
             <li>
               <strong>Advanced interactions:</strong> Ctrl/⌘+click multi-select, group summary
               bars, read-only tasks, <code>onGanttHover</code> on blocked dates
+            </li>
+            <li>
+              <strong>Draggable markers:</strong> scrub the indigo line — snaps to invisible revision dates via{' '}
+              <code>draggableMarkerSnapPoints</code> and <code>onDraggableMarkerDragToSnapPoint</code>
             </li>
             <li>Sidebar rows expose <code>data-task-id</code> for E2E selectors</li>
             <li>Switch to the <strong>Playground</strong> tab for date range + zoom level controls</li>

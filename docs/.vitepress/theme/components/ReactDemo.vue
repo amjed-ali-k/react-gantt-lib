@@ -22,6 +22,7 @@ const loaders: Record<string, () => Promise<{ default: ComponentType<{ height?: 
   timezone: () => import('../demos/TimezoneDemo'),
   advanced: () => import('../demos/AdvancedDemo'),
   interactions: () => import('../demos/InteractionsDemo'),
+  'draggable-markers': () => import('../demos/DraggableMarkersDemo'),
   'custom-row-hook': () => import('../demos/CustomRowsDemo'),
 };
 

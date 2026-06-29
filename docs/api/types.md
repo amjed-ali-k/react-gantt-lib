@@ -13,7 +13,7 @@ All types are exported from the package:
 
 **Custom rows:** `CustomRowDefinition`, `CustomRowCellContext`, `CustomRowCellGenerator`
 
-**Markers:** `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`
+**Markers:** `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`, `DraggableMarker`, `DraggableMarkerSnapPoint`
 
 **Tasks:** `TaskBaseline`, `GanttDependency`, `DependencyType`
 

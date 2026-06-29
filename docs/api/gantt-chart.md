@@ -58,6 +58,8 @@ description: Complete prop reference for the GanttChart component.
 | `holidays` | `HolidayMarking` |
 | `blockDates` | `BlockDateRange[]` |
 | `eventMarkers` | `EventMarker[]` |
+| `draggableMarkers` | `DraggableMarker[]` |
+| `draggableMarkerSnapPoints` | `DraggableMarkerSnapPoint[]` |
 | `customRows` | `CustomRowDefinition[]` |
 
 ## Theme

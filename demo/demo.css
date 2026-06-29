@@ -302,6 +302,13 @@ body {
   overflow: hidden;
 }
 
+.demo-draggable-marker-history {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--demo-text-muted);
+  line-height: 1.5;
+}
+
 .demo-section {
   margin-bottom: 28px;
 }

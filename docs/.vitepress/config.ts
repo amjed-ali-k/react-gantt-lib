@@ -123,6 +123,7 @@ export default defineConfig({
             { text: 'Custom Rows', link: '/examples/custom-rows' },
             { text: 'Timezone', link: '/examples/timezone' },
             { text: 'Advanced', link: '/examples/advanced' },
+            { text: 'Draggable Markers', link: '/examples/draggable-markers' },
           ],
         },
       ],

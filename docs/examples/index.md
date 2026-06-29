@@ -17,6 +17,7 @@ Each example is a live, interactive chart you can drag, resize, and zoom. Use th
 | [Custom Rows](/examples/custom-rows) | `useGanttTimeline()` color strip |
 | [Timezone](/examples/timezone) | IANA display timezone |
 | [Advanced](/examples/advanced) | Multi-select, blocks, read-only |
+| [Draggable Markers](/examples/draggable-markers) | History scrubber, drag callbacks |
 
 ::: tip Interactive playground
 Want to toggle every prop? Open the [Playground](/playground/) for date range, holidays, blocks, zoom, and more.

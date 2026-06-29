@@ -22,6 +22,7 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `blockDate` | Click blocked band | `range`, `index` |
 | `holiday` | Click holiday band | `date`, `label?` |
 | `eventMarker` | Click stripline | `marker`, `index` |
+| `draggableMarker` | Click draggable marker | `marker`, `index` |
 | `timeline` | Click empty area | `date`, `rowIndex` |
 
 ```tsx
@@ -53,6 +54,8 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `onTaskDragStart/Drag/DragEnd` | drag lifecycle | `task`, dates |
 | `onTaskResizeStart/Resize/ResizeEnd` | resize lifecycle | `task`, `edge` |
 | `onProgressChange` | `progressChange` | `task`, `progress` |
+| `onDraggableMarkerDragStart/Drag/DragEnd` | marker drag lifecycle | `marker`, `date`, optional `snapPoint` |
+| `onDraggableMarkerDragToSnapPoint` | marker snapped to custom point | `snapPoint`, `phase: 'drag' \| 'end'` |
 | `onZoomChange` | `zoomChange` | `scaleId`, `columnWidth` |
 | `onScroll` | `scroll` | `scrollLeft`, `scrollTop` |
 | `onSidebarLayoutChange` | layout | `SidebarLayoutState` |

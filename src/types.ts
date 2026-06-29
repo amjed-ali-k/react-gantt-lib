@@ -219,6 +219,11 @@ export type GanttTarget =
       index: number;
     }
   | {
+      type: 'draggableMarker';
+      marker: DraggableMarker;
+      index: number;
+    }
+  | {
       type: 'timeline';
       date: Date;
       rowIndex: number | null;
@@ -258,6 +263,30 @@ export interface EventMarker {
   labelTop?: number;
 }
 
+/**
+ * Draggable vertical timeline marker (today-marker style).
+ * Use drag callbacks to drive history playback, baselines, or other project-specific overlays.
+ */
+export interface DraggableMarker {
+  id: string;
+  date: Date | string;
+  /** Optional label shown at the top of the line. */
+  label?: string;
+  /** Line and label accent color. Defaults to the today-marker color. */
+  color?: string;
+  /** When false, the marker is visible but not draggable. Default true. */
+  draggable?: boolean;
+}
+
+/**
+ * Invisible snap target for draggable markers. Not rendered — used only for drag snapping.
+ * Supports date-only or datetime strings for sub-day precision.
+ */
+export interface DraggableMarkerSnapPoint {
+  id: string;
+  date: Date | string;
+}
+
 export interface GanttEventMap {
   taskClick: {
     task: GanttTask;
@@ -284,6 +313,31 @@ export interface GanttEventMap {
   taskResize: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end' };
   taskResizeEnd: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end'; previousStart: Date; previousEnd: Date };
   progressChange: { task: GanttTask; progress: number; previousProgress: number };
+  draggableMarkerDragStart: { marker: DraggableMarker; index: number; date: Date };
+  draggableMarkerDrag: {
+    marker: DraggableMarker;
+    index: number;
+    date: Date;
+    previousDate: Date;
+    deltaMs: number;
+  };
+  draggableMarkerDragEnd: {
+    marker: DraggableMarker;
+    index: number;
+    date: Date;
+    previousDate: Date;
+    snapPoint?: DraggableMarkerSnapPoint;
+    snapPointIndex?: number;
+  };
+  draggableMarkerDragToSnapPoint: {
+    marker: DraggableMarker;
+    index: number;
+    snapPoint: DraggableMarkerSnapPoint;
+    snapPointIndex: number;
+    date: Date;
+    previousDate: Date;
+    phase: 'drag' | 'end';
+  };
   zoomChange: { zoomLevel: string; columnWidth: number; scaleId: string; scaleLabel: string };
   scroll: { scrollLeft: number; scrollTop: number };
   sidebarLayoutChange: SidebarLayoutState;
@@ -325,6 +379,11 @@ export interface GanttCallbacks {
   onTaskResize?: GanttEventHandler<'taskResize'>;
   onTaskResizeEnd?: GanttEventHandler<'taskResizeEnd'>;
   onProgressChange?: GanttEventHandler<'progressChange'>;
+  onDraggableMarkerDragStart?: GanttEventHandler<'draggableMarkerDragStart'>;
+  onDraggableMarkerDrag?: GanttEventHandler<'draggableMarkerDrag'>;
+  onDraggableMarkerDragEnd?: GanttEventHandler<'draggableMarkerDragEnd'>;
+  /** Fires when a draggable marker snaps to a custom snap point (during drag and on release). */
+  onDraggableMarkerDragToSnapPoint?: GanttEventHandler<'draggableMarkerDragToSnapPoint'>;
   onZoomChange?: GanttEventHandler<'zoomChange'>;
   onScroll?: GanttEventHandler<'scroll'>;
   onSidebarLayoutChange?: GanttEventHandler<'sidebarLayoutChange'>;
@@ -375,6 +434,13 @@ export interface GanttChartProps extends GanttCallbacks {
   blockDates?: BlockDateRange[];
   /** Vertical dashed markers with labels at specific date/times. */
   eventMarkers?: EventMarker[];
+  /** Draggable vertical markers (today-marker style) with drag lifecycle callbacks. */
+  draggableMarkers?: DraggableMarker[];
+  /**
+   * Custom snap targets for draggable markers. Not rendered — the marker magnet-snaps to the
+   * nearest point by timeline distance. Takes priority over `snapToGrid` when provided.
+   */
+  draggableMarkerSnapPoints?: DraggableMarkerSnapPoint[];
   /** Show baseline markers for tasks that define `baseline`. Default true. */
   showBaseline?: boolean;
   /** Default roll-up behavior for group summary bars. Per-task `rollup` overrides these. */

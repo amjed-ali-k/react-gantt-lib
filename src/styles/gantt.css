@@ -410,6 +410,67 @@
   stroke: var(--rg-today);
 }
 
+.rg-draggable-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.rg-draggable-markers--interactive {
+  pointer-events: auto;
+}
+
+.rg-draggable-markers-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.rg-draggable-marker-line {
+  stroke: var(--rg-today);
+}
+
+.rg-draggable-marker-line--dragging {
+  stroke-width: 3;
+}
+
+.rg-draggable-marker-hit {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+
+.rg-draggable-marker-hit--draggable {
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+
+.rg-draggable-marker-label {
+  position: absolute;
+  top: 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  white-space: nowrap;
+  color: var(--rg-today);
+  background: var(--rg-bg);
+  border: 1px solid var(--rg-today);
+  box-shadow: var(--rg-event-label-shadow);
+  pointer-events: none;
+  user-select: none;
+}
+
+.rg-draggable-marker-label--static {
+  z-index: 1;
+}
+
 .rg-dependency-layer {
   position: absolute;
   top: 0;

@@ -30,6 +30,7 @@ import {
 } from './core/zoom';
 import { resolveScale, resolveScales } from './core/scale';
 import { computeDateMarkingRects } from './core/dateMarkings';
+import { resolveDraggableMarkerInteractionFlags } from './core/draggableMarkers';
 import { TIMELINE_HEADER_HEIGHT } from './core/eventMarkers';
 import { computeRowLayouts } from './core/rowLayout';
 import {
@@ -54,6 +55,7 @@ import { StickyTaskTimelineRows } from './components/Timeline/StickyTaskTimeline
 import { GanttTimelineProvider } from './context/GanttChartContext';
 import { GanttDisplayProvider } from './context/GanttDisplayContext';
 import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
+import { DraggableMarkersLayer } from './components/Timeline/DraggableMarkersLayer';
 import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
@@ -93,6 +95,8 @@ export function GanttChart({
   holidays,
   blockDates,
   eventMarkers,
+  draggableMarkers,
+  draggableMarkerSnapPoints,
   showBaseline = true,
   groupSummaryRollup,
   enableDrag = true,
@@ -172,6 +176,26 @@ export function GanttChart({
     callbacks.onGanttClick ||
     callbacks.onGanttContextMenu ||
     callbacks.onGanttHover
+  );
+
+  const draggableMarkerInteractionFlags = useMemo(
+    () =>
+      resolveDraggableMarkerInteractionFlags({
+        onDragStart: callbacks.onDraggableMarkerDragStart,
+        onDrag: callbacks.onDraggableMarkerDrag,
+        onDragEnd: callbacks.onDraggableMarkerDragEnd,
+        onDragToSnapPoint: callbacks.onDraggableMarkerDragToSnapPoint,
+        onGanttClick: callbacks.onGanttClick,
+        hasSnapPoints: (draggableMarkerSnapPoints?.length ?? 0) > 0,
+      }),
+    [
+      callbacks.onDraggableMarkerDragStart,
+      callbacks.onDraggableMarkerDrag,
+      callbacks.onDraggableMarkerDragEnd,
+      callbacks.onDraggableMarkerDragToSnapPoint,
+      callbacks.onGanttClick,
+      draggableMarkerSnapPoints,
+    ],
   );
 
   const emit = useGanttEmitter({
@@ -825,6 +849,29 @@ export function GanttChart({
                     totalHeight={timelineContentHeight}
                     interactive={interactionsEnabled}
                     emit={emit}
+                  />
+                )}
+                {draggableMarkers && draggableMarkers.length > 0 && (
+                  <DraggableMarkersLayer
+                    markers={draggableMarkers}
+                    snapPoints={
+                      draggableMarkerInteractionFlags.useSnapPoints
+                        ? draggableMarkerSnapPoints
+                        : undefined
+                    }
+                    range={range}
+                    scale={scale}
+                    columnWidth={columnWidth}
+                    totalHeight={timelineContentHeight}
+                    snapToGrid={snapToGrid}
+                    timelineBounds={timelineBounds}
+                    interactionFlags={draggableMarkerInteractionFlags}
+                    emit={
+                      draggableMarkerInteractionFlags.dragEnabled ||
+                      draggableMarkerInteractionFlags.clickEnabled
+                        ? emit
+                        : undefined
+                    }
                   />
                 )}
                 <TimelineHeader
