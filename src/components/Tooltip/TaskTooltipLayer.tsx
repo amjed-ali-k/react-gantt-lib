@@ -89,7 +89,9 @@ export function TaskTooltipProvider({
   onTaskChange: (taskId: string, patch: Partial<GanttTask>) => void;
   children: ReactNode;
 }) {
-  const controllerRef = useRef<ReturnType<typeof createTaskTooltipController>>();
+  const controllerRef = useRef<ReturnType<typeof createTaskTooltipController> | null>(
+    null,
+  );
   if (!controllerRef.current) {
     controllerRef.current = createTaskTooltipController();
   }

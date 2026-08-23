@@ -201,7 +201,7 @@ export function PlaygroundApp() {
       <div className="playground-custom-tooltip">
         <div className="playground-custom-tooltip-title">{task.name}</div>
         <div className="playground-custom-tooltip-meta">
-          {task.start} → {task.end}
+          {`${task.start} → ${task.end}`}
         </div>
         <button
           type="button"

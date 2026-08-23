@@ -663,7 +663,7 @@ export function GanttChart({
   const handleTaskUpdate = useCallback(
     (taskId: string, patch: { start?: Date; end?: Date; progress?: number }) => {
       const source = tasks.find((t) => t.id === taskId);
-      if (source?.readOnly) return;
+      if (!source || source.readOnly) return;
       const mapped: Record<string, unknown> = {};
       if (patch.start && patch.end && timelineBounds) {
         const clamped = clampTaskDates(patch.start, patch.end, timelineBounds, 'move');
@@ -688,7 +688,7 @@ export function GanttChart({
   const handleTooltipTaskChange = useCallback(
     (taskId: string, patch: Partial<GanttTask>) => {
       const source = tasks.find((t) => t.id === taskId);
-      if (source?.readOnly) return;
+      if (!source || source.readOnly) return;
 
       const mapped: Record<string, unknown> = {};
       if (patch.name !== undefined) mapped.name = patch.name;

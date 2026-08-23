@@ -25,7 +25,6 @@ interface StickyCustomRowSections {
 
 interface StickyOffsets {
   topTasks: number[];
-  scrollTasks: number[];
   bottomTasks: number[];
   topCustomRows: number[];
   bottomCustomRows: number[];

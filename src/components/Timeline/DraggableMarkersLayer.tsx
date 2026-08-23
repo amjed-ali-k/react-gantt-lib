@@ -284,7 +284,7 @@ export const DraggableMarkersLayer = memo(function DraggableMarkersLayer({
 
   const handleClick = (
     resolvedMarker: (typeof resolved)[number],
-    e: React.PointerEvent,
+    e: React.MouseEvent,
   ) => {
     const flags = flagsRef.current;
     if (!flags.clickEnabled || !emit || didDragRef.current) return;

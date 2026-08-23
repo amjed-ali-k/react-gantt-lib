@@ -28,6 +28,12 @@ jobs:
       - run: npm ci
       - run: npm run docs:build
 
+      # Enables GitHub Pages (source: GitHub Actions) if not already enabled,
+      # so the deploy job below can publish the built site.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
