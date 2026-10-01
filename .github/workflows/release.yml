@@ -31,13 +31,18 @@ jobs:
       # This tag points at a detached commit that adds the built `dist/` on top of the release, so
       # consumers can install from git without npm:
       #   bun add github:amjed-ali-k/react-gantt-lib#build/vX.Y.Z
-      # It runs before the npm publish so a registry problem cannot block the git release.
+      # Consumers' lockfiles pin this tag's commit, so it is never moved or deleted: a re-run of
+      # this workflow leaves an existing build tag alone.
       - name: Push the git-installable build tag
         run: |
           VERSION="${GITHUB_REF_NAME}"
+          if git ls-remote --exit-code --tags origin "refs/tags/build/${VERSION}" >/dev/null; then
+            echo "build/${VERSION} already exists; leaving it as is"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --detach
+          # A tag push already checks out a detached HEAD, so this commit lands on no branch.
           git add --force dist
           git commit -m "build: ${VERSION} with dist/ (installable from git)"
           git tag "build/${VERSION}"
@@ -54,13 +59,14 @@ jobs:
           fi
           cat RELEASE_NOTES.md
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+      # Before the npm publish, so a registry failure cannot cost the release its notes.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
           generate_release_notes: false
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
