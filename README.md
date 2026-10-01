@@ -69,6 +69,11 @@ Do not install a branch or a plain `vX.Y.Z` tag from git: neither contains `dist
 has no entry points. The build tags are pushed by `.github/workflows/release.yml`. That avoids a
 `prepare` script, which would need devDependencies and a trusted lifecycle script on every install.
 
+Consumers' lockfiles pin a build tag's commit, and nothing else references it, so **never move or
+delete a `build/*` tag**. To release, run `npm run release -- minor --skip-gh --skip-publish` (or
+`patch`), which bumps the version, writes the notes, and pushes the commit and its `vX.Y.Z` tag. The
+workflow then pushes the build tag, creates the GitHub Release and publishes to npm.
+
 ## Quick start
 
 ```tsx
