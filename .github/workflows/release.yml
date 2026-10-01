@@ -27,6 +27,22 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # `dist/` is gitignored on `main`, so a plain git ref installs a package with no entry points.
+      # This tag points at a detached commit that adds the built `dist/` on top of the release, so
+      # consumers can install from git without npm:
+      #   bun add github:amjed-ali-k/react-gantt-lib#build/vX.Y.Z
+      # It runs before the npm publish so a registry problem cannot block the git release.
+      - name: Push the git-installable build tag
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --detach
+          git add --force dist
+          git commit -m "build: ${VERSION} with dist/ (installable from git)"
+          git tag "build/${VERSION}"
+          git push origin "build/${VERSION}"
+
       - name: Generate release notes
         run: |
           VERSION="${GITHUB_REF_NAME}"

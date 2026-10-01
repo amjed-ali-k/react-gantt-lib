@@ -56,6 +56,19 @@ import 'react-gantt-lib/styles.css';
 
 Dates accept ISO strings (`'2026-01-01'`, `'2026-04-22T14:00:00'`) or `Date` objects.
 
+### Installing from git
+
+Every release tag `vX.Y.Z` also gets a **`build/vX.Y.Z`** tag: the same commit plus the built
+`dist/`, which `main` keeps gitignored. Install that tag to use a release straight from GitHub:
+
+```bash
+bun add github:amjed-ali-k/react-gantt-lib#build/v0.2.0
+```
+
+Do not install a branch or a plain `vX.Y.Z` tag from git: neither contains `dist/`, so the package
+has no entry points. The build tags are pushed by `.github/workflows/release.yml`. That avoids a
+`prepare` script, which would need devDependencies and a trusted lifecycle script on every install.
+
 ## Quick start
 
 ```tsx
