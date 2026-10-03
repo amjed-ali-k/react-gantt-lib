@@ -46,7 +46,8 @@ Left/Right on a bar edit it rather than following the treegrid expand/collapse c
 | `L` | Start drawing a link (with `enableDependencyCreate`) |
 
 An arrow key that cannot change the bar (drag/resize off, read-only, at a bound) is left to the
-browser. A keyboard move or resize fires the same `taskDragStart/Drag/DragEnd` or
+browser — except Alt+Left/Right, which a focused bar always keeps, so it never becomes the
+browser's Back/Forward. A keyboard move or resize fires the same `taskDragStart/Drag/DragEnd` or
 `taskResizeStart/Resize/ResizeEnd` events as a pointer, snapped and clamped the same way, with
 `source: 'keyboard'` (pointer drags carry `source: 'pointer'`).
 
