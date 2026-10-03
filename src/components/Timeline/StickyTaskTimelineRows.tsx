@@ -30,6 +30,9 @@ interface StickyTaskTimelineRowsProps {
   enableResize?: boolean;
   enableProgressDrag?: boolean;
   enableDependencyCreate?: boolean;
+  /** Accessible name of the bars' treegrid; `rowCount` is every task row in the chart. */
+  timelineLabel: string;
+  rowCount: number;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -53,6 +56,8 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
   enableResize,
   enableProgressDrag,
   enableDependencyCreate,
+  timelineLabel,
+  rowCount,
   groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
@@ -126,6 +131,11 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
             data-testid={i === 0 ? `sticky-task-timeline-${position}` : undefined}
           >
             <svg className="rg-sticky-task-timeline-bars" width="100%" height={row.height}>
+              <g
+                role="treegrid"
+                aria-label={`${timelineLabel}, pinned row`}
+                aria-rowcount={rowCount}
+              >
               <TaskBar
                 task={task}
                 geometry={{ x: g.x, y: g.y, width: g.width, height: g.height }}
@@ -143,6 +153,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
                 emit={emit}
                 onTaskUpdate={onTaskUpdate}
               />
+              </g>
             </svg>
           </div>
         );

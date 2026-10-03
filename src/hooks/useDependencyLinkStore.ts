@@ -18,15 +18,11 @@ export type LinkSession =
       menuFor: string | null;
     };
 
-export interface DependencyLinkSnapshot {
-  session: LinkSession | null;
-  /** Text for the chart's live region. */
-  message: string;
-}
-
 /** What the chart supplies: task names for announcements, and the report of a finished link. */
 export interface DependencyLinkHandlers {
   nameOf: (taskId: string) => string | undefined;
+  /** Speaks progress to assistive tech. */
+  announce: (message: string) => void;
   /** Reports a link (never to itself); false when either task no longer exists. */
   create: (
     fromId: string,
@@ -38,15 +34,13 @@ export interface DependencyLinkHandlers {
 
 type Listener = () => void;
 
-const IDLE: DependencyLinkSnapshot = { session: null, message: '' };
-
 /**
  * The chart's one in-flight link. Bars start a session and feed it keys; the link layer follows
  * the pointer, draws the preview and the type menu, and ends pointer sessions. No validation
  * beyond "not to itself": cycles and duplicates are the consumer's call.
  */
 export class DependencyLinkStore {
-  private snapshot: DependencyLinkSnapshot = IDLE;
+  private current: LinkSession | null = null;
   private listeners = new Set<Listener>();
   constructor(readonly handlers: DependencyLinkHandlers) {}
 
@@ -55,15 +49,16 @@ export class DependencyLinkStore {
     return () => this.listeners.delete(listener);
   };
 
-  getSnapshot = (): DependencyLinkSnapshot => this.snapshot;
+  getSnapshot = (): LinkSession | null => this.current;
 
   get session(): LinkSession | null {
-    return this.snapshot.session;
+    return this.current;
   }
 
-  private set(session: LinkSession | null, message = this.snapshot.message): void {
-    this.snapshot = { session, message };
+  private set(session: LinkSession | null, message?: string): void {
+    this.current = session;
     for (const listener of this.listeners) listener();
+    if (message) this.handlers.announce(message);
   }
 
   /** A task's name for announcements, or its id. */
@@ -72,7 +67,7 @@ export class DependencyLinkStore {
   }
 
   beginPointer(from: LinkEndpoint, clientX: number, clientY: number): void {
-    this.set({ mode: 'pointer', from, clientX, clientY, target: null }, '');
+    this.set({ mode: 'pointer', from, clientX, clientY, target: null });
   }
 
   movePointer(clientX: number, clientY: number, target: LinkEndpoint | null): void {
@@ -121,7 +116,7 @@ export class DependencyLinkStore {
     if (s?.mode !== 'keyboard' || e.key !== 'Enter') return false;
     const fromId = s.from.taskId;
     if (taskId === fromId) {
-      this.set(s, 'Choose a different task to link to.');
+      this.handlers.announce('Choose a different task to link to.');
     } else if (e.shiftKey) {
       this.set(
         { ...s, target: { taskId, edge: 'start' }, menuFor: taskId },
@@ -152,15 +147,16 @@ export class DependencyLinkStore {
 
   private finish(fromId: string, toId: string, type: DependencyType, source: 'pointer' | 'keyboard'): void {
     // Cleared first, so a consumer that re-renders from the callback sees no session.
-    this.set(null, '');
-    const created = this.handlers.create(fromId, toId, type, source);
-    this.set(
-      null,
-      created ? `Linked ${this.name(fromId)} to ${this.name(toId)}, ${DEPENDENCY_TYPE_NAMES[type]}.` : '',
-    );
+    this.set(null);
+    // A request, not a result: the consumer decides whether the link may exist.
+    if (this.handlers.create(fromId, toId, type, source)) {
+      this.handlers.announce(
+        `Requested a ${DEPENDENCY_TYPE_NAMES[type]} link from ${this.name(fromId)} to ${this.name(toId)}.`,
+      );
+    }
   }
 }
 
-export function useDependencyLinkSnapshot(store: DependencyLinkStore): DependencyLinkSnapshot {
+export function useLinkSession(store: DependencyLinkStore): LinkSession | null {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }

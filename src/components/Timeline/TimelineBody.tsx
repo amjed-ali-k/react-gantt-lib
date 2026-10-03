@@ -36,6 +36,9 @@ interface TimelineBodyProps {
   enableResize?: boolean;
   enableProgressDrag?: boolean;
   enableDependencyCreate?: boolean;
+  /** Accessible name of the bars' treegrid; `rowCount` is every task row in the chart. */
+  timelineLabel: string;
+  rowCount: number;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -65,6 +68,8 @@ export const TimelineBody = memo(function TimelineBody({
   enableResize,
   enableProgressDrag,
   enableDependencyCreate,
+  timelineLabel,
+  rowCount,
   groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
@@ -112,6 +117,7 @@ export const TimelineBody = memo(function TimelineBody({
   }, [tasks, range.start, scale, columnWidth, rowLayouts, showBaseline]);
 
   const totalHeight = totalRowLayoutHeight(rowLayouts);
+  const hasRows = tasks.some((task) => shouldRenderTaskBar(task, tasks));
 
   return (
     <div className="rg-timeline-body" data-testid="timeline-body">
@@ -185,6 +191,12 @@ export const TimelineBody = memo(function TimelineBody({
             onSelect={onDependencySelect}
           />
         )}
+        {/* No rows, no grid: an empty treegrid is invalid ARIA. */}
+        <g
+          role={hasRows ? 'treegrid' : undefined}
+          aria-label={hasRows ? timelineLabel : undefined}
+          aria-rowcount={hasRows ? rowCount : undefined}
+        >
         {tasks.map((task, i) => {
           if (!shouldRenderTaskBar(task, tasks)) return null;
           const g = geometries[i];
@@ -216,6 +228,7 @@ export const TimelineBody = memo(function TimelineBody({
             />
           );
         })}
+        </g>
       </svg>
     </div>
   );

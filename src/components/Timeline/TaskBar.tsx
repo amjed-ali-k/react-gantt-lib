@@ -19,6 +19,12 @@ import { milestoneDiamondPoints } from './milestoneGeometry';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 import { useDragPreviewStoreOptional } from '../../context/DragPreviewContext';
 import { useDependencyLinkStoreOptional } from '../../context/DependencyLinkContext';
+import { useTimelineKeyboardOptional } from '../../context/TimelineKeyboardContext';
+import { RovingFocus, useIsTabStop } from '../../hooks/useRovingFocus';
+import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
+import { formatTaskDateTime } from '../../core/dates';
+import { addScaleSteps } from '../../core/scale';
+import { taskAccessibleName, taskChangeAnnouncement } from '../../core/accessibility';
 import type { DependencyEdge } from './dependencyPaths';
 
 export interface TaskBarProps {
@@ -64,6 +70,8 @@ const CONNECTOR_DOT_RADIUS = 4;
 const CONNECTOR_HIT_RADIUS = 8;
 const LABEL_GAP = 6;
 const CONNECTOR_EDGES: DependencyEdge[] = ['start', 'end'];
+/** Stands in for the chart's focus store when a bar renders outside a chart (tests). */
+const NO_FOCUS = new RovingFocus();
 
 function TaskBarInner({
   task,
@@ -95,6 +103,9 @@ function TaskBarInner({
   const tooltip = useTaskTooltipOptional();
   const dragPreviewStore = useDragPreviewStoreOptional();
   const chartLinkStore = useDependencyLinkStoreOptional();
+  const keyboard = useTimelineKeyboardOptional();
+  const isTabStop = useIsTabStop(keyboard?.focus ?? NO_FOCUS, task.id);
+  const timeZone = useGanttDisplayTimezone();
   const linkStore = enableDependencyCreate ? chartLinkStore : null;
   // Whether the latest press on this bar was on a connector handle. A link drag that ends on this
   // same bar still makes the browser fire `click` on the bar group; that click is not a task click.
@@ -165,6 +176,19 @@ function TaskBarInner({
     [msPerPixel, timelineBounds],
   );
 
+  /** Snaps, clamps to the timeline and pins milestones: the dates a move or resize commits. */
+  const settleDates = useCallback(
+    (mode: 'move' | 'resize-start' | 'resize-end', start: Date, end: Date) => {
+      let settled = finalizeDragDates(start, end, scale, snapToGrid, rangeStart);
+      if (timelineBounds) settled = clampTaskDates(settled.start, settled.end, timelineBounds, mode);
+      if (taskRef.current.type === 'milestone') {
+        settled = { start: settled.start, end: new Date(settled.start.getTime()) };
+      }
+      return settled;
+    },
+    [scale, snapToGrid, rangeStart, timelineBounds],
+  );
+
   const endDrag = useCallback(
     (session: DragSession, pointer?: { clientX: number; clientY: number }) => {
       const t = taskRef.current;
@@ -198,26 +222,11 @@ function TaskBarInner({
         end = dragPreview.end;
       }
 
-      const finalized = finalizeDragDates(start, end, scale, snapToGrid, rangeStart);
-      start = finalized.start;
-      end = finalized.end;
-      if (timelineBounds) {
-        const clamped = clampTaskDates(
-          start,
-          end,
-          timelineBounds,
-          session.mode === 'resize-start'
-            ? 'resize-start'
-            : session.mode === 'resize-end'
-              ? 'resize-end'
-              : 'move',
-        );
-        start = clamped.start;
-        end = clamped.end;
-      }
-      if (t.type === 'milestone') {
-        end = new Date(start.getTime());
-      }
+      ({ start, end } = settleDates(
+        session.mode === 'resize-start' || session.mode === 'resize-end' ? session.mode : 'move',
+        start,
+        end,
+      ));
 
       onTaskUpdate(t.id, { start, end });
       if (pointer) {
@@ -231,6 +240,7 @@ function TaskBarInner({
           end,
           previousStart: session.start,
           previousEnd: session.end,
+          source: 'pointer',
         });
       } else if (session.mode.startsWith('resize')) {
         emit('taskResizeEnd', {
@@ -240,6 +250,7 @@ function TaskBarInner({
           edge: session.mode === 'resize-start' ? 'start' : 'end',
           previousStart: session.start,
           previousEnd: session.end,
+          source: 'pointer',
         });
       }
 
@@ -249,10 +260,7 @@ function TaskBarInner({
       setIsDragging(false);
     },
     [
-      scale,
-      snapToGrid,
-      timelineBounds,
-      rangeStart,
+      settleDates,
       onTaskUpdate,
       emit,
       syncTooltip,
@@ -293,6 +301,7 @@ function TaskBarInner({
           start,
           end,
           deltaMs: start.getTime() - session.start.getTime(),
+          source: 'pointer',
         });
       } else {
         emit('taskResize', {
@@ -300,6 +309,7 @@ function TaskBarInner({
           start,
           end,
           edge: session.mode === 'resize-start' ? 'start' : 'end',
+          source: 'pointer',
         });
       }
     };
@@ -334,9 +344,13 @@ function TaskBarInner({
       const barRect = groupRef.current?.getBoundingClientRect() ?? e.currentTarget.getBoundingClientRect();
 
       if (mode === 'move') {
-        emit('taskDragStart', { task, start, end });
+        emit('taskDragStart', { task, start, end, source: 'pointer' });
       } else if (mode.startsWith('resize')) {
-        emit('taskResizeStart', { task, edge: mode === 'resize-start' ? 'start' : 'end' });
+        emit('taskResizeStart', {
+          task,
+          edge: mode === 'resize-start' ? 'start' : 'end',
+          source: 'pointer',
+        });
       }
 
       if (mode === 'move' || mode.startsWith('resize')) {
@@ -381,9 +395,9 @@ function TaskBarInner({
   const taskElement = isMilestone ? 'milestone' : 'bar';
   const isReadOnly = !enableDrag && !enableResize && !enableProgressDrag;
 
-  const handleTaskClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (pressedConnectorRef.current) return;
+  /** Click, or Space on the focused bar: `taskClick` (the chart selects from it). */
+  const emitTaskClick = useCallback(
+    (e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) =>
       emit('taskClick', {
         task,
         rowIndex: task._rowIndex,
@@ -391,7 +405,14 @@ function TaskBarInner({
         ctrlKey: e.ctrlKey,
         metaKey: e.metaKey,
         shiftKey: e.shiftKey,
-      });
+      }),
+    [emit, task, taskElement],
+  );
+
+  const handleTaskClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (pressedConnectorRef.current) return;
+      emitTaskClick(e);
       emit(
         'ganttClick',
         createPointerDetail(
@@ -400,7 +421,7 @@ function TaskBarInner({
         ),
       );
     },
-    [emit, task, taskElement],
+    [emit, emitTaskClick, task, taskElement],
   );
 
   const handleTaskDoubleClick = useCallback(() => {
@@ -428,27 +449,128 @@ function TaskBarInner({
     linkStore.beginPointer({ taskId: task.id, edge }, e.clientX, e.clientY);
   };
 
-  const handleLinkKey = (e: React.KeyboardEvent) => {
+  // Date, plus the time when it has one (hour and minute zoom).
+  const formatDate = (date: Date) => formatTaskDateTime(date, timeZone);
+
+  /**
+   * One grid unit (a calendar step of the zoom scale) by keyboard: the same events and commit as a
+   * pointer drag, `source: 'keyboard'`. False when the task cannot or did not change.
+   */
+  const nudge = (mode: 'move' | 'resize-start' | 'resize-end', direction: 1 | -1): boolean => {
+    if (mode === 'move' ? !enableDrag : !enableResize || isMilestone) return false;
+    const start = toDate(task.start);
+    const end = toDate(task.end);
+    const step = (date: Date) => addScaleSteps(date, direction, scale);
+    const raw = {
+      start: mode === 'resize-end' ? start : step(start),
+      end: mode === 'resize-start' ? end : step(end),
+    };
+    if (raw.end.getTime() <= raw.start.getTime()) return false;
+    const next = settleDates(mode, raw.start, raw.end);
+    if (next.start.getTime() === start.getTime() && next.end.getTime() === end.getTime()) return false;
+    const source = 'keyboard' as const;
+    if (mode === 'move') {
+      emit('taskDragStart', { task, start, end, source });
+      emit('taskDrag', { task, ...next, deltaMs: next.start.getTime() - start.getTime(), source });
+      onTaskUpdate(task.id, next);
+      emit('taskDragEnd', { task, ...next, previousStart: start, previousEnd: end, source });
+    } else {
+      const edge = mode === 'resize-start' ? 'start' : 'end';
+      emit('taskResizeStart', { task, edge, source });
+      emit('taskResize', { task, ...next, edge, source });
+      onTaskUpdate(task.id, next);
+      emit('taskResizeEnd', { task, ...next, edge, previousStart: start, previousEnd: end, source });
+    }
+    keyboard?.announce(
+      taskChangeAnnouncement(mode === 'move' ? 'Moved' : 'Resized', task, next.start, next.end, formatDate),
+    );
+    return true;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (linkStore?.handleBarKey(task.id, e)) {
       e.preventDefault();
       e.stopPropagation();
+      return;
     }
+    if (!keyboard) return;
+    // Ctrl/⌘+Space toggles the task in the selection; other chords stay the browser's.
+    if ((e.ctrlKey || e.metaKey) && e.key !== ' ') return;
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'ArrowDown':
+        keyboard.moveFocus(task.id, e.key === 'ArrowDown' ? 1 : -1);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        // Not editable here (or at a bound): the key stays the browser's (Alt+Left is Back).
+        if (
+          !nudge(
+            e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move',
+            e.key === 'ArrowRight' ? 1 : -1,
+          )
+        ) {
+          return;
+        }
+        break;
+      case 'Enter':
+        handleTaskDoubleClick();
+        break;
+      case ' ':
+        emitTaskClick(e);
+        break;
+      case 'Home':
+      case 'End':
+        keyboard.scrollToEdge(e.key === 'Home' ? 'start' : 'end');
+        break;
+      case '+':
+      case '=':
+        keyboard.zoom('in');
+        break;
+      case '-':
+      case '_':
+        keyboard.zoom('out');
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
   };
 
-  // Every press starts as "not on a handle"; `beginLink` (bubbling, after this) says otherwise.
-  const linkProps = linkStore
+  // Only what the name says can change it — not drag frames or scrolling.
+  const accessibleName = useMemo(
+    () =>
+      keyboard
+        ? taskAccessibleName(task, (date) => formatTaskDateTime(date, timeZone), keyboard.nameOf)
+        : undefined,
+    [keyboard, timeZone, task.name, task.type, task.progress, task.critical, task.dependencies, task._start.getTime(), task._end.getTime()],
+  );
+
+  // A row of the timeline's treegrid: one tab stop for all bars (roving tabindex), arrows move it.
+  const rowProps = keyboard
     ? {
-        tabIndex: 0,
-        role: 'group',
-        'aria-label': task.name,
-        'aria-keyshortcuts': 'L',
-        onPointerDownCapture: () => {
-          pressedConnectorRef.current = false;
+        role: 'row',
+        tabIndex: isTabStop ? 0 : -1,
+        'aria-rowindex': task._rowIndex + 1,
+        'aria-level': task._level + 1,
+        'aria-expanded': isGroup ? !task.collapsed : undefined,
+        'aria-selected': selected,
+        'aria-label': accessibleName,
+        'aria-keyshortcuts': linkStore ? 'L' : undefined,
+        onKeyDown: handleKeyDown,
+        onFocus: () => {
+          keyboard.focus.setActive(task.id);
+          linkStore?.focusBar(task.id);
         },
-        onKeyDown: handleLinkKey,
-        onFocus: () => linkStore.focusBar(task.id),
       }
     : {};
+  // Every press starts as "not on a handle"; `beginLink` (bubbling, after this) says otherwise.
+  const onPointerDownCapture = linkStore
+    ? () => {
+        pressedConnectorRef.current = false;
+      }
+    : undefined;
 
   // Drag-to-link handles: a wide transparent hit circle and a small dot, outside each edge.
   const connectors = linkStore && (
@@ -482,7 +604,7 @@ function TaskBarInner({
   return (
     <g
       ref={groupRef}
-      className={`rg-bar ${selected ? 'rg-bar--selected' : ''} ${isGroup ? 'rg-bar--group' : ''} ${isReadOnly ? 'rg-bar--readonly' : ''}`}
+      className={`rg-bar ${selected ? 'rg-bar--selected' : ''} ${isGroup ? 'rg-bar--group' : ''} ${isReadOnly ? 'rg-bar--readonly' : ''}${task.critical ? ' rg-bar--critical' : ''}`}
       data-task-id={task.id}
       data-selected={selected || undefined}
       transform={`translate(${renderGeometry.x}, ${renderGeometry.y})`}
@@ -499,8 +621,29 @@ function TaskBarInner({
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
       onContextMenu={handleTaskContextMenu}
-      {...linkProps}
+      {...rowProps}
+      onPointerDownCapture={onPointerDownCapture}
     >
+      <g role={keyboard ? 'gridcell' : undefined}>
+      {task.critical &&
+        (isMilestone ? (
+          <polygon
+            className="rg-bar-critical"
+            transform="translate(-3, -3)"
+            points={milestoneDiamondPoints(renderGeometry.width + 6, renderGeometry.height + 6)}
+            pointerEvents="none"
+          />
+        ) : (
+          <rect
+            className="rg-bar-critical"
+            x={-3}
+            y={-3}
+            width={renderGeometry.width + 6}
+            height={renderGeometry.height + 6}
+            rx={6}
+            pointerEvents="none"
+          />
+        ))}
       {isMilestone ? (
         <>
           <polygon
@@ -617,8 +760,23 @@ function TaskBarInner({
           {connectors}
         </>
       )}
+      </g>
     </g>
   );
+}
+
+/** Whether two tasks list the same predecessors, in order (what a bar's name reads). */
+function samePredecessors(a: ResolvedTask, b: ResolvedTask): boolean {
+  const x = a.dependencies ?? [];
+  const y = b.dependencies ?? [];
+  if (x === y) return true;
+  if (x.length !== y.length) return false;
+  for (let i = 0; i < x.length; i++) {
+    const p = x[i]!;
+    const q = y[i]!;
+    if ((typeof p === 'string' ? p : p.id) !== (typeof q === 'string' ? q : q.id)) return false;
+  }
+  return true;
 }
 
 function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
@@ -647,6 +805,11 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.task.type !== next.task.type) return false;
   if (prev.task.width !== next.task.width) return false;
   if (prev.enableDependencyCreate !== next.enableDependencyCreate) return false;
+  if (prev.task.critical !== next.task.critical) return false;
+  if (!samePredecessors(prev.task, next.task)) return false;
+  if (prev.task._start.getTime() !== next.task._start.getTime()) return false;
+  if (prev.task._end.getTime() !== next.task._end.getTime()) return false;
+  if (prev.task.collapsed !== next.task.collapsed) return false;
   return true;
 }
 

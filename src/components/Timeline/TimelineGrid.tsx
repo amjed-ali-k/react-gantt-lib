@@ -8,6 +8,8 @@ import {
   type VisibleColumnRange,
 } from '../../core/visibleColumns';
 import { DateMarkingHighlights } from './DateMarkingHighlights';
+import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
+import { formatDisplayDate } from '../../core/displayFormat';
 
 import type { RowLayout } from '../../core/rowLayout';
 import { totalRowLayoutHeight } from '../../core/rowLayout';
@@ -97,19 +99,24 @@ const TodayMarker = memo(function TodayMarker({
   columnWidth: number;
   rowHeight: number;
 }) {
+  const timeZone = useGanttDisplayTimezone();
   const today = new Date();
   if (today < range.start || today > range.end) return null;
 
   const x = dateToScalePixel(today, range.start, scale, columnWidth);
+  const label = `Today, ${formatDisplayDate(today, timeZone)}`;
 
   return (
-    <line
-      x1={x}
-      y1={0}
-      x2={x}
-      y2={rowHeight}
-      className="rg-today-marker"
-      strokeWidth={2}
-    />
+    <g role="img" aria-label={label} data-testid="today-marker">
+      <title>{label}</title>
+      <line
+        x1={x}
+        y1={0}
+        x2={x}
+        y2={rowHeight}
+        className="rg-today-marker"
+        strokeWidth={2}
+      />
+    </g>
   );
 });

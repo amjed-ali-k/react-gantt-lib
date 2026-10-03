@@ -1,7 +1,8 @@
-import { memo, useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { memo, useMemo, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { GanttDependencyPointerDetail } from '../../types';
 import { createPointerDetail } from './pointerDetail';
+import { escapeAttribute } from './barElement';
 import { dependencyAccessibleName, type DependencyLink } from './dependencyLinks';
 import {
   dependencyLagLabel,
@@ -30,8 +31,9 @@ function linkOf(byId: Map<string, DependencyLink>, e: { target: EventTarget }): 
  * the space between bars lands here. Only these strokes take pointer events; the handlers are
  * delegated to the group, so each stroke carries only static props.
  *
- * Each stroke is focusable: Enter/Space selects the link like a click, and the chart turns
- * Delete/Backspace into `dependencyDelete` while any link is selected.
+ * The links are one tab stop (roving tabindex): arrow keys and Home/End move between them, Enter or
+ * Space selects the focused one like a click, and the chart turns Delete/Backspace into
+ * `dependencyDelete` while any link is selected.
  */
 export const DependencyHitTargets = memo(function DependencyHitTargets({
   selectedDependencyIds,
@@ -43,8 +45,15 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
   const links = useDependencyLinks(layout);
   const byId = useMemo(() => new Map(links.map((link) => [link.id, link])), [links]);
   const selected = useMemo(() => new Set(selectedDependencyIds), [selectedDependencyIds]);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
 
   if (links.length === 0) return null;
+
+  // The tab stop: the link last focused, else the first selected one, else the first link.
+  const tabStop =
+    (focusedId !== null && byId.has(focusedId) ? focusedId : undefined) ??
+    links.find((link) => selected.has(link.id))?.id ??
+    links[0]!.id;
 
   const activate = (detail: GanttDependencyPointerDetail) => {
     onSelect(detail.target.id, !!(detail.ctrlKey || detail.metaKey));
@@ -59,9 +68,38 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
     activate(createPointerDetail(link.target, e));
   };
 
-  const handleKeyDown = (e: KeyboardEvent<SVGGElement>) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
+  const moveFocus = (e: KeyboardEvent<SVGGElement>, from: DependencyLink): boolean => {
+    const index = links.indexOf(from);
+    const last = links.length - 1;
+    const next =
+      e.key === 'ArrowDown' || e.key === 'ArrowRight'
+        ? Math.min(last, index + 1)
+        : e.key === 'ArrowUp' || e.key === 'ArrowLeft'
+          ? Math.max(0, index - 1)
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? last
+              : -1;
+    if (next < 0) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget.querySelector<SVGPathElement>(
+      `[data-dependency-id="${escapeAttribute(links[next]!.id)}"]`,
+    );
+    target?.focus();
+    return true;
+  };
+
+  const handleFocus = (e: FocusEvent<SVGGElement>) => {
     const link = linkOf(byId, e);
+    if (link) setFocusedId(link.id);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<SVGGElement>) => {
+    const link = linkOf(byId, e);
+    if (link && moveFocus(e, link)) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
     if (!link || !(e.target instanceof Element)) return;
     e.preventDefault();
     const box = e.target.getBoundingClientRect();
@@ -98,9 +136,12 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
   return (
     <g
       className="rg-dependency-hits"
+      role="group"
+      aria-label="Dependencies"
       data-testid="dependency-hits"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
       onContextMenu={handleContextMenu}
       onPointerOver={hover('enter')}
       onPointerOut={hover('leave')}
@@ -115,7 +156,7 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
             fill="none"
             stroke="transparent"
             pointerEvents="stroke"
-            tabIndex={0}
+            tabIndex={link.id === tabStop ? 0 : -1}
             role="button"
             aria-pressed={isSelected}
             aria-label={dependencyAccessibleName(link, dependencyLagLabel(link, formatLag))}

@@ -25,6 +25,7 @@
   --rg-dependency-halo-selected: rgba(37, 99, 235, 0.2);
   --rg-dependency-focus: rgba(37, 99, 235, 0.5);
   --rg-focus-ring: #2563eb;
+  --rg-critical: #dc2626;
   --rg-event-label-bg: #ffffff;
   --rg-event-label-text: #334155;
   --rg-event-label-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -876,6 +877,7 @@
   --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
   --rg-dependency-focus: rgba(96, 165, 250, 0.6);
   --rg-focus-ring: #93c5fd;
+  --rg-critical: #f87171;
   --rg-event-label-bg: #1a1f3a;
   --rg-event-label-text: #e2e8f0;
   --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
@@ -922,6 +924,7 @@
     --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
     --rg-dependency-focus: rgba(96, 165, 250, 0.6);
     --rg-focus-ring: #93c5fd;
+    --rg-critical: #f87171;
     --rg-event-label-bg: #1a1f3a;
     --rg-event-label-text: #e2e8f0;
     --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
@@ -937,5 +940,37 @@
     --rg-sticky-row-bg: #0c1222;
     --rg-holiday-fill: rgba(255, 255, 255, 0.06);
     --rg-block-fill: rgba(244, 114, 182, 0.22);
+  }
+}
+
+/* ── Critical path ────────────────────────────────────────────────── */
+/* A heavy dashed outline around the bar: a shape, not only a colour. */
+.rg-bar-critical {
+  fill: none;
+  stroke: var(--rg-critical);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 3;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+/* `rg-gantt--reduced-motion` follows prefers-reduced-motion from script (and is testable); the
+   media query covers the first paint. Both switch off every transition and animation. */
+.rg-gantt--reduced-motion,
+.rg-gantt--reduced-motion *,
+.rg-gantt--reduced-motion *::before,
+.rg-gantt--reduced-motion *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-gantt,
+  .rg-gantt *,
+  .rg-gantt *::before,
+  .rg-gantt *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
   }
 }

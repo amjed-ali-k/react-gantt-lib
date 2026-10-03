@@ -54,18 +54,24 @@ describe('autoScrollSpeed', () => {
 
 describe('DependencyLinkStore', () => {
   function storeWith(create = vi.fn(() => true)) {
-    const store = new DependencyLinkStore({ nameOf: (id) => id.toUpperCase(), create });
-    return { store, create };
+    const said: string[] = [];
+    const store = new DependencyLinkStore({
+      nameOf: (id) => id.toUpperCase(),
+      create,
+      announce: (message) => said.push(message),
+    });
+    const lastSaid = () => said.at(-1) ?? '';
+    return { store, create, said, lastSaid };
   }
   const keys = { shiftKey: false, ctrlKey: false, metaKey: false, altKey: false };
 
   it('a pointer drop on another handle creates the link and ends the session', () => {
-    const { store, create } = storeWith();
+    const { store, create, lastSaid } = storeWith();
     store.beginPointer({ taskId: 'a', edge: 'start' }, 0, 0);
     store.dropPointer({ taskId: 'b', edge: 'end' });
     expect(create).toHaveBeenCalledWith('a', 'b', 'SF', 'pointer');
     expect(store.session).toBeNull();
-    expect(store.getSnapshot().message).toBe('Linked A to B, start to finish.');
+    expect(lastSaid()).toBe('Requested a start to finish link from A to B.');
   });
 
   it('a pointer drop on nothing, or on the task it started from, ends the session without a link', () => {
@@ -99,12 +105,12 @@ describe('DependencyLinkStore', () => {
   });
 
   it('L starts a keyboard session; Enter on the source asks for another task', () => {
-    const { store, create } = storeWith();
+    const { store, create, lastSaid } = storeWith();
     expect(store.handleBarKey('a', { ...keys, key: 'l' })).toBe(true);
     expect(store.session).toMatchObject({ mode: 'keyboard', from: { taskId: 'a' } });
     expect(store.handleBarKey('a', { ...keys, key: 'Enter' })).toBe(true);
     expect(create).not.toHaveBeenCalled();
-    expect(store.getSnapshot().message).toBe('Choose a different task to link to.');
+    expect(lastSaid()).toBe('Choose a different task to link to.');
   });
 
   it('ignores L with a modifier, and other keys outside a session', () => {
@@ -127,19 +133,19 @@ describe('DependencyLinkStore', () => {
   });
 
   it('cancel announces only when a session was running', () => {
-    const { store } = storeWith();
+    const { store, said, lastSaid } = storeWith();
     store.cancel();
-    expect(store.getSnapshot().message).toBe('');
+    expect(said).toEqual([]);
     store.beginKeyboard('a');
     store.cancel();
     expect(store.session).toBeNull();
-    expect(store.getSnapshot().message).toBe('Linking cancelled.');
+    expect(lastSaid()).toBe('Linking cancelled.');
   });
 
   it('says nothing about a link the chart refused', () => {
-    const { store } = storeWith(vi.fn(() => false));
+    const { store, lastSaid } = storeWith(vi.fn(() => false));
     store.beginKeyboard('a');
     store.handleBarKey('b', { ...keys, key: 'Enter' });
-    expect(store.getSnapshot().message).toBe('');
+    expect(lastSaid()).toMatch(/^Linking from/);
   });
 });

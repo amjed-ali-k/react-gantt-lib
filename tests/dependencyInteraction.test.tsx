@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { GanttChart } from '../src/GanttChart';
 import type { GanttChartProps, GanttTask } from '../src/types';
 
@@ -91,7 +91,9 @@ describe('dependency interaction', () => {
     const onDependencyClick = vi.fn();
     const { container } = renderChart({ onDependencyClick });
     const path = hit(container, 'b->c');
-    expect(path.getAttribute('tabindex')).toBe('0');
+    // One tab stop for all links: the first, until another is focused.
+    expect(hit(container, 'a->b').getAttribute('tabindex')).toBe('0');
+    expect(path.getAttribute('tabindex')).toBe('-1');
     expect(path.getAttribute('role')).toBe('button');
     expect(path.getAttribute('aria-label')).toBe('Dependency: Build start to start Test, lag +2d');
     fireEvent.keyDown(path, { key: 'Enter' });
@@ -99,6 +101,26 @@ describe('dependency interaction', () => {
     fireEvent.keyDown(path, { key: ' ' });
     expect(onDependencyClick).toHaveBeenCalledTimes(2);
     expect(path.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('links are one roving tab stop: arrows, Home and End move focus between them', () => {
+    const { container } = renderChart({ onDependencyClick: vi.fn() });
+    const ab = hit(container, 'a->b');
+    const bc = hit(container, 'b->c');
+    expect(container.querySelector('[role="group"][aria-label="Dependencies"]')).toBeTruthy();
+    act(() => ab.focus());
+    fireEvent.keyDown(ab, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(bc);
+    expect(bc.getAttribute('tabindex')).toBe('0');
+    expect(ab.getAttribute('tabindex')).toBe('-1');
+    fireEvent.keyDown(bc, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(bc);
+    fireEvent.keyDown(bc, { key: 'Home' });
+    expect(document.activeElement).toBe(ab);
+    fireEvent.keyDown(ab, { key: 'End' });
+    expect(document.activeElement).toBe(bc);
+    fireEvent.keyDown(bc, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(ab);
   });
 
   it('Delete and Backspace fire onDependencyDelete for the selected links', () => {
