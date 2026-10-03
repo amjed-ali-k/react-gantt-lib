@@ -1,4 +1,5 @@
 import type { GanttTask } from '../types';
+import { normalizeDependency } from '../components/Timeline/dependencyLinks';
 
 /**
  * A bar's accessible name: "Pour slab, Mar 3, 2026 to Mar 6, 2026, 40%, depends on Rebar, critical".
@@ -18,7 +19,7 @@ export function taskAccessibleName(
           `${Math.round(Math.max(0, Math.min(100, task.progress ?? 0)))}%`,
         ];
   const predecessors = (task.dependencies ?? []).map((dep) => {
-    const id = typeof dep === 'string' ? dep : dep.id;
+    const { id } = normalizeDependency(dep);
     return nameOf(id) ?? id;
   });
   if (predecessors.length > 0) parts.push(`depends on ${predecessors.join(', ')}`);

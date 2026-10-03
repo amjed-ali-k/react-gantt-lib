@@ -70,7 +70,7 @@ import { useAnnouncer } from './hooks/useAnnouncer';
 import { usePrefersReducedMotion } from './hooks/useReducedMotion';
 import { barElement } from './components/Timeline/barElement';
 import { shouldRenderTaskBar } from './core/groupTasks';
-import { nextZoomLevel } from './core/zoom';
+import { nextScaleInList } from './core/scale';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
   { key: 'name', title: 'Task', flex: 2, minWidth: 120 },
@@ -326,11 +326,15 @@ export function GanttChart({
   // task can be linked, so a chart without it renders and behaves exactly as before.
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
+  // Task names by id, for announcements and "depends on …" in bar names (O(1) per lookup).
+  const nameByIdRef = useRef(new Map<string, string>());
+  nameByIdRef.current = useMemo(() => new Map(tasks.map((t) => [t.id, t.name])), [tasks]);
+  const nameOf = useCallback((id: string) => nameByIdRef.current.get(id), []);
   const linkStoreRef = useRef<DependencyLinkStore | null>(null);
   if (!linkStoreRef.current) {
     linkStoreRef.current = new DependencyLinkStore({
       announce,
-      nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
+      nameOf,
       create: (fromId, toId, type, source) => {
         const ids = new Set(tasksRef.current.map((t) => t.id));
         if (!ids.has(fromId) || !ids.has(toId)) return false;
@@ -838,7 +842,7 @@ export function GanttChart({
     timelineKeyboardRef.current = {
       focus: barFocus,
       announce,
-      nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
+      nameOf,
       moveFocus: (taskId, delta) => {
         const next = barFocus.step(taskId, delta);
         if (!next || next === taskId || !containerRef.current) return;
@@ -857,10 +861,10 @@ export function GanttChart({
       zoom: (direction) => {
         const { scale: current, availableScales: scales, handleZoomChange: zoomTo } =
           keyboardInputsRef.current;
-        const next = nextZoomLevel(current.id, direction, scales.map((s) => s.id));
+        const next = nextScaleInList(current.id, scales, direction);
         if (next === current.id) return;
         zoomTo(next);
-        announce(`Zoom: ${resolveScale(next).label}`);
+        announce(`Zoom: ${scales.find((s) => s.id === next)?.label ?? next}`);
       },
     };
   }

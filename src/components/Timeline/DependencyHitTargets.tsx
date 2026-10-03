@@ -97,10 +97,9 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
   };
 
   const handleKeyDown = (e: KeyboardEvent<SVGGElement>) => {
-    const focused = linkOf(byId, e);
-    if (focused && moveFocus(e, focused)) return;
-    if (e.key !== 'Enter' && e.key !== ' ') return;
     const link = linkOf(byId, e);
+    if (link && moveFocus(e, link)) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
     if (!link || !(e.target instanceof Element)) return;
     e.preventDefault();
     const box = e.target.getBoundingClientRect();

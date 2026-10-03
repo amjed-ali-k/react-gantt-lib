@@ -395,9 +395,9 @@ function TaskBarInner({
   const taskElement = isMilestone ? 'milestone' : 'bar';
   const isReadOnly = !enableDrag && !enableResize && !enableProgressDrag;
 
-  const handleTaskClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (pressedConnectorRef.current) return;
+  /** Click, or Space on the focused bar: `taskClick` (the chart selects from it). */
+  const emitTaskClick = useCallback(
+    (e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) =>
       emit('taskClick', {
         task,
         rowIndex: task._rowIndex,
@@ -405,7 +405,14 @@ function TaskBarInner({
         ctrlKey: e.ctrlKey,
         metaKey: e.metaKey,
         shiftKey: e.shiftKey,
-      });
+      }),
+    [emit, task, taskElement],
+  );
+
+  const handleTaskClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (pressedConnectorRef.current) return;
+      emitTaskClick(e);
       emit(
         'ganttClick',
         createPointerDetail(
@@ -414,7 +421,7 @@ function TaskBarInner({
         ),
       );
     },
-    [emit, task, taskElement],
+    [emit, emitTaskClick, task, taskElement],
   );
 
   const handleTaskDoubleClick = useCallback(() => {
@@ -486,11 +493,9 @@ function TaskBarInner({
       e.stopPropagation();
       return;
     }
-    if (!keyboard || e.ctrlKey || e.metaKey) {
-      // Ctrl/⌘+Space toggles the task in the selection; other chords stay the browser's.
-      if (!(keyboard && e.key === ' ')) return;
-    }
-    const direction = e.key === 'ArrowRight' ? 1 : -1;
+    if (!keyboard) return;
+    // Ctrl/⌘+Space toggles the task in the selection; other chords stay the browser's.
+    if ((e.ctrlKey || e.metaKey) && e.key !== ' ') return;
     switch (e.key) {
       case 'ArrowUp':
       case 'ArrowDown':
@@ -499,20 +504,20 @@ function TaskBarInner({
       case 'ArrowLeft':
       case 'ArrowRight':
         // Not editable here (or at a bound): the key stays the browser's (Alt+Left is Back).
-        if (!nudge(e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move', direction)) return;
+        if (
+          !nudge(
+            e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move',
+            e.key === 'ArrowRight' ? 1 : -1,
+          )
+        ) {
+          return;
+        }
         break;
       case 'Enter':
         handleTaskDoubleClick();
         break;
       case ' ':
-        emit('taskClick', {
-          task,
-          rowIndex: task._rowIndex,
-          element: taskElement,
-          ctrlKey: e.ctrlKey,
-          metaKey: e.metaKey,
-          shiftKey: e.shiftKey,
-        });
+        emitTaskClick(e);
         break;
       case 'Home':
       case 'End':
@@ -533,6 +538,15 @@ function TaskBarInner({
     e.stopPropagation();
   };
 
+  // Only what the name says can change it — not drag frames or scrolling.
+  const accessibleName = useMemo(
+    () =>
+      keyboard
+        ? taskAccessibleName(task, (date) => formatTaskDateTime(date, timeZone), keyboard.nameOf)
+        : undefined,
+    [keyboard, timeZone, task.name, task.type, task.progress, task.critical, task.dependencies, task._start.getTime(), task._end.getTime()],
+  );
+
   // A row of the timeline's treegrid: one tab stop for all bars (roving tabindex), arrows move it.
   const rowProps = keyboard
     ? {
@@ -542,7 +556,7 @@ function TaskBarInner({
         'aria-level': task._level + 1,
         'aria-expanded': isGroup ? !task.collapsed : undefined,
         'aria-selected': selected,
-        'aria-label': taskAccessibleName(task, formatDate, keyboard.nameOf),
+        'aria-label': accessibleName,
         'aria-keyshortcuts': linkStore ? 'L' : undefined,
         onKeyDown: handleKeyDown,
         onFocus: () => {
@@ -751,9 +765,18 @@ function TaskBarInner({
   );
 }
 
-/** The predecessor ids a bar's name lists, as a comparable string. */
-function dependencyKey(task: ResolvedTask): string {
-  return (task.dependencies ?? []).map((d) => (typeof d === 'string' ? d : d.id)).join('\n');
+/** Whether two tasks list the same predecessors, in order (what a bar's name reads). */
+function samePredecessors(a: ResolvedTask, b: ResolvedTask): boolean {
+  const x = a.dependencies ?? [];
+  const y = b.dependencies ?? [];
+  if (x === y) return true;
+  if (x.length !== y.length) return false;
+  for (let i = 0; i < x.length; i++) {
+    const p = x[i]!;
+    const q = y[i]!;
+    if ((typeof p === 'string' ? p : p.id) !== (typeof q === 'string' ? q : q.id)) return false;
+  }
+  return true;
 }
 
 function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
@@ -783,7 +806,7 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.task.width !== next.task.width) return false;
   if (prev.enableDependencyCreate !== next.enableDependencyCreate) return false;
   if (prev.task.critical !== next.task.critical) return false;
-  if (dependencyKey(prev.task) !== dependencyKey(next.task)) return false;
+  if (!samePredecessors(prev.task, next.task)) return false;
   if (prev.task._start.getTime() !== next.task._start.getTime()) return false;
   if (prev.task._end.getTime() !== next.task._end.getTime()) return false;
   if (prev.task.collapsed !== next.task.collapsed) return false;

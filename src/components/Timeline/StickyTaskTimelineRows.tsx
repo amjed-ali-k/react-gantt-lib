@@ -31,8 +31,8 @@ interface StickyTaskTimelineRowsProps {
   enableProgressDrag?: boolean;
   enableDependencyCreate?: boolean;
   /** Accessible name of the bars' treegrid; `rowCount` is every task row in the chart. */
-  timelineLabel?: string;
-  rowCount?: number;
+  timelineLabel: string;
+  rowCount: number;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -56,7 +56,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
   enableResize,
   enableProgressDrag,
   enableDependencyCreate,
-  timelineLabel = 'Timeline',
+  timelineLabel,
   rowCount,
   groupSummaryRollup,
   snapToGrid = true,

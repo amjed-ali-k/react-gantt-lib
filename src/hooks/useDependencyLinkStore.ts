@@ -116,7 +116,7 @@ export class DependencyLinkStore {
     if (s?.mode !== 'keyboard' || e.key !== 'Enter') return false;
     const fromId = s.from.taskId;
     if (taskId === fromId) {
-      this.set(s, 'Choose a different task to link to.');
+      this.handlers.announce('Choose a different task to link to.');
     } else if (e.shiftKey) {
       this.set(
         { ...s, target: { taskId, edge: 'start' }, menuFor: taskId },
