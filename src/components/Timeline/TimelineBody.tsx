@@ -117,6 +117,7 @@ export const TimelineBody = memo(function TimelineBody({
   }, [tasks, range.start, scale, columnWidth, rowLayouts, showBaseline]);
 
   const totalHeight = totalRowLayoutHeight(rowLayouts);
+  const hasRows = tasks.some((task) => shouldRenderTaskBar(task, tasks));
 
   return (
     <div className="rg-timeline-body" data-testid="timeline-body">
@@ -190,7 +191,12 @@ export const TimelineBody = memo(function TimelineBody({
             onSelect={onDependencySelect}
           />
         )}
-        <g role="treegrid" aria-label={timelineLabel} aria-rowcount={rowCount}>
+        {/* No rows, no grid: an empty treegrid is invalid ARIA. */}
+        <g
+          role={hasRows ? 'treegrid' : undefined}
+          aria-label={hasRows ? timelineLabel : undefined}
+          aria-rowcount={hasRows ? rowCount : undefined}
+        >
         {tasks.map((task, i) => {
           if (!shouldRenderTaskBar(task, tasks)) return null;
           const g = geometries[i];

@@ -2,6 +2,7 @@ import { memo, useMemo, useState, type FocusEvent, type KeyboardEvent, type Mous
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { GanttDependencyPointerDetail } from '../../types';
 import { createPointerDetail } from './pointerDetail';
+import { escapeAttribute } from './barElement';
 import { dependencyAccessibleName, type DependencyLink } from './dependencyLinks';
 import {
   dependencyLagLabel,
@@ -84,7 +85,7 @@ export const DependencyHitTargets = memo(function DependencyHitTargets({
     e.preventDefault();
     e.stopPropagation();
     const target = e.currentTarget.querySelector<SVGPathElement>(
-      `[data-dependency-id="${links[next]!.id.replace(/["\\]/g, '\\$&')}"]`,
+      `[data-dependency-id="${escapeAttribute(links[next]!.id)}"]`,
     );
     target?.focus();
     return true;

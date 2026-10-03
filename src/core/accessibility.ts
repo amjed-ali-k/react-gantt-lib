@@ -1,8 +1,8 @@
 import type { GanttTask } from '../types';
 
 /**
- * A bar's accessible name: "Pour slab, 3 Mar 2026 to 6 Mar 2026, 40%, depends on Rebar, critical".
- * Milestones read "Handover, milestone, 15 Mar 2026".
+ * A bar's accessible name: "Pour slab, Mar 3, 2026 to Mar 6, 2026, 40%, depends on Rebar, critical".
+ * Milestones read "Handover, milestone, Mar 15, 2026".
  */
 export function taskAccessibleName(
   task: GanttTask & { _start: Date; _end: Date },
@@ -26,7 +26,7 @@ export function taskAccessibleName(
   return parts.join(', ');
 }
 
-/** "Moved Rebar inspection to 12 Oct 2026 – 14 Oct 2026" (a milestone names one date). */
+/** "Moved Rebar inspection to Oct 12, 2026 – Oct 14, 2026" (a milestone names one date). */
 export function taskChangeAnnouncement(
   verb: 'Moved' | 'Resized',
   task: GanttTask,

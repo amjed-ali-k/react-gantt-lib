@@ -28,13 +28,15 @@ Per-task overrides: `enableDrag`, `enableResize`, `enableProgressDrag`. `readOnl
 The timeline's bars are rows of a `role="treegrid"` (named by `timelineLabel`, default "Timeline";
 `aria-rowindex` / `aria-level` match the task list), each a `role="row"` with a `gridcell`. The bars
 are **one tab stop** (roving tabindex) and each is named for assistive tech:
-"Pour slab, 3/3/2026 to 3/6/2026, 40%, depends on Rebar, critical" (milestones: "Handover,
-milestone, 3/15/2026"; dates in the display `timezone`).
+"Pour slab, Mar 3, 2026 to Mar 6, 2026, 40%, depends on Rebar, critical" (milestones: "Handover,
+milestone, Mar 15, 2026"; times are added when the task has them, and dates follow the display
+`timezone`). Group rows carry `aria-expanded`; expanding and collapsing stays in the task list, so
+Left/Right on a bar edit it rather than following the treegrid expand/collapse convention.
 
 | Key (on a focused bar) | Action |
 |---|---|
 | Up / Down | Move focus to the previous / next row |
-| Left / Right | Move the task one grid unit (when drag is enabled) |
+| Left / Right | Move the task one step of the zoom scale (a day, a month…) when drag is enabled |
 | Shift + Left / Right | Resize the end (when resize is enabled; not milestones) |
 | Alt + Left / Right | Resize the start |
 | Enter | `onTaskDoubleClick` (open) |
@@ -43,15 +45,17 @@ milestone, 3/15/2026"; dates in the display `timezone`).
 | `+` / `-` | Zoom in / out |
 | `L` | Start drawing a link (with `enableDependencyCreate`) |
 
-A keyboard move or resize fires the same `taskDragStart/Drag/DragEnd` or
+An arrow key that cannot change the bar (drag/resize off, read-only, at a bound) is left to the
+browser. A keyboard move or resize fires the same `taskDragStart/Drag/DragEnd` or
 `taskResizeStart/Resize/ResizeEnd` events as a pointer, snapped and clamped the same way, with
 `source: 'keyboard'` (pointer drags carry `source: 'pointer'`).
 
 - **Announcements.** Moves, resizes, zoom, Home/End and drawing links are spoken ("Moved Rebar
-  inspection to 10/12/2026 – 10/14/2026") through a visually hidden `role="status"` region, or
+  inspection to Oct 12, 2026 – Oct 14, 2026") through a visually hidden `role="status"` region, or
   through your `announce(message)` prop if you pass one.
 - **Dependency links** (when interactive) are a second tab stop, a `role="group"` named
-  "Dependencies": arrows and Home/End move between links, Enter/Space selects.
+  "Dependencies", just before the bars' stop (links paint beneath the bars): arrows and Home/End
+  move between links, Enter/Space selects.
 - **Reduced motion.** Under `prefers-reduced-motion: reduce` the chart gets `rg-gantt--reduced-motion`
   and every transition and animation inside it is off; Home/End jump instead of smooth-scrolling.
 - **Critical path.** `critical: true` on a task draws a heavy dashed outline (`rg-bar--critical`), a

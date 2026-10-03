@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { GanttChart } from '../src/GanttChart';
 import { taskAccessibleName } from '../src/core/accessibility';
+import { formatTaskDateTime } from '../src/core/dates';
 import type { GanttChartProps, GanttTask } from '../src/types';
 
 const tasks: GanttTask[] = [
@@ -50,7 +51,7 @@ describe('grid semantics and names', () => {
   it('names a bar by its dates, progress, predecessors and critical flag', () => {
     const { container } = renderChart();
     const label = (id: string) => bar(container, id).getAttribute('aria-label');
-    const d = (iso: string) => new Date(iso).toLocaleDateString();
+    const d = (iso: string) => formatTaskDateTime(iso);
     expect(label('a')).toBe(`Design, ${d('2026-01-05')} to ${d('2026-01-08')}, 40%`);
     expect(label('b')).toBe(
       `Build, ${d('2026-01-09')} to ${d('2026-01-14')}, 0%, depends on Design, critical`,
@@ -76,6 +77,25 @@ describe('grid semantics and names', () => {
       <GanttChart tasks={[{ ...tasks[2], critical: true }]} height={200} zoomLevel="day" />,
     );
     expect(bar(ms.container, 'm').querySelector('polygon.rg-bar-critical')).toBeTruthy();
+  });
+
+  it('renders no empty treegrid, and exposes a group row\'s expanded state', () => {
+    const empty = render(<GanttChart tasks={[]} height={200} zoomLevel="day" />);
+    expect(empty.container.querySelector('[role="treegrid"]')).toBeNull();
+    empty.unmount();
+    const { container } = render(
+      <GanttChart
+        tasks={[
+          { id: 'g', name: 'Phase 1', start: '2026-01-05', end: '2026-01-10', type: 'group' },
+          { id: 'c', name: 'Child', start: '2026-01-05', end: '2026-01-07', parentId: 'g' },
+        ]}
+        height={200}
+        zoomLevel="day"
+      />,
+    );
+    expect(bar(container, 'g').getAttribute('aria-expanded')).toBe('true');
+    expect(bar(container, 'c').getAttribute('aria-expanded')).toBeNull();
+    expect(bar(container, 'c').getAttribute('aria-level')).toBe('2');
   });
 
   it('labels the today marker', () => {
@@ -140,7 +160,7 @@ describe('keyboard editing', () => {
     expect(end.end.getTime() - end.previousEnd.getTime()).toBe(864e5);
     expect(onTasksChange).toHaveBeenCalled();
     expect(announced()).toBe(
-      `Moved Design to ${end.start.toLocaleDateString()} – ${end.end.toLocaleDateString()}`,
+      `Moved Design to ${formatTaskDateTime(end.start)} – ${formatTaskDateTime(end.end)}`,
     );
 
     fireEvent.keyDown(bar(container, 'a'), { key: 'ArrowLeft' });
@@ -164,6 +184,41 @@ describe('keyboard editing', () => {
     expect(e).toMatchObject({ edge: 'start', source: 'keyboard' });
     expect(e.previousStart.getTime() - e.start.getTime()).toBe(864e5);
     expect(onTaskResizeStart).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves by a calendar step of the zoom: a month at Month zoom', () => {
+    const onTaskDragEnd = vi.fn();
+    const { container } = render(
+      <GanttChart
+        tasks={[{ id: 'q', name: 'Quarter', start: '2026-01-01T00:00:00', end: '2026-02-01T00:00:00' }]}
+        height={200}
+        zoomLevel="month"
+        onTaskDragEnd={onTaskDragEnd}
+      />,
+    );
+    fireEvent.keyDown(bar(container, 'q'), { key: 'ArrowRight' });
+    const e = onTaskDragEnd.mock.calls[0]![0];
+    expect([e.start.getMonth(), e.start.getDate(), e.end.getMonth(), e.end.getDate()]).toEqual([1, 1, 2, 1]);
+  });
+
+  it('names and announces times at Hour zoom', () => {
+    const { container } = render(
+      <GanttChart
+        tasks={[{ id: 'h', name: 'Crane', start: '2026-03-03T09:00:00', end: '2026-03-03T11:00:00' }]}
+        height={200}
+        zoomLevel="hour"
+      />,
+    );
+    expect(bar(container, 'h').getAttribute('aria-label')).toContain('09:00 to ');
+    fireEvent.keyDown(bar(container, 'h'), { key: 'ArrowRight' });
+    expect(announced()).toMatch(/10:00 – .*12:00$/);
+  });
+
+  it('leaves an arrow key unhandled when the bar cannot change', () => {
+    const { container } = renderChart({ tasks: [{ ...tasks[0], readOnly: true }] });
+    const key = new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true });
+    bar(container, 'a').dispatchEvent(key);
+    expect(key.defaultPrevented).toBe(false);
   });
 
   it('respects enableDrag / enableResize, and milestones only move', () => {

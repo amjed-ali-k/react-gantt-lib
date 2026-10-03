@@ -22,7 +22,8 @@ import { useDependencyLinkStoreOptional } from '../../context/DependencyLinkCont
 import { useTimelineKeyboardOptional } from '../../context/TimelineKeyboardContext';
 import { RovingFocus, useIsTabStop } from '../../hooks/useRovingFocus';
 import { useGanttDisplayTimezone } from '../../context/GanttDisplayContext';
-import { formatDisplayDate } from '../../core/displayFormat';
+import { formatTaskDateTime } from '../../core/dates';
+import { addScaleSteps } from '../../core/scale';
 import { taskAccessibleName, taskChangeAnnouncement } from '../../core/accessibility';
 import type { DependencyEdge } from './dependencyPaths';
 
@@ -441,16 +442,25 @@ function TaskBarInner({
     linkStore.beginPointer({ taskId: task.id, edge }, e.clientX, e.clientY);
   };
 
-  const formatDate = (date: Date) => formatDisplayDate(date, timeZone);
+  // Date, plus the time when it has one (hour and minute zoom).
+  const formatDate = (date: Date) => formatTaskDateTime(date, timeZone);
 
-  /** One grid unit by keyboard: the same events and commit as a pointer drag, `source: 'keyboard'`. */
-  const nudge = (mode: 'move' | 'resize-start' | 'resize-end', direction: 1 | -1) => {
-    if (mode === 'move' ? !enableDrag : !enableResize || isMilestone) return;
+  /**
+   * One grid unit (a calendar step of the zoom scale) by keyboard: the same events and commit as a
+   * pointer drag, `source: 'keyboard'`. False when the task cannot or did not change.
+   */
+  const nudge = (mode: 'move' | 'resize-start' | 'resize-end', direction: 1 | -1): boolean => {
+    if (mode === 'move' ? !enableDrag : !enableResize || isMilestone) return false;
     const start = toDate(task.start);
     const end = toDate(task.end);
-    const raw = pixelDeltaToDates(mode, start, end, direction * columnWidth, msPerPixel);
+    const step = (date: Date) => addScaleSteps(date, direction, scale);
+    const raw = {
+      start: mode === 'resize-end' ? start : step(start),
+      end: mode === 'resize-start' ? end : step(end),
+    };
+    if (raw.end.getTime() <= raw.start.getTime()) return false;
     const next = settleDates(mode, raw.start, raw.end);
-    if (next.start.getTime() === start.getTime() && next.end.getTime() === end.getTime()) return;
+    if (next.start.getTime() === start.getTime() && next.end.getTime() === end.getTime()) return false;
     const source = 'keyboard' as const;
     if (mode === 'move') {
       emit('taskDragStart', { task, start, end, source });
@@ -467,6 +477,7 @@ function TaskBarInner({
     keyboard?.announce(
       taskChangeAnnouncement(mode === 'move' ? 'Moved' : 'Resized', task, next.start, next.end, formatDate),
     );
+    return true;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -487,7 +498,8 @@ function TaskBarInner({
         break;
       case 'ArrowLeft':
       case 'ArrowRight':
-        nudge(e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move', direction);
+        // Not editable here (or at a bound): the key stays the browser's (Alt+Left is Back).
+        if (!nudge(e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move', direction)) return;
         break;
       case 'Enter':
         handleTaskDoubleClick();
@@ -528,6 +540,7 @@ function TaskBarInner({
         tabIndex: isTabStop ? 0 : -1,
         'aria-rowindex': task._rowIndex + 1,
         'aria-level': task._level + 1,
+        'aria-expanded': isGroup ? !task.collapsed : undefined,
         'aria-selected': selected,
         'aria-label': taskAccessibleName(task, formatDate, keyboard.nameOf),
         'aria-keyshortcuts': linkStore ? 'L' : undefined,
@@ -738,6 +751,11 @@ function TaskBarInner({
   );
 }
 
+/** The predecessor ids a bar's name lists, as a comparable string. */
+function dependencyKey(task: ResolvedTask): string {
+  return (task.dependencies ?? []).map((d) => (typeof d === 'string' ? d : d.id)).join('\n');
+}
+
 function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.selected !== next.selected) return false;
   if (prev.task.id !== next.task.id) return false;
@@ -765,8 +783,10 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.task.width !== next.task.width) return false;
   if (prev.enableDependencyCreate !== next.enableDependencyCreate) return false;
   if (prev.task.critical !== next.task.critical) return false;
-  if (prev.task.dependencies !== next.task.dependencies) return false;
-  if (prev.task.start !== next.task.start || prev.task.end !== next.task.end) return false;
+  if (dependencyKey(prev.task) !== dependencyKey(next.task)) return false;
+  if (prev.task._start.getTime() !== next.task._start.getTime()) return false;
+  if (prev.task._end.getTime() !== next.task._end.getTime()) return false;
+  if (prev.task.collapsed !== next.task.collapsed) return false;
   return true;
 }
 

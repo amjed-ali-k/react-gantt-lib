@@ -2,18 +2,16 @@ import { useEffect, useState } from 'react';
 
 const QUERY = '(prefers-reduced-motion: reduce)';
 
-function query(): MediaQueryList | null {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia(QUERY)
-    : null;
-}
-
-/** Whether the user asked for reduced motion; follows changes to the OS setting. */
+/**
+ * Whether the user asked for reduced motion; follows changes to the OS setting. Starts false and
+ * reads the query after mount, so server and client render the same markup (the stylesheet's
+ * media rule covers the first paint).
+ */
 export function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => query()?.matches ?? false);
+  const [reduced, setReduced] = useState(false);
   useEffect(() => {
-    const mql = query();
-    if (!mql) return;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mql = window.matchMedia(QUERY);
     const update = () => setReduced(mql.matches);
     update();
     mql.addEventListener?.('change', update);
