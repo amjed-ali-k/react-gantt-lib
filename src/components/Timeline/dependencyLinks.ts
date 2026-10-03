@@ -142,7 +142,8 @@ export function defaultDependencyLagLabel(lag: number): string {
   return `${lag > 0 ? '+' : '-'}${Math.abs(lag)}d`;
 }
 
-const DEPENDENCY_TYPE_NAMES: Record<DependencyType, string> = {
+/** Spoken name of each link type. */
+export const DEPENDENCY_TYPE_NAMES: Record<DependencyType, string> = {
   FS: 'finish to start',
   SS: 'start to start',
   FF: 'finish to finish',

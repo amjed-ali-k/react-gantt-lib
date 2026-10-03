@@ -24,6 +24,7 @@
   --rg-dependency-halo: rgba(100, 116, 139, 0.18);
   --rg-dependency-halo-selected: rgba(37, 99, 235, 0.2);
   --rg-dependency-focus: rgba(37, 99, 235, 0.5);
+  --rg-focus-ring: #2563eb;
   --rg-event-label-bg: #ffffff;
   --rg-event-label-text: #334155;
   --rg-event-label-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -208,6 +209,7 @@
 }
 
 .rg-timeline-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -630,6 +632,134 @@
   pointer-events: none;
 }
 
+/* ── Drag-to-link ─────────────────────────────────────────────────── */
+.rg-bar:focus {
+  outline: none;
+}
+
+.rg-bar:focus-visible .rg-bar-bg,
+.rg-bar:focus-visible .rg-bar-milestone {
+  stroke: var(--rg-focus-ring);
+  stroke-width: 2px;
+}
+
+/* Connector handles: shown on hover and focus, and on every linkable bar while a link is drawn. */
+.rg-bar-connector {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rg-bar:hover .rg-bar-connector,
+.rg-bar:focus .rg-bar-connector,
+.rg-gantt--linking .rg-bar-connector {
+  opacity: 1;
+}
+
+.rg-bar-connector-dot {
+  fill: var(--rg-bg);
+  stroke: var(--rg-bar-handle);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.rg-bar-connector-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.rg-link-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rg-link-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+
+.rg-dependency--preview {
+  color: var(--rg-dependency-selected);
+}
+
+/* Dashed while it has nowhere to land; solid once over a handle — not colour alone. */
+.rg-dependency--preview .rg-dependency-arrow {
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.rg-dependency--preview-target .rg-dependency-arrow {
+  stroke-dasharray: none;
+}
+
+.rg-link-source {
+  fill: none;
+  stroke: var(--rg-dependency-selected);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.rg-link-target {
+  fill: none;
+  stroke: var(--rg-dependency-selected);
+  stroke-width: 2.5;
+}
+
+.rg-link-menu {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--rg-border);
+  border-radius: 6px;
+  background: var(--rg-surface-raised);
+  box-shadow: var(--rg-tooltip-shadow);
+  pointer-events: auto;
+}
+
+.rg-link-menu-item {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rg-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rg-link-menu-item:hover,
+.rg-link-menu-item:focus {
+  background: var(--rg-selection-bg);
+  outline: 2px solid var(--rg-focus-ring);
+  outline-offset: -2px;
+}
+
+.rg-link-menu-type {
+  min-width: 22px;
+  font-weight: 600;
+}
+
+.rg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .rg-custom-rows-timeline {
   border-top: 1px solid var(--rg-border);
 }
@@ -743,6 +873,7 @@
   --rg-dependency-halo: rgba(148, 163, 184, 0.22);
   --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
   --rg-dependency-focus: rgba(96, 165, 250, 0.6);
+  --rg-focus-ring: #93c5fd;
   --rg-event-label-bg: #1a1f3a;
   --rg-event-label-text: #e2e8f0;
   --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
@@ -788,6 +919,7 @@
     --rg-dependency-halo: rgba(148, 163, 184, 0.22);
     --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
     --rg-dependency-focus: rgba(96, 165, 250, 0.6);
+    --rg-focus-ring: #93c5fd;
     --rg-event-label-bg: #1a1f3a;
     --rg-event-label-text: #e2e8f0;
     --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);

@@ -18,6 +18,8 @@ import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 import { useDragPreviewStoreOptional } from '../../context/DragPreviewContext';
+import { useDependencyLinkOptional } from '../../context/DependencyLinkContext';
+import type { DependencyEdge } from './dependencyPaths';
 
 export interface TaskBarProps {
   task: ResolvedTask;
@@ -54,6 +56,12 @@ interface DragPreview {
 }
 
 const HANDLE_WIDTH = 10;
+/** Connector handles sit this far outside each bar edge (centre), clear of the resize handles. */
+const CONNECTOR_OFFSET = 10;
+const CONNECTOR_DOT_RADIUS = 4;
+const CONNECTOR_HIT_RADIUS = 8;
+const LABEL_GAP = 6;
+const CONNECTOR_EDGES: DependencyEdge[] = ['start', 'end'];
 
 function TaskBarInner({
   task,
@@ -83,6 +91,9 @@ function TaskBarInner({
   const msPerPixel = getMsPerPixel(scale, columnWidth);
   const tooltip = useTaskTooltipOptional();
   const dragPreviewStore = useDragPreviewStoreOptional();
+  const linking = useDependencyLinkOptional();
+  const linkStore =
+    linking && (task.enableDependencyCreate ?? linking.enabledByDefault) ? linking.store : null;
 
   const resolveHoverTask = useCallback(
     (t: ResolvedTask, start?: Date, end?: Date) => {
@@ -403,6 +414,46 @@ function TaskBarInner({
     },
     [emit, task, taskElement],
   );
+  const beginLink = (edge: DependencyEdge) => (e: React.PointerEvent) => {
+    if (!linkStore || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    linkStore.beginPointer({ taskId: task.id, edge }, e.clientX, e.clientY);
+  };
+
+  const handleLinkKey = (e: React.KeyboardEvent) => {
+    if (linkStore?.handleBarKey(task.id, e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  // Drag-to-link handles: a wide transparent hit circle and a small dot, outside each edge.
+  const connectors = linkStore && (
+    <g className="rg-bar-connectors" aria-hidden="true">
+      {CONNECTOR_EDGES.map((edge) => {
+        const cx = edge === 'start' ? -CONNECTOR_OFFSET : renderGeometry.width + CONNECTOR_OFFSET;
+        const cy = renderGeometry.height / 2;
+        return (
+          <g key={edge} className={`rg-bar-connector rg-bar-connector--${edge}`}>
+            <circle className="rg-bar-connector-dot" cx={cx} cy={cy} r={CONNECTOR_DOT_RADIUS} />
+            <circle
+              className="rg-bar-connector-hit"
+              cx={cx}
+              cy={cy}
+              r={CONNECTOR_HIT_RADIUS}
+              data-connector-edge={edge}
+              onPointerDown={beginLink(edge)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+  const labelX =
+    renderGeometry.width + LABEL_GAP + (linkStore ? CONNECTOR_OFFSET + CONNECTOR_DOT_RADIUS : 0);
+
   const accentColor = task.color ?? 'var(--rg-bar-fill)';
   const barStroke = task.borderColor;
   const barStrokeWidth = barStroke ? 1.5 : 0;
@@ -427,6 +478,12 @@ function TaskBarInner({
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
       onContextMenu={handleTaskContextMenu}
+      tabIndex={linkStore ? 0 : undefined}
+      role={linkStore ? 'button' : undefined}
+      aria-label={linkStore ? task.name : undefined}
+      aria-keyshortcuts={linkStore ? 'L' : undefined}
+      onKeyDown={linkStore ? handleLinkKey : undefined}
+      onFocus={linkStore ? () => linkStore.focusBar(task.id) : undefined}
     >
       {isMilestone ? (
         <>
@@ -453,7 +510,7 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={renderGeometry.width + 6}
+            x={labelX}
             y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
@@ -461,6 +518,7 @@ function TaskBarInner({
           >
             {task.name}
           </text>
+          {connectors}
         </>
       ) : (
         <>
@@ -532,7 +590,7 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={renderGeometry.width + 6}
+            x={labelX}
             y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
@@ -540,6 +598,7 @@ function TaskBarInner({
           >
             {task.name}
           </text>
+          {connectors}
         </>
       )}
     </g>
@@ -571,6 +630,7 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.enableProgressDrag !== next.enableProgressDrag) return false;
   if (prev.task.type !== next.task.type) return false;
   if (prev.task.width !== next.task.width) return false;
+  if (prev.task.enableDependencyCreate !== next.task.enableDependencyCreate) return false;
   return true;
 }
 

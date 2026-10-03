@@ -80,6 +80,8 @@ export interface GanttTask {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  /** Show connector handles to link a new dependency from or to this task. Falls back to `enableDependencyCreate`. */
+  enableDependencyCreate?: boolean;
   /** Original plan dates — line below bars or diamond behind milestones. */
   baseline?: TaskBaseline;
   /** Bar fill / milestone color. */
@@ -267,6 +269,17 @@ export interface GanttPointerDetail {
   preventDefault: () => void;
 }
 
+/** A new link the user drew (drag between connector handles, or the `L` keyboard flow). */
+export interface GanttDependencyCreateDetail {
+  /** Predecessor: the task the link was drawn from. */
+  fromId: string;
+  /** Successor: the task the link was dropped on. Never equal to `fromId`. */
+  toId: string;
+  /** Inferred from the two handles: end→start FS, start→start SS, end→end FF, start→end SF. */
+  type: DependencyType;
+  source: 'pointer' | 'keyboard';
+}
+
 /** Pointer detail for dependency events — the target is always a dependency. */
 export interface GanttDependencyPointerDetail extends Omit<GanttPointerDetail, 'target'> {
   target: GanttDependencyTarget;
@@ -386,6 +399,7 @@ export interface GanttEventMap {
   dependencyContextMenu: GanttDependencyPointerDetail;
   dependencyHover: GanttDependencyHoverDetail;
   dependencyDelete: { dependencies: GanttDependencyTarget[] };
+  dependencyCreate: GanttDependencyCreateDetail;
   customRowCellReady: { rowId: string; columnKey: string };
   customRowCellError: { rowId: string; columnKey: string; error: unknown };
 }
@@ -441,6 +455,11 @@ export interface GanttCallbacks {
   onDependencyHover?: GanttEventHandler<'dependencyHover'>;
   /** Delete or Backspace with one or more dependencies selected. The chart does not remove them. */
   onDependencyDelete?: GanttEventHandler<'dependencyDelete'>;
+  /**
+   * A link was drawn (needs `enableDependencyCreate`). The chart does not add it and does not check
+   * for cycles or duplicates — validate, then update `tasks`.
+   */
+  onDependencyCreate?: GanttEventHandler<'dependencyCreate'>;
   onCustomRowCellReady?: GanttEventHandler<'customRowCellReady'>;
   onCustomRowCellError?: GanttEventHandler<'customRowCellError'>;
 }
@@ -520,6 +539,13 @@ export interface GanttChartProps extends GanttCallbacks {
   selectedDependencyIds?: string[];
   /** Lag label text, called for links with a non-zero lag. Default: `+2d` / `-1d` (lag read as days). Return `''` to hide a label. */
   formatDependencyLag?: (lag: number, dependency: GanttDependency) => string;
+  /**
+   * Show connector handles at each bar's start and end (on hover and focus) to draw new links:
+   * drag from one handle to another task's, or focus a bar, press `L`, focus the target bar and
+   * press Enter (FS) or Shift+Enter (choose the type). Reported through `onDependencyCreate`.
+   * Per-task `enableDependencyCreate` overrides it. Default false.
+   */
+  enableDependencyCreate?: boolean;
   onTasksChange?: (tasks: GanttTask[]) => void;
   customRows?: CustomRowDefinition[];
   /**

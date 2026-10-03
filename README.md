@@ -155,7 +155,7 @@ export function App() {
 
 ### Types
 
-All types are exported: `GanttTask`, `GanttColumn`, `GanttChartProps`, `GanttCallbacks`, `GanttEventMap`, `GanttEventName`, `GanttEventHandler`, `GanttTarget`, `GanttPointerDetail`, `GanttHoverDetail`, `GanttTheme`, `CustomRowDefinition`, `CustomRowCellContext`, `CustomRowCellGenerator`, `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`, `TaskBaseline`, `GanttDependency`, `GanttDependencyTarget`, `GanttDependencyPointerDetail`, `GanttDependencyHoverDetail`, `DependencyType`, `ViewScaleId`, `ZoomLevel`, `ViewScale`, `TaskTooltipRenderer`, `TaskTooltipChangeHandler`, `SidebarLayoutState`, `SidebarWidths`, `TimelineRange`, `TimelineRangeBounds`, `ResolvedTask`, `BarGeometry`, `ColumnRenderContext`, `DateMarkingLayers`, `DateMarkingRect`, `GanttTimelineContextValue`, `VirtualColumnSegment`, `VisibleColumnRange`.
+All types are exported: `GanttTask`, `GanttColumn`, `GanttChartProps`, `GanttCallbacks`, `GanttEventMap`, `GanttEventName`, `GanttEventHandler`, `GanttTarget`, `GanttPointerDetail`, `GanttHoverDetail`, `GanttTheme`, `CustomRowDefinition`, `CustomRowCellContext`, `CustomRowCellGenerator`, `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`, `TaskBaseline`, `GanttDependency`, `GanttDependencyTarget`, `GanttDependencyPointerDetail`, `GanttDependencyHoverDetail`, `GanttDependencyCreateDetail`, `DependencyType`, `ViewScaleId`, `ZoomLevel`, `ViewScale`, `TaskTooltipRenderer`, `TaskTooltipChangeHandler`, `SidebarLayoutState`, `SidebarWidths`, `TimelineRange`, `TimelineRangeBounds`, `ResolvedTask`, `BarGeometry`, `ColumnRenderContext`, `DateMarkingLayers`, `DateMarkingRect`, `GanttTimelineContextValue`, `VirtualColumnSegment`, `VisibleColumnRange`.
 
 ## Layout: three draggable panels
 
@@ -237,6 +237,7 @@ Each task in the `tasks` array maps to one row. Row order follows array order.
 | `enableDrag` | `boolean` | — | Per-task override (falls back to chart prop) |
 | `enableResize` | `boolean` | — | Per-task override |
 | `enableProgressDrag` | `boolean` | — | Per-task override |
+| `enableDependencyCreate` | `boolean` | — | Per-task override (see [Drawing links](#drawing-links-drag-to-link)) |
 | `dependencies` | `string[] \| GanttDependency[]` | — | Predecessor task ids (see [Dependencies](#dependencies)) |
 | `baseline` | `{ start, end, color? }` | — | Original plan overlay (see [Baseline](#baseline)) |
 | `color` | `string` | — | Bar fill / milestone color |
@@ -417,9 +418,10 @@ Without both bounds, the range auto-expands from task min/max plus `paddingUnits
 | `enableDrag` | `true` | Move bar body |
 | `enableResize` | `true` | Left/right resize handles on hover |
 | `enableProgressDrag` | `true` | Bottom progress handle |
+| `enableDependencyCreate` | `false` | Connector handles to draw links |
 | `snapToGrid` | `true` | Snap dates to grid column boundaries on pointer-events |
 
-Per-task overrides: `GanttTask.enableDrag`, `enableResize`, `enableProgressDrag`. `readOnly: true` disables all editing for that task.
+Per-task overrides: `GanttTask.enableDrag`, `enableResize`, `enableProgressDrag`, `enableDependencyCreate`. `readOnly: true` disables all editing for that task.
 
 | `snapToGrid` | Behavior |
 |--------------|----------|
@@ -488,7 +490,41 @@ const [linkIds, setLinkIds] = useState<string[]>([]);
 />
 ```
 
-Building on links (e.g. a drag-to-link preview) can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
+### Drawing links (drag-to-link)
+
+Set `enableDependencyCreate` (or `GanttTask.enableDependencyCreate` per task, which overrides it)
+and each bar and milestone gets a **connector handle** just outside its start and end edge, shown on
+hover and focus, and on every linkable bar while a link is being drawn.
+
+- **Drag** from one handle to another task's handle. A live preview follows the pointer — dashed
+  while it has nowhere to land, solid with a ring once it is over a handle — and the timeline
+  auto-scrolls while the pointer is near the viewport's edges. Dropping on a handle fires
+  `onDependencyCreate({ fromId, toId, type, source: 'pointer' })`, with the type inferred from the two
+  handles: end→start `FS`, start→start `SS`, end→end `FF`, start→end `SF`.
+- **Escape**, a drop on the same task, on a bar body or on empty space cancel with no event.
+- **Keyboard:** linkable bars are focusable. Press **L** on a bar, move focus to the target bar
+  (Tab), then **Enter** for `FS` or **Shift+Enter** to choose the type from a small menu (arrow keys,
+  Enter; Escape closes it). Escape cancels. Progress is announced in a polite live region.
+
+The chart adds nothing and checks nothing — not cycles, not duplicates. Validate in the handler,
+then update `tasks`.
+
+```tsx
+<GanttChart
+  tasks={tasks}
+  enableDependencyCreate
+  onDependencyCreate={({ fromId, toId, type }) => {
+    if (wouldCycle(fromId, toId)) return;
+    setTasks((ts) => ts.map((t) => (t.id === toId
+      ? { ...t, dependencies: [...(t.dependencies ?? []), { id: fromId, type }] }
+      : t)));
+  }}
+/>
+```
+
+`dependencyTypeForEdges(from, to)` is the inverse of `DEPENDENCY_EDGES`.
+
+Building on links can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
 `buildDependencyPath`, `DEPENDENCY_EDGES` and `computeDependencyLinks`.
 
 ## Baseline
@@ -831,6 +867,7 @@ Click priority (top wins): task bar → baseline → blocked/holiday band → em
 | `onDependencyContextMenu` | `dependencyContextMenu` | dependency `target`, `preventDefault()` |
 | `onDependencyHover` | `dependencyHover` | dependency `target`, `phase: 'enter' \| 'leave'` |
 | `onDependencyDelete` | `dependencyDelete` | `{ dependencies }` — Delete/Backspace with links selected |
+| `onDependencyCreate` | `dependencyCreate` | `{ fromId, toId, type, source: 'pointer' \| 'keyboard' }` — a link drawn (`enableDependencyCreate`) |
 | `onCustomRowCellReady` | `customRowCellReady` | `rowId`, `columnKey` |
 | `onCustomRowCellError` | `customRowCellError` | `rowId`, `columnKey`, `error` |
 | `onTasksChange` | — | Full `GanttTask[]` after drag/resize/progress commit |
