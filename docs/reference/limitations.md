@@ -6,7 +6,7 @@ description: Known limitations and future work for react-gantt-lib.
 # Limitations
 
 - `__timeline__` custom cell generators do not re-run on scroll — use `useGanttTimeline()` for live scroll/window data
-- `lag` on `GanttDependency` is ignored; only finish-to-start is rendered
+- `lag` is drawn as a label only; it does not move or constrain bars (there is no scheduling engine)
 - `onGanttHover` for blocks may not fire when the pointer is over a task bar (bars sit above the block hit layer)
 - No built-in context menu UI — use `onGanttContextMenu` + your own menu component
 - No built-in task creation/editing forms — use `renderTaskTooltip` + `onChange` for inline edits

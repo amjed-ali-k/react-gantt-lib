@@ -63,11 +63,60 @@ Rendered as a 14px diamond with label to the right. Draggable (move only), no re
 
 ## Dependencies
 
-Add `dependencies` on the **successor** pointing to predecessor id(s). Finish-to-start (FS) only.
+Add `dependencies` on the **successor** task pointing to predecessor id(s). A predecessor/successor
+pair is one link; its id is `dependencyId(fromId, toId)` (`"a->b"`).
+
+| `type` | From (predecessor) | To (successor) |
+|--------|--------------------|----------------|
+| `FS` (default) | end | start |
+| `SS` | start | start |
+| `FF` | end | end |
+| `SF` | start | end |
+
+Links are orthogonal SVG paths with an arrowhead pointing into the successor edge. When the
+successor's edge is behind the predecessor's, the path doubles back through the row gutter;
+milestones connect at the diamond's left (start) or right (end) tip. A non-zero `lag` is drawn as a
+label on the link (`+2d` / `-1d` — override with `formatDependencyLag`).
 
 ```tsx
+// Simple form (FS, no lag)
 { id: 'b', name: 'Task B', start: '...', end: '...', dependencies: ['task-a'] }
+
+// Object form
+{ id: 'b', dependencies: [{ id: 'task-a', type: 'SS', lag: 2, color: '#e11d48', critical: true }] }
 ```
+
+`color` colours the line, arrowhead and label; `className` is added to the link's `<g>`;
+`critical` adds `rg-dependency--critical` (heavier, red by default).
+
+### Interactive links
+
+Links are drawn but inert by default. Pass any of `onDependencyClick`, `onDependencyHover`,
+`onDependencyContextMenu`, `onDependencyDelete`, or a controlled `selectedDependencyIds`, and each
+link gets a wide invisible hit stroke (the only part that takes pointer events, and painted under
+the bars so it never steals a bar drag):
+
+- **Click** (or **Enter**/**Space** on a focused link) selects it; ctrl/meta-click toggles. Task and
+  link selection are one selection: a plain click on either replaces both.
+  `onSelectionChange` reports `{ selectedIds, selectedDependencyIds }`.
+- **Delete**/**Backspace** while links are selected (and focus is in the chart, outside a text field)
+  fires `onDependencyDelete({ dependencies })`. The chart does not remove anything — update `tasks`.
+- Click, context menu and hover also reach `onGanttClick` / `onGanttContextMenu` / `onGanttHover`
+  with a `{ type: 'dependency', id, from, to, dependency }` target.
+
+```tsx
+const [linkIds, setLinkIds] = useState<string[]>([]);
+
+<GanttChart
+  tasks={tasks}
+  selectedDependencyIds={linkIds}
+  onSelectionChange={(e) => setLinkIds(e.selectedDependencyIds)}
+  onDependencyDelete={({ dependencies }) => removeLinks(dependencies.map((d) => d.id))}
+/>
+```
+
+Building on links (e.g. a drag-to-link preview) can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
+`buildDependencyPath`, `DEPENDENCY_EDGES` and `computeDependencyLinks`.
 
 ## Baseline
 

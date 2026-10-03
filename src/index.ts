@@ -22,3 +22,17 @@ export { format, toDate, addUnit, diffUnits } from './core/dates';
 export { TaskStore } from './hooks/useTaskStore';
 export { DragPreviewStore } from './hooks/useDragPreviewStore';
 export type { DragPreviewSnapshot, DragPreviewDates } from './hooks/useDragPreviewStore';
+export {
+  dependencyId,
+  collectDependencyTargets,
+  computeDependencyLinks,
+  defaultDependencyLagLabel,
+  type DependencyLink,
+  type DependencyLinkInput,
+} from './components/Timeline/dependencyLinks';
+export {
+  DEPENDENCY_EDGES,
+  routeDependency,
+  buildDependencyPath,
+  type DependencyEdge,
+} from './components/Timeline/dependencyPaths';

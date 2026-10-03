@@ -180,10 +180,12 @@ describe('GanttChart', () => {
     fireEvent.click(within(list).getByText('Build'), { ctrlKey: true });
     expect(onSelectionChange).toHaveBeenLastCalledWith({
       selectedIds: ['t1', 't2'],
+      selectedDependencyIds: [],
     });
     fireEvent.click(within(list).getByText('Design'), { metaKey: true });
     expect(onSelectionChange).toHaveBeenLastCalledWith({
       selectedIds: ['t2'],
+      selectedDependencyIds: [],
     });
   });
 

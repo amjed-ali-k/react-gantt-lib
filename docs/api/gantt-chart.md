@@ -47,6 +47,8 @@ description: Complete prop reference for the GanttChart component.
 | `enableProgressDrag` | `boolean` | `true` |
 | `snapToGrid` | `boolean` | `true` |
 | `selectedTaskIds` | `string[]` | — |
+| `selectedDependencyIds` | `string[]` | — (controlled link selection; makes links interactive) |
+| `formatDependencyLag` | `(lag, dependency) => string` | `+2d` / `-1d` |
 | `showTooltip` | `boolean` | `false` |
 | `renderTaskTooltip` | `fn` | — |
 | `showBaseline` | `boolean` | `true` |
@@ -76,7 +78,7 @@ description: Complete prop reference for the GanttChart component.
 
 ## Events
 
-See [Events & Hooks](/guide/events) for `onTaskClick`, `onGanttClick`, `onGanttContextMenu`, `onGanttHover`, drag/resize lifecycle, `onZoomChange`, `onScroll`, `onSidebarLayoutChange`, `onSelectionChange`, and custom row callbacks.
+See [Events & Hooks](/guide/events) for `onTaskClick`, `onGanttClick`, `onGanttContextMenu`, `onGanttHover`, drag/resize lifecycle, `onZoomChange`, `onScroll`, `onSidebarLayoutChange`, `onSelectionChange`, the `onDependency*` callbacks, and custom row callbacks.
 
 <GanttDemo name="quick-start" :height="300" />
 

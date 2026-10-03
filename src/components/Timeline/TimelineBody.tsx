@@ -17,7 +17,8 @@ import {
 import { computeMilestoneGeometry } from './milestoneGeometry';
 import { TaskBar } from './TaskBar';
 import { TimelineGrid } from './TimelineGrid';
-import { DependencyLayer } from './DependencyLayer';
+import { DependencyLayer, type DependencyLagFormatter } from './DependencyLayer';
+import { DependencyHitTargets } from './DependencyHitTargets';
 import { BaselineLayer } from './BaselineLayer';
 import { DateMarkingInteractionLayer } from './DateMarkingInteractionLayer';
 import { TimelineHitLayer } from './TimelineHitLayer';
@@ -41,6 +42,10 @@ interface TimelineBodyProps {
   blockDates?: BlockDateRange[];
   showBaseline?: boolean;
   selectedTaskIds?: string[];
+  selectedDependencyIds?: string[];
+  formatDependencyLag?: DependencyLagFormatter;
+  /** When set, links are interactive (hover, click/keyboard select) and this selects one. */
+  onDependencySelect?: (id: string, multi: boolean) => void;
   interactionsEnabled?: boolean;
   emit: EventEmitter;
   dragPreviewStore: DragPreviewStore;
@@ -65,6 +70,9 @@ export const TimelineBody = memo(function TimelineBody({
   blockDates,
   showBaseline = true,
   selectedTaskIds,
+  selectedDependencyIds,
+  formatDependencyLag,
+  onDependencySelect,
   interactionsEnabled = false,
   emit,
   dragPreviewStore,
@@ -144,6 +152,8 @@ export const TimelineBody = memo(function TimelineBody({
         rowLayouts={rowLayouts}
         showBaseline={showBaseline}
         dragPreviewStore={dragPreviewStore}
+        selectedDependencyIds={selectedDependencyIds}
+        formatLag={formatDependencyLag}
       />
       {showBaseline && (
         <BaselineLayer
@@ -165,6 +175,22 @@ export const TimelineBody = memo(function TimelineBody({
         />
       )}
       <svg className="rg-timeline-bars" width="100%" height={totalHeight}>
+        {onDependencySelect && (
+          <DependencyHitTargets
+            tasks={tasks}
+            taskIndexMap={taskIndexMap}
+            range={range}
+            scale={scale}
+            columnWidth={columnWidth}
+            rowLayouts={rowLayouts}
+            showBaseline={showBaseline}
+            dragPreviewStore={dragPreviewStore}
+            selectedDependencyIds={selectedDependencyIds}
+            formatLag={formatDependencyLag}
+            emit={emit}
+            onSelect={onDependencySelect}
+          />
+        )}
         {tasks.map((task, i) => {
           if (!shouldRenderTaskBar(task, tasks)) return null;
           const g = geometries[i];

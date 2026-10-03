@@ -155,7 +155,7 @@ export function App() {
 
 ### Types
 
-All types are exported: `GanttTask`, `GanttColumn`, `GanttChartProps`, `GanttCallbacks`, `GanttEventMap`, `GanttEventName`, `GanttEventHandler`, `GanttTarget`, `GanttPointerDetail`, `GanttHoverDetail`, `GanttTheme`, `CustomRowDefinition`, `CustomRowCellContext`, `CustomRowCellGenerator`, `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`, `TaskBaseline`, `GanttDependency`, `DependencyType`, `ViewScaleId`, `ZoomLevel`, `ViewScale`, `TaskTooltipRenderer`, `TaskTooltipChangeHandler`, `SidebarLayoutState`, `SidebarWidths`, `TimelineRange`, `TimelineRangeBounds`, `ResolvedTask`, `BarGeometry`, `ColumnRenderContext`, `DateMarkingLayers`, `DateMarkingRect`, `GanttTimelineContextValue`, `VirtualColumnSegment`, `VisibleColumnRange`.
+All types are exported: `GanttTask`, `GanttColumn`, `GanttChartProps`, `GanttCallbacks`, `GanttEventMap`, `GanttEventName`, `GanttEventHandler`, `GanttTarget`, `GanttPointerDetail`, `GanttHoverDetail`, `GanttTheme`, `CustomRowDefinition`, `CustomRowCellContext`, `CustomRowCellGenerator`, `HolidayMarking`, `HolidayDateEntry`, `BlockDateRange`, `EventMarker`, `TaskBaseline`, `GanttDependency`, `GanttDependencyTarget`, `GanttDependencyPointerDetail`, `GanttDependencyHoverDetail`, `DependencyType`, `ViewScaleId`, `ZoomLevel`, `ViewScale`, `TaskTooltipRenderer`, `TaskTooltipChangeHandler`, `SidebarLayoutState`, `SidebarWidths`, `TimelineRange`, `TimelineRangeBounds`, `ResolvedTask`, `BarGeometry`, `ColumnRenderContext`, `DateMarkingLayers`, `DateMarkingRect`, `GanttTimelineContextValue`, `VirtualColumnSegment`, `VisibleColumnRange`.
 
 ## Layout: three draggable panels
 
@@ -436,17 +436,60 @@ Disable editing globally:
 
 ## Dependencies
 
-Add `dependencies` on the **successor** task pointing to predecessor id(s).
+Add `dependencies` on the **successor** task pointing to predecessor id(s). A predecessor/successor
+pair is one link; its id is `dependencyId(fromId, toId)` (`"a->b"`).
 
-**Supported:** finish-to-start (FS) only. Rendering: orthogonal SVG arrows from predecessor end → successor start.
+| `type` | From (predecessor) | To (successor) |
+|--------|--------------------|----------------|
+| `FS` (default) | end | start |
+| `SS` | start | start |
+| `FF` | end | end |
+| `SF` | start | end |
+
+Links are orthogonal SVG paths with an arrowhead pointing into the successor edge. When the
+successor's edge is behind the predecessor's, the path doubles back through the row gutter;
+milestones connect at the diamond's left (start) or right (end) tip. A non-zero `lag` is drawn as a
+label on the link (`+2d` / `-1d` — override with `formatDependencyLag`).
 
 ```tsx
-// Simple form
+// Simple form (FS, no lag)
 { id: 'b', name: 'Task B', start: '...', end: '...', dependencies: ['task-a'] }
 
-// Object form (type and lag are typed but not yet implemented — always FS, lag ignored)
-{ id: 'b', dependencies: [{ id: 'task-a', type: 'FS', lag: 0 }] }
+// Object form
+{ id: 'b', dependencies: [{ id: 'task-a', type: 'SS', lag: 2, color: '#e11d48', critical: true }] }
 ```
+
+`color` colours the line, arrowhead and label; `className` is added to the link's `<g>`;
+`critical` adds `rg-dependency--critical` (heavier, red by default).
+
+### Interactive links
+
+Links are drawn but inert by default. Pass any of `onDependencyClick`, `onDependencyHover`,
+`onDependencyContextMenu`, `onDependencyDelete`, or a controlled `selectedDependencyIds`, and each
+link gets a wide invisible hit stroke (the only part that takes pointer events, and painted under
+the bars so it never steals a bar drag):
+
+- **Click** (or **Enter**/**Space** on a focused link) selects it; ctrl/meta-click toggles. Task and
+  link selection are one selection: a plain click on either replaces both.
+  `onSelectionChange` reports `{ selectedIds, selectedDependencyIds }`.
+- **Delete**/**Backspace** while links are selected (and focus is in the chart, outside a text field)
+  fires `onDependencyDelete({ dependencies })`. The chart does not remove anything — update `tasks`.
+- Click, context menu and hover also reach `onGanttClick` / `onGanttContextMenu` / `onGanttHover`
+  with a `{ type: 'dependency', id, from, to, dependency }` target.
+
+```tsx
+const [linkIds, setLinkIds] = useState<string[]>([]);
+
+<GanttChart
+  tasks={tasks}
+  selectedDependencyIds={linkIds}
+  onSelectionChange={(e) => setLinkIds(e.selectedDependencyIds)}
+  onDependencyDelete={({ dependencies }) => removeLinks(dependencies.map((d) => d.id))}
+/>
+```
+
+Building on links (e.g. a drag-to-link preview) can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
+`buildDependencyPath`, `DEPENDENCY_EDGES` and `computeDependencyLinks`.
 
 ## Baseline
 
@@ -877,13 +920,13 @@ Key classes:
 | `.rg-timeline-scroll`, `.rg-timeline-header`, `.rg-timeline-body` | Timeline |
 | `.rg-bar`, `.rg-bar--selected`, `.rg-bar--group`, `.rg-bar-milestone` | Task bars |
 | `.rg-baseline-layer`, `.rg-baseline-bar` | Baselines |
-| `.rg-dependency-layer`, `.rg-dependency-arrow` | Dependency arrows |
+| `.rg-dependency-layer`, `.rg-dependency` (per link, `--fs`/`--ss`/`--ff`/`--sf`, `--selected`, `--critical`), `.rg-dependency-arrow`, `.rg-dependency-arrow-head`, `.rg-dependency-lag`, `.rg-dependency-hit` | Dependency links |
 | `.rg-custom-rows-timeline`, `.rg-custom-row-timeline-band` | Custom rows |
 | `.rg-row--sticky`, `.rg-sticky-task-timeline-row` | Sticky rows |
 | `.rg-task-tooltip`, `.rg-task-tooltip-shell` | Tooltips |
 | `.rg-toolbar`, `.rg-divider` | Zoom toolbar and panel dividers |
 
-Useful `data-testid` values: `gantt-chart`, `task-list-left`, `task-list-middle`, `timeline-header`, `timeline-body`, `zoom-toolbar`, `divider-left`, `divider-middle`, `dependency-layer`, `baseline-layer`, `event-markers`, `sticky-task-timeline-top`, `sticky-task-timeline-bottom`, `custom-rows-sticky-top`, `custom-rows-sticky-bottom`, `custom-rows`.
+Useful `data-testid` values: `gantt-chart`, `task-list-left`, `task-list-middle`, `timeline-header`, `timeline-body`, `zoom-toolbar`, `divider-left`, `divider-middle`, `dependency-layer`, `dependency-hits`, `baseline-layer`, `event-markers`, `sticky-task-timeline-top`, `sticky-task-timeline-bottom`, `custom-rows-sticky-top`, `custom-rows-sticky-bottom`, `custom-rows`.
 
 ## Controlled state patterns
 
@@ -973,7 +1016,6 @@ npm run demo       # Standalone demo app
 ## Limitations
 
 - `__timeline__` custom cell generators do not re-run on scroll — use `useGanttTimeline()` for live scroll/window data
-- `lag` on `GanttDependency` is ignored; only finish-to-start is rendered
 - `onGanttHover` for blocks may not fire when the pointer is over a task bar (bars sit above the block hit layer)
 - No built-in context menu UI — use `onGanttContextMenu` + your own menu component
 - No built-in task creation/editing forms — use `renderTaskTooltip` + `onChange` for inline edits

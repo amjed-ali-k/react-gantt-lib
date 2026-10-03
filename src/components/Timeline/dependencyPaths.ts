@@ -1,11 +1,35 @@
+import type { DependencyType } from '../../types';
+
 const STUB = 14;
 const MIN_HEAD_RUN = 10;
 const BYPASS_CLEARANCE = 8;
 const CORNER_RADIUS = 4;
+const HEAD_LENGTH = 8;
+const HEAD_HALF_WIDTH = 4;
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
+}
+
+/** Which bar edge a link leaves (`from`) and arrives at (`to`). */
+export type DependencyEdge = 'start' | 'end';
+
+export const DEPENDENCY_EDGES: Record<DependencyType, { from: DependencyEdge; to: DependencyEdge }> = {
+  FS: { from: 'end', to: 'start' },
+  SS: { from: 'start', to: 'start' },
+  FF: { from: 'end', to: 'end' },
+  SF: { from: 'start', to: 'end' },
+};
+
+/** A path leaves an end edge travelling right (+1) and a start edge travelling left (-1). */
+function exitDirection(edge: DependencyEdge): 1 | -1 {
+  return edge === 'end' ? 1 : -1;
+}
+
+/** A path arrives at a start edge travelling right (+1) and at an end edge travelling left (-1). */
+function entryDirection(edge: DependencyEdge): 1 | -1 {
+  return edge === 'start' ? 1 : -1;
 }
 
 function channelY(fromY: number, toY: number): number {
@@ -55,6 +79,80 @@ function roundedOrthogonalPath(points: Point[], radius: number): string {
 }
 
 /**
+ * Orthogonal route (corner points) for a link of `type` from the predecessor's connector
+ * `(fromX, fromY)` to the successor's `(toX, toY)`. The connectors are the bar edges named by
+ * `DEPENDENCY_EDGES[type]`; the route leaves and arrives horizontally and always ends with at
+ * least `MIN_HEAD_RUN` px of straight line before the arrowhead.
+ *
+ * - **Same side** (SS, FF): one C-shaped run around whichever edge sticks out further.
+ * - **Opposite sides** (FS, SF): a Z when the successor's edge is far enough ahead; otherwise the
+ *   path doubles back through the row gutter (the "backwards" case).
+ */
+export function routeDependency(
+  type: DependencyType,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): Point[] {
+  const edges = DEPENDENCY_EDGES[type];
+  const out = exitDirection(edges.from);
+  const entry = entryDirection(edges.to);
+  const exitX = fromX + out * STUB;
+  const approachX = toX - entry * (MIN_HEAD_RUN + CORNER_RADIUS);
+
+  if (out !== entry) {
+    const x = out > 0 ? Math.max(exitX, approachX) : Math.min(exitX, approachX);
+    return [
+      { x: fromX, y: fromY },
+      { x, y: fromY },
+      { x, y: toY },
+      { x: toX, y: toY },
+    ];
+  }
+
+  if ((approachX - exitX) * out >= 0) {
+    return [
+      { x: fromX, y: fromY },
+      { x: approachX, y: fromY },
+      { x: approachX, y: toY },
+      { x: toX, y: toY },
+    ];
+  }
+
+  const backX =
+    out > 0
+      ? Math.min(approachX - BYPASS_CLEARANCE, fromX - BYPASS_CLEARANCE)
+      : Math.max(approachX + BYPASS_CLEARANCE, fromX + BYPASS_CLEARANCE);
+  const gutterY = channelY(fromY, toY);
+
+  return [
+    { x: fromX, y: fromY },
+    { x: exitX, y: fromY },
+    { x: exitX, y: gutterY },
+    { x: backX, y: gutterY },
+    { x: backX, y: toY },
+    { x: toX, y: toY },
+  ];
+}
+
+/** SVG path data for a route, with rounded corners. */
+export function routeToPath(points: Point[]): string {
+  return roundedOrthogonalPath(points, CORNER_RADIUS);
+}
+
+/** SVG path data for a link of `type` — see `routeDependency`. */
+export function buildDependencyPath(
+  type: DependencyType,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): string {
+  return routeToPath(routeDependency(type, fromX, fromY, toX, toY));
+}
+
+/**
  * Finish-to-start dependency arrow with ApexCharts-style orthogonal routing.
  * Exits the predecessor right edge, routes to the successor left edge.
  * When tasks overlap horizontally, loops through the row gutter.
@@ -65,33 +163,55 @@ export function buildFinishToStartPath(
   toX: number,
   toY: number,
 ): string {
-  const approachX = toX - MIN_HEAD_RUN - CORNER_RADIUS;
-  const exitX = fromX + STUB;
+  return buildDependencyPath('FS', fromX, fromY, toX, toY);
+}
 
-  let points: Point[];
+/** Start-to-start: predecessor start edge to successor start edge. */
+export function buildStartToStartPath(fromX: number, fromY: number, toX: number, toY: number): string {
+  return buildDependencyPath('SS', fromX, fromY, toX, toY);
+}
 
-  if (approachX >= exitX) {
-    points = [
-      { x: fromX, y: fromY },
-      { x: approachX, y: fromY },
-      { x: approachX, y: toY },
-      { x: toX, y: toY },
-    ];
-  } else {
-    const backX = Math.min(approachX - BYPASS_CLEARANCE, fromX - BYPASS_CLEARANCE);
-    const gutterY = channelY(fromY, toY);
+/** Finish-to-finish: predecessor end edge to successor end edge. */
+export function buildFinishToFinishPath(fromX: number, fromY: number, toX: number, toY: number): string {
+  return buildDependencyPath('FF', fromX, fromY, toX, toY);
+}
 
-    points = [
-      { x: fromX, y: fromY },
-      { x: exitX, y: fromY },
-      { x: exitX, y: gutterY },
-      { x: backX, y: gutterY },
-      { x: backX, y: toY },
-      { x: toX, y: toY },
-    ];
+/** Start-to-finish: predecessor start edge to successor end edge. */
+export function buildStartToFinishPath(fromX: number, fromY: number, toX: number, toY: number): string {
+  return buildDependencyPath('SF', fromX, fromY, toX, toY);
+}
+
+/**
+ * Arrowhead polygon (`points` attribute) with its tip on the route's last point, pointing along
+ * the final segment — rightwards into a start edge, leftwards into an end edge.
+ */
+export function arrowHeadPoints(points: Point[]): string {
+  const tip = points[points.length - 1];
+  const prev = points[points.length - 2] ?? tip;
+  const dir = tip.x >= prev.x ? 1 : -1;
+  const baseX = tip.x - dir * HEAD_LENGTH;
+  return `${tip.x},${tip.y} ${baseX},${tip.y - HEAD_HALF_WIDTH} ${baseX},${tip.y + HEAD_HALF_WIDTH}`;
+}
+
+/**
+ * Where a lag label sits: the middle of the route's longest vertical run, or of its first segment
+ * when the route is flat.
+ */
+export function labelAnchor(points: Point[]): Point {
+  let best: Point | null = null;
+  let bestLength = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const length = Math.abs(b.y - a.y);
+    if (a.x === b.x && length > bestLength) {
+      bestLength = length;
+      best = { x: a.x, y: (a.y + b.y) / 2 };
+    }
   }
-
-  return roundedOrthogonalPath(points, CORNER_RADIUS);
+  if (best) return best;
+  const [a, b = a] = points;
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
 export const dependencyPathConstants = {
@@ -99,4 +219,6 @@ export const dependencyPathConstants = {
   MIN_HEAD_RUN,
   BYPASS_CLEARANCE,
   CORNER_RADIUS,
+  HEAD_LENGTH,
+  HEAD_HALF_WIDTH,
 } as const;
