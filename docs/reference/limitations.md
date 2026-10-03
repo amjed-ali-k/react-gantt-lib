@@ -13,7 +13,7 @@ description: Known limitations and future work for react-gantt-lib.
 - No resource assignment or multi-project views
 - Middle panel start/end show date only (not time)
 - Sticky tasks are excluded from the scrollable timeline hit layer
-- Dependency arrows use full task list row indices; pinned rows may affect visual arrow paths
+- Links to or from a sticky (pinned) row are not drawn
 - Week starts Monday (`weekStartsOn: 1`)
 
 Have a feature request? [Open an issue on GitHub](https://github.com/amjed-ali-k/react-gantt-lib/issues).

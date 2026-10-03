@@ -1,7 +1,7 @@
 import type { GanttPointerDetail, GanttTarget } from '../../types';
 
-export function createPointerDetail(
-  target: GanttTarget,
+export function createPointerDetail<T extends GanttTarget>(
+  target: T,
   e: {
     clientX: number;
     clientY: number;
@@ -10,7 +10,7 @@ export function createPointerDetail(
     metaKey?: boolean;
     shiftKey?: boolean;
   },
-): GanttPointerDetail {
+): GanttPointerDetail & { target: T } {
   return {
     target,
     clientX: e.clientX,

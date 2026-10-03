@@ -11,7 +11,6 @@ import { computeDependencyLinks, defaultDependencyLagLabel, type DependencyLink 
 /** Everything a dependency layer needs to lay out links. Shared by the drawn and the hit layer. */
 export interface DependencyLinkLayerProps {
   tasks: ResolvedTask[];
-  taskIndexMap: Map<string, number>;
   range: TimelineRange;
   scale: ViewScale;
   columnWidth: number;
@@ -20,11 +19,13 @@ export interface DependencyLinkLayerProps {
   dragPreviewStore: DragPreviewStore;
 }
 
-/** Link geometry, following an in-flight drag. Each layer subscribes on its own, so a drag frame
- *  re-renders the layers and not the timeline body. */
+/**
+ * Link geometry, following an in-flight drag. Each layer subscribes on its own, so a drag frame
+ * re-renders the layers and not the timeline body. With interactive links that computes the
+ * geometry twice per frame (drawn + hit layer); it is linear in the number of links.
+ */
 export function useDependencyLinks({
   tasks,
-  taskIndexMap,
   range,
   scale,
   columnWidth,
@@ -37,7 +38,6 @@ export function useDependencyLinks({
     () =>
       computeDependencyLinks({
         tasks,
-        taskIndexMap,
         rowLayouts,
         rangeStart: range.start,
         scale,
@@ -47,7 +47,6 @@ export function useDependencyLinks({
       }),
     [
       tasks,
-      taskIndexMap,
       range.start,
       scale,
       columnWidth,
@@ -61,12 +60,13 @@ export function useDependencyLinks({
 
 export type DependencyLagFormatter = (lag: number, dependency: GanttDependency) => string;
 
+/** Label text for a link's lag; `''` (no label) when the lag is zero or the formatter says so. */
 export function dependencyLagLabel(link: DependencyLink, format?: DependencyLagFormatter): string {
   if (link.lag === 0) return '';
   return format ? format(link.lag, link.target.dependency) : defaultDependencyLagLabel(link.lag);
 }
 
-export function dependencyClassName(link: DependencyLink, selected: boolean): string {
+function dependencyClassName(link: DependencyLink, selected: boolean): string {
   const { dependency } = link.target;
   let cls = `rg-dependency rg-dependency--${link.type.toLowerCase()}`;
   if (selected) cls += ' rg-dependency--selected';

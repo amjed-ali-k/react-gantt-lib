@@ -23,6 +23,7 @@
   --rg-dependency-critical: #dc2626;
   --rg-dependency-halo: rgba(100, 116, 139, 0.18);
   --rg-dependency-halo-selected: rgba(37, 99, 235, 0.2);
+  --rg-dependency-focus: rgba(37, 99, 235, 0.5);
   --rg-event-label-bg: #ffffff;
   --rg-event-label-text: #334155;
   --rg-event-label-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -537,13 +538,17 @@
   outline: none;
 }
 
-.rg-dependency-hit:hover,
-.rg-dependency-hit:focus-visible {
+.rg-dependency-hit:hover {
   stroke: var(--rg-dependency-halo);
 }
 
 .rg-dependency-hit--selected {
   stroke: var(--rg-dependency-halo-selected);
+}
+
+/* Last, so the focused link stands out from other selected ones. */
+.rg-dependency-hit:focus-visible {
+  stroke: var(--rg-dependency-focus);
 }
 
 .rg-baseline-layer {
@@ -737,6 +742,7 @@
   --rg-dependency-critical: #f87171;
   --rg-dependency-halo: rgba(148, 163, 184, 0.22);
   --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+  --rg-dependency-focus: rgba(96, 165, 250, 0.6);
   --rg-event-label-bg: #1a1f3a;
   --rg-event-label-text: #e2e8f0;
   --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
@@ -781,6 +787,7 @@
     --rg-dependency-critical: #f87171;
     --rg-dependency-halo: rgba(148, 163, 184, 0.22);
     --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+    --rg-dependency-focus: rgba(96, 165, 250, 0.6);
     --rg-event-label-bg: #1a1f3a;
     --rg-event-label-text: #e2e8f0;
     --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);

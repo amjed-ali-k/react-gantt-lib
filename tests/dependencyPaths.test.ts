@@ -42,9 +42,6 @@ import {
   DEPENDENCY_EDGES,
   arrowHeadPoints,
   buildDependencyPath,
-  buildFinishToFinishPath,
-  buildStartToFinishPath,
-  buildStartToStartPath,
   labelAnchor,
   routeDependency,
 } from '../src/components/Timeline/dependencyPaths';
@@ -137,12 +134,6 @@ describe('routeDependency', () => {
       ),
     );
     expect(snap).toMatchSnapshot();
-  });
-
-  it('named builders match buildDependencyPath', () => {
-    expect(buildStartToStartPath(1, 2, 3, 40)).toBe(buildDependencyPath('SS', 1, 2, 3, 40));
-    expect(buildFinishToFinishPath(1, 2, 3, 40)).toBe(buildDependencyPath('FF', 1, 2, 3, 40));
-    expect(buildStartToFinishPath(1, 2, 3, 40)).toBe(buildDependencyPath('SF', 1, 2, 3, 40));
   });
 });
 

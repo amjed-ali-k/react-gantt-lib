@@ -609,9 +609,10 @@ Custom tooltip shell: `.rg-task-tooltip-shell` (position only). Style your conte
 | Prop | Description |
 |------|-------------|
 | `selectedTaskIds` | Controlled selection (`string[]`) |
-| `onSelectionChange` | `{ selectedIds }` |
+| `selectedDependencyIds` | Controlled dependency-link selection (`string[]`, see [Dependencies](#dependencies)) |
+| `onSelectionChange` | `{ selectedIds, selectedDependencyIds }` |
 
-Uncontrolled: click selects one task. **Ctrl/⌘+click** toggles a task in the selection without clearing others.
+Uncontrolled: click selects one task. **Ctrl/⌘+click** toggles a task in the selection without clearing others. With interactive links, tasks and links share one selection: a plain click on either replaces both.
 
 Selected bars get `.rg-bar--selected` with a focus ring; sidebar rows get `.rg-task-row--selected`.
 
@@ -825,7 +826,11 @@ Click priority (top wins): task bar → baseline → blocked/holiday band → em
 | `onZoomChange` | `zoomChange` | `zoomLevel`, `scaleId`, `scaleLabel`, `columnWidth` |
 | `onScroll` | `scroll` | `scrollLeft`, `scrollTop` |
 | `onSidebarLayoutChange` | `sidebarLayoutChange` | `SidebarLayoutState` |
-| `onSelectionChange` | `selectionChange` | `{ selectedIds }` |
+| `onSelectionChange` | `selectionChange` | `{ selectedIds, selectedDependencyIds }` |
+| `onDependencyClick` | `dependencyClick` | dependency `target`, modifiers (also Enter/Space) |
+| `onDependencyContextMenu` | `dependencyContextMenu` | dependency `target`, `preventDefault()` |
+| `onDependencyHover` | `dependencyHover` | dependency `target`, `phase: 'enter' \| 'leave'` |
+| `onDependencyDelete` | `dependencyDelete` | `{ dependencies }` — Delete/Backspace with links selected |
 | `onCustomRowCellReady` | `customRowCellReady` | `rowId`, `columnKey` |
 | `onCustomRowCellError` | `customRowCellError` | `rowId`, `columnKey`, `error` |
 | `onTasksChange` | — | Full `GanttTask[]` after drag/resize/progress commit |
@@ -1022,7 +1027,7 @@ npm run demo       # Standalone demo app
 - No resource assignment or multi-project views
 - Middle panel start/end show date only (not time)
 - Sticky tasks are excluded from the scrollable timeline hit layer
-- Dependency arrows use full task list row indices; pinned rows may affect visual arrow paths
+- Links to or from a sticky (pinned) row are not drawn
 - Week starts Monday (`weekStartsOn: 1`)
 
 ## Development

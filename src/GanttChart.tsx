@@ -11,6 +11,7 @@ import type {
   CustomRowDefinition,
   GanttChartProps,
   GanttColumn,
+  GanttDependency,
   GanttEventMap,
   GanttTask,
 } from './types';
@@ -74,9 +75,15 @@ const DEFAULT_MIDDLE_COLUMNS: GanttColumn[] = [
 // array on every render (which would defeat memoisation of the sidebar panels).
 const EMPTY_CUSTOM_ROWS: CustomRowDefinition[] = [];
 
-function isEditableTarget(target: EventTarget): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+const TEXT_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']);
+
+/** Whether a key event comes from somewhere Backspace/Delete edit text (incl. inside shadow DOM). */
+function isEditableTarget(e: KeyboardEvent<HTMLElement>): boolean {
+  const target = e.nativeEvent.composedPath()[0] ?? e.target;
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return true;
+  return TEXT_ROLES.has(target.getAttribute('role') ?? '');
 }
 
 export function GanttChart({
@@ -197,6 +204,17 @@ export function GanttChart({
     callbacks.onDependencyDelete ||
     dependenciesControlled
   );
+
+  // A stable stand-in for the consumer's formatter, so an inline `formatDependencyLag` does not
+  // defeat TimelineBody's memo on every scroll frame. Labels pick up a new formatter on the next
+  // render of the dependency layers.
+  const formatDependencyLagRef = useRef(formatDependencyLag);
+  formatDependencyLagRef.current = formatDependencyLag;
+  const stableFormatDependencyLag = useCallback(
+    (lag: number, dependency: GanttDependency) => formatDependencyLagRef.current?.(lag, dependency) ?? '',
+    [],
+  );
+  const hasLagFormatter = formatDependencyLag !== undefined;
 
   const handleDependencySelect = useCallback(
     (id: string, multi: boolean) => {
@@ -762,15 +780,26 @@ export function GanttChart({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      if (isEditableTarget(e.target)) return;
+      if (isEditableTarget(e)) return;
       const ids = selectionRef.current.dependencyIds;
       if (ids.length === 0) return;
       const dependencies = collectDependencyTargets(tasks, new Set(ids));
       if (dependencies.length === 0) return;
       e.preventDefault();
+      // A held key repeats; report a deletion once per press.
+      if (e.repeat) return;
       emit('dependencyDelete', { dependencies });
+      // Uncontrolled: the reported links leave the selection, so a link re-created later with the
+      // same id does not come back selected. Controlled consumers update `selectedDependencyIds`.
+      if (!dependenciesControlled) {
+        const reported = new Set(dependencies.map((d) => d.id));
+        commitSelection({
+          taskIds: selectionRef.current.taskIds,
+          dependencyIds: ids.filter((id) => !reported.has(id)),
+        });
+      }
     },
-    [tasks, emit],
+    [tasks, emit, dependenciesControlled, commitSelection],
   );
 
   return (
@@ -983,7 +1012,7 @@ export function GanttChart({
                   showBaseline={showBaseline}
                   selectedTaskIds={effectiveSelectedIds}
                   selectedDependencyIds={effectiveSelectedDependencyIds}
-                  formatDependencyLag={formatDependencyLag}
+                  formatDependencyLag={hasLagFormatter ? stableFormatDependencyLag : undefined}
                   onDependencySelect={dependencyInteractive ? handleDependencySelect : undefined}
                   interactionsEnabled={interactionsEnabled}
                   emit={emit}

@@ -116,6 +116,21 @@ describe('dependency interaction', () => {
         expect.objectContaining({ id: 'b->c', dependency: expect.objectContaining({ type: 'SS', lag: 2 }) }),
       ],
     });
+    // Uncontrolled: the reported link left the selection, so a second press reports nothing.
+    expect(path.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.keyDown(path, { key: 'Backspace' });
+    expect(onDependencyDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a held Delete once', () => {
+    const onDependencyDelete = vi.fn();
+    const { container } = renderChart({ onDependencyDelete, selectedDependencyIds: ['a->b'] });
+    const path = hit(container, 'a->b');
+    fireEvent.keyDown(path, { key: 'Delete' });
+    fireEvent.keyDown(path, { key: 'Delete', repeat: true });
+    fireEvent.keyDown(path, { key: 'Delete', repeat: true });
+    expect(onDependencyDelete).toHaveBeenCalledTimes(1);
+    // Controlled: the selection is the consumer's, so another press reports again.
     fireEvent.keyDown(path, { key: 'Backspace' });
     expect(onDependencyDelete).toHaveBeenCalledTimes(2);
   });
@@ -125,9 +140,21 @@ describe('dependency interaction', () => {
     const { container } = renderChart({
       onDependencyDelete,
       selectedDependencyIds: ['a->b'],
-      columns: [{ key: 'name', title: 'Task', render: ({ task }) => <input aria-label={task.name} /> }],
+      columns: [
+        {
+          key: 'name',
+          title: 'Task',
+          render: ({ task }) =>
+            task.id === 'a' ? (
+              <input aria-label={task.name} />
+            ) : (
+              <div role="textbox" tabIndex={0} aria-label={task.name} />
+            ),
+        },
+      ],
     });
     fireEvent.keyDown(screen.getByLabelText('Design'), { key: 'Backspace' });
+    fireEvent.keyDown(screen.getByLabelText('Build'), { key: 'Delete' });
     expect(onDependencyDelete).not.toHaveBeenCalled();
     fireEvent.keyDown(hit(container, 'a->b'), { key: 'Backspace' });
     expect(onDependencyDelete).toHaveBeenCalledTimes(1);
@@ -163,8 +190,8 @@ describe('dependency interaction', () => {
       expect.objectContaining({ target: expect.objectContaining({ type: 'dependency' }) }),
     );
 
-    fireEvent.pointerEnter(path);
-    fireEvent.pointerLeave(path);
+    fireEvent.pointerOver(path);
+    fireEvent.pointerOut(path);
     expect(onDependencyHover.mock.calls.map(([d]) => [d.phase, d.target.id])).toEqual([
       ['enter', 'a->b'],
       ['leave', 'a->b'],

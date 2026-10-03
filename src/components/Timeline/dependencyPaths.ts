@@ -22,14 +22,12 @@ export const DEPENDENCY_EDGES: Record<DependencyType, { from: DependencyEdge; to
   SF: { from: 'start', to: 'end' },
 };
 
-/** A path leaves an end edge travelling right (+1) and a start edge travelling left (-1). */
-function exitDirection(edge: DependencyEdge): 1 | -1 {
+/**
+ * Horizontal travel direction away from an edge: right (+1) from an end edge, left (-1) from a
+ * start edge. A path arrives travelling the opposite way, i.e. `-outward(to)`.
+ */
+function outward(edge: DependencyEdge): 1 | -1 {
   return edge === 'end' ? 1 : -1;
-}
-
-/** A path arrives at a start edge travelling right (+1) and at an end edge travelling left (-1). */
-function entryDirection(edge: DependencyEdge): 1 | -1 {
-  return edge === 'start' ? 1 : -1;
 }
 
 function channelY(fromY: number, toY: number): number {
@@ -96,8 +94,8 @@ export function routeDependency(
   toY: number,
 ): Point[] {
   const edges = DEPENDENCY_EDGES[type];
-  const out = exitDirection(edges.from);
-  const entry = entryDirection(edges.to);
+  const out = outward(edges.from);
+  const entry = -outward(edges.to);
   const exitX = fromX + out * STUB;
   const approachX = toX - entry * (MIN_HEAD_RUN + CORNER_RADIUS);
 
@@ -164,21 +162,6 @@ export function buildFinishToStartPath(
   toY: number,
 ): string {
   return buildDependencyPath('FS', fromX, fromY, toX, toY);
-}
-
-/** Start-to-start: predecessor start edge to successor start edge. */
-export function buildStartToStartPath(fromX: number, fromY: number, toX: number, toY: number): string {
-  return buildDependencyPath('SS', fromX, fromY, toX, toY);
-}
-
-/** Finish-to-finish: predecessor end edge to successor end edge. */
-export function buildFinishToFinishPath(fromX: number, fromY: number, toX: number, toY: number): string {
-  return buildDependencyPath('FF', fromX, fromY, toX, toY);
-}
-
-/** Start-to-finish: predecessor start edge to successor end edge. */
-export function buildStartToFinishPath(fromX: number, fromY: number, toX: number, toY: number): string {
-  return buildDependencyPath('SF', fromX, fromY, toX, toY);
 }
 
 /**

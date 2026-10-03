@@ -791,7 +791,7 @@ Reference implementations:
 - Middle panel start/end show date only (not time); formatted in `timezone` when set, else browser locale
 - Sticky tasks are excluded from scrollable TimelineBody hit layer; timeline empty-area clicks (rowIndex) refer to scroll-section rows only
 - When extending sticky timeline rendering: keep pinned rows as direct children of .rg-timeline-rows; do not wrap in a container sized only to pinned row height
-- Dependency arrows use full task list row indices; pinned rows may affect visual arrow paths when sticky tasks are not adjacent to dependents in scroll order
+- Links to or from a sticky (pinned) row are not drawn (each timeline section draws links between its own rows)
 - Week starts Monday (date-fns weekStartsOn: 1)
 
 ## Build / test

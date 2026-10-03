@@ -78,12 +78,6 @@ export const TimelineBody = memo(function TimelineBody({
   dragPreviewStore,
   onTaskUpdate,
 }: TimelineBodyProps) {
-  const taskIndexMap = useMemo(() => {
-    const m = new Map<string, number>();
-    tasks.forEach((t) => m.set(t.id, t._rowIndex));
-    return m;
-  }, [tasks]);
-
   const geometries = useMemo(() => {
     return tasks.map((task, i) => {
       const row = rowLayouts[i];
@@ -145,7 +139,6 @@ export const TimelineBody = memo(function TimelineBody({
       />
       <DependencyLayer
         tasks={tasks}
-        taskIndexMap={taskIndexMap}
         range={range}
         scale={scale}
         columnWidth={columnWidth}
@@ -178,7 +171,6 @@ export const TimelineBody = memo(function TimelineBody({
         {onDependencySelect && (
           <DependencyHitTargets
             tasks={tasks}
-            taskIndexMap={taskIndexMap}
             range={range}
             scale={scale}
             columnWidth={columnWidth}

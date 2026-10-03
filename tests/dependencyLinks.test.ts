@@ -43,7 +43,6 @@ function task(
 function links(tasks: ResolvedTask[]) {
   return computeDependencyLinks({
     tasks,
-    taskIndexMap: new Map(tasks.map((t) => [t.id, t._rowIndex])),
     rowLayouts,
     rangeStart,
     scale,
@@ -113,8 +112,7 @@ describe('computeDependencyLinks', () => {
     ];
     const [moved] = computeDependencyLinks({
       tasks,
-      taskIndexMap: new Map(tasks.map((t) => [t.id, t._rowIndex])),
-      rowLayouts,
+        rowLayouts,
       rangeStart,
       scale,
       columnWidth: COL,
@@ -140,6 +138,25 @@ describe('computeDependencyLinks', () => {
       to: { id: 'b' },
       dependency: { id: 'a', type: 'FS', lag: 2, critical: true },
     });
+  });
+
+  it('indexes rows by position in the section, not _rowIndex (which counts sticky rows)', () => {
+    // A sticky row above shifts _rowIndex by one; the section's own rows start at 0.
+    const [link] = links([
+      task('a', 1, '2026-01-03', '2026-01-06'),
+      task('b', 2, '2026-01-08', '2026-01-10', ['a']),
+    ]);
+    expect(link.id).toBe('a->b');
+    expect(link.points[0].y).toBe(18);
+    expect(link.points.at(-1)?.y).toBe(54);
+  });
+
+  it('reads an unknown type as FS rather than failing', () => {
+    const [link] = links([
+      task('a', 0, '2026-01-03', '2026-01-06'),
+      task('b', 1, '2026-01-08', '2026-01-10', [{ id: 'a', type: 'fs' as DependencyType }]),
+    ]);
+    expect(link.type).toBe('FS');
   });
 
   it('skips links whose predecessor is not rendered', () => {

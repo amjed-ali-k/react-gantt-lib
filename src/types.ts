@@ -518,7 +518,7 @@ export interface GanttChartProps extends GanttCallbacks {
    * callback, makes links interactive: hover, click to select, Delete to `onDependencyDelete`.
    */
   selectedDependencyIds?: string[];
-  /** Lag label text. Default: `+2d` / `-1d` (lag read as days). Return `''` to hide a label. */
+  /** Lag label text, called for links with a non-zero lag. Default: `+2d` / `-1d` (lag read as days). Return `''` to hide a label. */
   formatDependencyLag?: (lag: number, dependency: GanttDependency) => string;
   onTasksChange?: (tasks: GanttTask[]) => void;
   customRows?: CustomRowDefinition[];
