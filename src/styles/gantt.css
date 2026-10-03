@@ -19,6 +19,11 @@
   --rg-divider-hover: #94a3b8;
   --rg-btn-bg: #ffffff;
   --rg-dependency: #94a3b8;
+  --rg-dependency-selected: #2563eb;
+  --rg-dependency-critical: #dc2626;
+  --rg-dependency-halo: rgba(100, 116, 139, 0.18);
+  --rg-dependency-halo-selected: rgba(37, 99, 235, 0.2);
+  --rg-dependency-focus: rgba(37, 99, 235, 0.5);
   --rg-event-label-bg: #ffffff;
   --rg-event-label-text: #334155;
   --rg-event-label-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -479,15 +484,71 @@
   display: block;
 }
 
+/* A link's <g> sets `color`; line, head and lag label all follow it. */
+.rg-dependency {
+  color: var(--rg-dependency-color, var(--rg-dependency));
+}
+
+.rg-dependency--critical {
+  color: var(--rg-dependency-color, var(--rg-dependency-critical));
+}
+
+.rg-dependency--selected {
+  color: var(--rg-dependency-color, var(--rg-dependency-selected));
+}
+
 .rg-dependency-arrow {
-  stroke: var(--rg-dependency);
+  stroke: currentColor;
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+/* Not colour alone: critical and selected links are also drawn heavier. */
+.rg-dependency--critical .rg-dependency-arrow {
+  stroke-width: 2.25;
+}
+
+.rg-dependency--selected .rg-dependency-arrow {
+  stroke-width: 2.5;
+}
+
 .rg-dependency-arrow-head {
-  fill: var(--rg-dependency);
+  fill: currentColor;
+}
+
+.rg-dependency-lag {
+  fill: currentColor;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--rg-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  user-select: none;
+}
+
+/* Wide invisible stroke over each link (inside the bars' SVG); the halo shows hover, focus and
+   selection as a shape around the line, not just a colour change. */
+.rg-dependency-hit {
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  cursor: pointer;
+  outline: none;
+}
+
+.rg-dependency-hit:hover {
+  stroke: var(--rg-dependency-halo);
+}
+
+.rg-dependency-hit--selected {
+  stroke: var(--rg-dependency-halo-selected);
+}
+
+/* Last, so the focused link stands out from other selected ones. */
+.rg-dependency-hit:focus-visible {
+  stroke: var(--rg-dependency-focus);
 }
 
 .rg-baseline-layer {
@@ -677,6 +738,11 @@
   --rg-divider-hover: #64748b;
   --rg-btn-bg: #1a1f3a;
   --rg-dependency: #64748b;
+  --rg-dependency-selected: #60a5fa;
+  --rg-dependency-critical: #f87171;
+  --rg-dependency-halo: rgba(148, 163, 184, 0.22);
+  --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+  --rg-dependency-focus: rgba(96, 165, 250, 0.6);
   --rg-event-label-bg: #1a1f3a;
   --rg-event-label-text: #e2e8f0;
   --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
@@ -717,6 +783,11 @@
     --rg-divider-hover: #64748b;
     --rg-btn-bg: #1a1f3a;
     --rg-dependency: #64748b;
+    --rg-dependency-selected: #60a5fa;
+    --rg-dependency-critical: #f87171;
+    --rg-dependency-halo: rgba(148, 163, 184, 0.22);
+    --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+    --rg-dependency-focus: rgba(96, 165, 250, 0.6);
     --rg-event-label-bg: #1a1f3a;
     --rg-event-label-text: #e2e8f0;
     --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);

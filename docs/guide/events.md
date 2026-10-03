@@ -24,6 +24,7 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `eventMarker` | Click stripline | `marker`, `index` |
 | `draggableMarker` | Click draggable marker | `marker`, `index` |
 | `timeline` | Click empty area | `date`, `rowIndex` |
+| `dependency` | Click a link (interactive links only) | `id`, `from`, `to`, `dependency` |
 
 ```tsx
 <GanttChart
@@ -59,7 +60,11 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `onZoomChange` | `zoomChange` | `scaleId`, `columnWidth` |
 | `onScroll` | `scroll` | `scrollLeft`, `scrollTop` |
 | `onSidebarLayoutChange` | layout | `SidebarLayoutState` |
-| `onSelectionChange` | selection | `{ selectedIds }` |
+| `onSelectionChange` | selection | `{ selectedIds, selectedDependencyIds }` |
+| `onDependencyClick` | `dependencyClick` | dependency target, modifiers (also Enter/Space) |
+| `onDependencyContextMenu` | `dependencyContextMenu` | dependency target, `preventDefault()` |
+| `onDependencyHover` | `dependencyHover` | dependency target, `phase: 'enter' \| 'leave'` |
+| `onDependencyDelete` | `dependencyDelete` | `{ dependencies }` — Delete/Backspace with links selected |
 | `onTasksChange` | — | Full `GanttTask[]` after edits |
 
 ::: tip onTaskHover

@@ -5,15 +5,19 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  type KeyboardEvent,
 } from 'react';
 import type {
   CustomRowDefinition,
   GanttChartProps,
   GanttColumn,
+  GanttDependency,
   GanttEventMap,
   GanttTask,
 } from './types';
 import { useGanttEmitter } from './hooks/useGanttEmitter';
+import { selectDependency, selectTask, type GanttSelection } from './core/selection';
+import { collectDependencyTargets } from './components/Timeline/dependencyLinks';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useTaskStore } from './hooks/useTaskStore';
 import { DragPreviewStore } from './hooks/useDragPreviewStore';
@@ -71,6 +75,17 @@ const DEFAULT_MIDDLE_COLUMNS: GanttColumn[] = [
 // array on every render (which would defeat memoisation of the sidebar panels).
 const EMPTY_CUSTOM_ROWS: CustomRowDefinition[] = [];
 
+const TEXT_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']);
+
+/** Whether a key event comes from somewhere Backspace/Delete edit text (incl. inside shadow DOM). */
+function isEditableTarget(e: KeyboardEvent<HTMLElement>): boolean {
+  const target = e.nativeEvent.composedPath()[0] ?? e.target;
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return true;
+  return TEXT_ROLES.has(target.getAttribute('role') ?? '');
+}
+
 export function GanttChart({
   tasks: externalTasks,
   columns = DEFAULT_COLUMNS,
@@ -113,6 +128,8 @@ export function GanttChart({
   onTaskClick,
   onSelectionChange,
   selectedTaskIds,
+  selectedDependencyIds,
+  formatDependencyLag,
   ...callbacks
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,6 +145,7 @@ export function GanttChart({
   const scrollRafRef = useRef<number | null>(null);
   const pendingScrollLeftRef = useRef(0);
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
+  const [internalSelectedDependencyIds, setInternalSelectedDependencyIds] = useState<string[]>([]);
   const pendingCenterDateRef = useRef<Date | null>(null);
 
   const availableScales = useMemo(
@@ -145,31 +163,64 @@ export function GanttChart({
   }, []);
 
   const effectiveSelectedIds = selectedTaskIds ?? internalSelectedIds;
+  const effectiveSelectedDependencyIds = selectedDependencyIds ?? internalSelectedDependencyIds;
+
+  // Latest selection, read by event handlers so they stay stable across selection changes.
+  const selectionRef = useRef<GanttSelection>({ taskIds: [], dependencyIds: [] });
+  selectionRef.current = {
+    taskIds: effectiveSelectedIds,
+    dependencyIds: effectiveSelectedDependencyIds,
+  };
+  const tasksControlled = selectedTaskIds !== undefined;
+  const dependenciesControlled = selectedDependencyIds !== undefined;
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+
+  const commitSelection = useCallback(
+    (next: GanttSelection) => {
+      if (!tasksControlled) setInternalSelectedIds(next.taskIds);
+      if (!dependenciesControlled) setInternalSelectedDependencyIds(next.dependencyIds);
+      onSelectionChangeRef.current?.({
+        selectedIds: next.taskIds,
+        selectedDependencyIds: next.dependencyIds,
+      });
+    },
+    [tasksControlled, dependenciesControlled],
+  );
 
   const handleTaskClick = useCallback(
     (detail: GanttEventMap['taskClick']) => {
       const multi = !!(detail.ctrlKey || detail.metaKey);
-      const computeNext = (current: string[]) => {
-        if (multi) {
-          return current.includes(detail.task.id)
-            ? current.filter((id) => id !== detail.task.id)
-            : [...current, detail.task.id];
-        }
-        return [detail.task.id];
-      };
-
-      if (selectedTaskIds === undefined) {
-        setInternalSelectedIds((current) => {
-          const nextIds = computeNext(current);
-          onSelectionChange?.({ selectedIds: nextIds });
-          return nextIds;
-        });
-      } else {
-        onSelectionChange?.({ selectedIds: computeNext(selectedTaskIds) });
-      }
+      commitSelection(selectTask(selectionRef.current, detail.task.id, multi));
       onTaskClick?.(detail);
     },
-    [selectedTaskIds, onSelectionChange, onTaskClick],
+    [commitSelection, onTaskClick],
+  );
+
+  const dependencyInteractive = !!(
+    callbacks.onDependencyClick ||
+    callbacks.onDependencyContextMenu ||
+    callbacks.onDependencyHover ||
+    callbacks.onDependencyDelete ||
+    dependenciesControlled
+  );
+
+  // A stable stand-in for the consumer's formatter, so an inline `formatDependencyLag` does not
+  // defeat TimelineBody's memo on every scroll frame. Labels pick up a new formatter on the next
+  // render of the dependency layers.
+  const formatDependencyLagRef = useRef(formatDependencyLag);
+  formatDependencyLagRef.current = formatDependencyLag;
+  const stableFormatDependencyLag = useCallback(
+    (lag: number, dependency: GanttDependency) => formatDependencyLagRef.current?.(lag, dependency) ?? '',
+    [],
+  );
+  const hasLagFormatter = formatDependencyLag !== undefined;
+
+  const handleDependencySelect = useCallback(
+    (id: string, multi: boolean) => {
+      commitSelection(selectDependency(selectionRef.current, id, multi));
+    },
+    [commitSelection],
   );
 
   const interactionsEnabled = !!(
@@ -725,6 +776,32 @@ export function GanttChart({
 
   const tooltipEnabled = showTooltip || !!renderTaskTooltip;
 
+  // Delete/Backspace anywhere in the chart (outside a text field) reports the selected links.
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (isEditableTarget(e)) return;
+      const ids = selectionRef.current.dependencyIds;
+      if (ids.length === 0) return;
+      const dependencies = collectDependencyTargets(tasks, new Set(ids));
+      if (dependencies.length === 0) return;
+      e.preventDefault();
+      // A held key repeats; report a deletion once per press.
+      if (e.repeat) return;
+      emit('dependencyDelete', { dependencies });
+      // Uncontrolled: the reported links leave the selection, so a link re-created later with the
+      // same id does not come back selected. Controlled consumers update `selectedDependencyIds`.
+      if (!dependenciesControlled) {
+        const reported = new Set(dependencies.map((d) => d.id));
+        commitSelection({
+          taskIds: selectionRef.current.taskIds,
+          dependencyIds: ids.filter((id) => !reported.has(id)),
+        });
+      }
+    },
+    [tasks, emit, dependenciesControlled, commitSelection],
+  );
+
   return (
     <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
@@ -737,6 +814,7 @@ export function GanttChart({
       data-sidebar-left={leftWidth}
       data-sidebar-middle={middleWidth}
       data-timeline-left={timelineLeft}
+      onKeyDown={dependencyInteractive ? handleKeyDown : undefined}
     >
       <TaskTooltipProvider
         enabled={tooltipEnabled}
@@ -933,6 +1011,9 @@ export function GanttChart({
                   blockDates={blockDates}
                   showBaseline={showBaseline}
                   selectedTaskIds={effectiveSelectedIds}
+                  selectedDependencyIds={effectiveSelectedDependencyIds}
+                  formatDependencyLag={hasLagFormatter ? stableFormatDependencyLag : undefined}
+                  onDependencySelect={dependencyInteractive ? handleDependencySelect : undefined}
                   interactionsEnabled={interactionsEnabled}
                   emit={emit}
                   dragPreviewStore={dragPreviewStore}

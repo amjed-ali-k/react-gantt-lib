@@ -28,6 +28,10 @@ const CALLBACK_MAP: Record<GanttEventName, keyof GanttCallbacks> = {
   scroll: 'onScroll',
   sidebarLayoutChange: 'onSidebarLayoutChange',
   selectionChange: 'onSelectionChange',
+  dependencyClick: 'onDependencyClick',
+  dependencyContextMenu: 'onDependencyContextMenu',
+  dependencyHover: 'onDependencyHover',
+  dependencyDelete: 'onDependencyDelete',
   customRowCellReady: 'onCustomRowCellReady',
   customRowCellError: 'onCustomRowCellError',
 };

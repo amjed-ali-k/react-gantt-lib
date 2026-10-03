@@ -19,10 +19,36 @@ export interface TaskBaseline {
   color?: string;
 }
 
+/**
+ * A link from a predecessor (`id`) to the task that lists it in `dependencies`.
+ * The pair identifies the link: at most one link per predecessor/successor pair.
+ */
 export interface GanttDependency {
+  /** Predecessor task id. */
   id: string;
+  /** Link type. Default `FS`. */
   type?: DependencyType;
+  /** Lag (positive) or lead (negative), drawn as a label. Units are the consumer's — see `formatDependencyLag`. */
   lag?: number;
+  /** Line and arrowhead color. */
+  color?: string;
+  /** Extra class on the link's `<g>` (line, arrowhead and lag label). */
+  className?: string;
+  /** Marks the link as on the critical path (`rg-dependency--critical`). */
+  critical?: boolean;
+}
+
+/** A dependency as an interaction target: the link and the two tasks it joins. */
+export interface GanttDependencyTarget {
+  type: 'dependency';
+  /** Stable link id — see `dependencyId()`. Used by `selectedDependencyIds`. */
+  id: string;
+  /** Predecessor. */
+  from: GanttTask;
+  /** Successor (the task that lists the dependency). */
+  to: GanttTask;
+  /** The link, normalised: `type` and `lag` are always set. */
+  dependency: GanttDependency & { type: DependencyType; lag: number };
 }
 
 /** Roll-up behavior for group summary bars (`type: 'group'`, `showSummaryBar` true). */
@@ -227,7 +253,8 @@ export type GanttTarget =
       type: 'timeline';
       date: Date;
       rowIndex: number | null;
-    };
+    }
+  | GanttDependencyTarget;
 
 export interface GanttPointerDetail {
   target: GanttTarget;
@@ -238,6 +265,19 @@ export interface GanttPointerDetail {
   shiftKey?: boolean;
   /** Call to suppress the browser context menu (context-menu events only). */
   preventDefault: () => void;
+}
+
+/** Pointer detail for dependency events — the target is always a dependency. */
+export interface GanttDependencyPointerDetail extends Omit<GanttPointerDetail, 'target'> {
+  target: GanttDependencyTarget;
+}
+
+export interface GanttDependencyHoverDetail {
+  /** The hovered link; on `leave`, the link being left. */
+  target: GanttDependencyTarget;
+  phase: 'enter' | 'leave';
+  clientX: number;
+  clientY: number;
 }
 
 export interface GanttHoverDetail {
@@ -341,7 +381,11 @@ export interface GanttEventMap {
   zoomChange: { zoomLevel: string; columnWidth: number; scaleId: string; scaleLabel: string };
   scroll: { scrollLeft: number; scrollTop: number };
   sidebarLayoutChange: SidebarLayoutState;
-  selectionChange: { selectedIds: string[] };
+  selectionChange: { selectedIds: string[]; selectedDependencyIds: string[] };
+  dependencyClick: GanttDependencyPointerDetail;
+  dependencyContextMenu: GanttDependencyPointerDetail;
+  dependencyHover: GanttDependencyHoverDetail;
+  dependencyDelete: { dependencies: GanttDependencyTarget[] };
   customRowCellReady: { rowId: string; columnKey: string };
   customRowCellError: { rowId: string; columnKey: string; error: unknown };
 }
@@ -387,7 +431,16 @@ export interface GanttCallbacks {
   onZoomChange?: GanttEventHandler<'zoomChange'>;
   onScroll?: GanttEventHandler<'scroll'>;
   onSidebarLayoutChange?: GanttEventHandler<'sidebarLayoutChange'>;
+  /** Task and dependency selection changed (click, ctrl/meta-click, keyboard select). */
   onSelectionChange?: GanttEventHandler<'selectionChange'>;
+  /** Click (or Enter/Space) on a dependency line. Also selects it. Setting this makes links interactive. */
+  onDependencyClick?: GanttEventHandler<'dependencyClick'>;
+  /** Right-click on a dependency line. Call `preventDefault()` to suppress the browser menu. */
+  onDependencyContextMenu?: GanttEventHandler<'dependencyContextMenu'>;
+  /** Pointer enters or leaves a dependency line. */
+  onDependencyHover?: GanttEventHandler<'dependencyHover'>;
+  /** Delete or Backspace with one or more dependencies selected. The chart does not remove them. */
+  onDependencyDelete?: GanttEventHandler<'dependencyDelete'>;
   onCustomRowCellReady?: GanttEventHandler<'customRowCellReady'>;
   onCustomRowCellError?: GanttEventHandler<'customRowCellError'>;
 }
@@ -460,6 +513,13 @@ export interface GanttChartProps extends GanttCallbacks {
    */
   maxDate?: Date | string;
   selectedTaskIds?: string[];
+  /**
+   * Controlled dependency selection (ids from `dependencyId()`). Setting it, or any dependency
+   * callback, makes links interactive: hover, click to select, Delete to `onDependencyDelete`.
+   */
+  selectedDependencyIds?: string[];
+  /** Lag label text, called for links with a non-zero lag. Default: `+2d` / `-1d` (lag read as days). Return `''` to hide a label. */
+  formatDependencyLag?: (lag: number, dependency: GanttDependency) => string;
   onTasksChange?: (tasks: GanttTask[]) => void;
   customRows?: CustomRowDefinition[];
   /**

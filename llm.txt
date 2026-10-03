@@ -58,7 +58,7 @@ GanttTask, GanttColumn, GanttChartProps, GanttCallbacks, GanttEventMap, GanttEve
 GanttTarget, GanttPointerDetail, GanttHoverDetail, GanttTheme,
 CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
 HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
-GanttDependency, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
+GanttDependency, GanttDependencyTarget, GanttDependencyPointerDetail, GanttDependencyHoverDetail, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
 TaskTooltipRenderer, TaskTooltipChangeHandler,
 SidebarLayoutState, SidebarWidths, TimelineRange, TimelineRangeBounds,
 ResolvedTask, BarGeometry, ColumnRenderContext, DateMarkingLayers, DateMarkingRect,
@@ -337,15 +337,27 @@ onGanttClick={(e) => {
 
 ## Dependencies
 
-dependencies on successor task points to predecessor id(s).
+dependencies on successor task points to predecessor id(s). One link per predecessor/successor pair; link id = dependencyId(fromId, toId) = "from->to".
 
-Supported: finish-to-start (FS) only. Rendering: orthogonal SVG arrows predecessor end → successor start.
+Types (GanttDependency.type, default FS): FS end→start, SS start→start, FF end→end, SF start→end.
+Rendering: orthogonal SVG path + arrowhead into the successor edge; backwards cases double back through the row gutter; milestones attach at the diamond's left (start) / right (end) tip.
+lag: drawn as a label (+2d / -1d); formatDependencyLag?: (lag, dependency) => string overrides ('' hides). Lag does not move bars.
+Per link: color (line, head, label), className (on the link <g>), critical (rg-dependency--critical).
 
 Formats:
 - ['task-a', 'task-b']
-- [{ id: 'task-a' }, { id: 'task-b', type: 'FS', lag: 0 }]
+- [{ id: 'task-a' }, { id: 'task-b', type: 'SS', lag: 2, color: '#e11d48', critical: true }]
 
-GanttDependency.type (FS|FF|SS|SF) and lag: typed but NOT implemented — always FS, lag ignored.
+Interactive links (off by default) — enabled by any of onDependencyClick, onDependencyHover, onDependencyContextMenu, onDependencyDelete, or selectedDependencyIds:
+- each link gets a 12px invisible hit stroke (only pointer-events target), first child of the bars SVG (bars paint over it)
+- click / Enter / Space selects (ctrl/meta toggles); plain click on a task or link replaces both selections
+- onSelectionChange({ selectedIds, selectedDependencyIds }); selectedDependencyIds?: string[] for controlled
+- Delete/Backspace with links selected (focus in chart, not in input/textarea/select/contenteditable) → onDependencyDelete({ dependencies: GanttDependencyTarget[] }); chart removes nothing
+- dependencyClick/dependencyContextMenu: GanttDependencyPointerDetail; dependencyHover: { target, phase: 'enter'|'leave', clientX, clientY }
+- ganttClick / ganttContextMenu / ganttHover also receive GanttTarget { type: 'dependency', id, from, to, dependency }
+- hit stroke: role=button, tabIndex=0, aria-pressed, aria-label "Dependency: A finish to start B, lag +2d"
+
+Exports for extensions: dependencyId, collectDependencyTargets, computeDependencyLinks, DependencyLink, DEPENDENCY_EDGES, routeDependency, buildDependencyPath.
 
 ## Baseline
 
@@ -448,9 +460,11 @@ Implementation: TaskTooltipProvider + imperative TaskTooltipController (src/comp
 ## Selection
 
 selectedTaskIds?: string[] — controlled selection
+selectedDependencyIds?: string[] — controlled dependency-link selection (see Dependencies)
+formatDependencyLag?: (lag, dependency) => string — lag label text
 Uncontrolled: internal state; click selects one task
 Ctrl/⌘+click (metaKey / ctrlKey on onTaskClick): toggle task in selection without clearing others
-onSelectionChange({ selectedIds })
+onSelectionChange({ selectedIds, selectedDependencyIds })
 Selected bar: .rg-bar--selected, focus ring; sidebar: .rg-task-row--selected
 
 ## Custom rows
@@ -579,7 +593,11 @@ Demo: demo/stickyRowsDemo.tsx — 32 scrollable work packages, indigo baseline b
 | onZoomChange | zoomChange | zoomLevel, scaleId, scaleLabel, columnWidth |
 | onScroll | scroll | scrollLeft, scrollTop |
 | onSidebarLayoutChange | sidebarLayoutChange | SidebarLayoutState |
-| onSelectionChange | selectionChange | selectedIds |
+| onSelectionChange | selectionChange | selectedIds, selectedDependencyIds |
+| onDependencyClick | dependencyClick | target (dependency), modifiers |
+| onDependencyContextMenu | dependencyContextMenu | target (dependency), preventDefault |
+| onDependencyHover | dependencyHover | target (dependency), phase enter/leave |
+| onDependencyDelete | dependencyDelete | dependencies |
 | onCustomRowCellReady | customRowCellReady | rowId, columnKey |
 | onCustomRowCellError | customRowCellError | rowId, columnKey, error |
 | onTasksChange | — | GanttTask[] (not in GanttEventMap) |
@@ -652,13 +670,14 @@ Key classes:
 .rg-timeline-hit, .rg-timeline-hit-rect
 .rg-event-markers--interactive, .rg-event-marker-hit
 .rg-timeline-header--interactive
-.rg-dependency-layer, .rg-dependency-arrow
+.rg-dependency-layer, .rg-dependency (per link: --fs|--ss|--ff|--sf, --selected, --critical), .rg-dependency-arrow, .rg-dependency-arrow-head, .rg-dependency-lag, .rg-dependency-hit (interactive links)
+CSS vars: --rg-dependency, --rg-dependency-selected, --rg-dependency-critical, --rg-dependency-halo, --rg-dependency-halo-selected; per-link --rg-dependency-color
 .rg-toolbar, .rg-divider
 .rg-custom-rows-timeline, .rg-custom-row-timeline-band, .rg-custom-cell
 .rg-row--sticky, .rg-sticky-task-timeline-row, .rg-sticky-task-timeline-bars
 .rg-task-tooltip, .rg-task-tooltip-shell
 
-data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows, sticky-task-timeline-top, sticky-task-timeline-bottom, custom-rows-sticky-top, custom-rows-sticky-bottom
+data-testid: gantt-chart, task-list-left, task-list-middle, timeline-header, timeline-body, timeline-grid, timeline-hit-layer, zoom-toolbar, divider-left, divider-middle, dependency-layer, dependency-hits, baseline-layer, event-markers, date-marking-hit-block, date-marking-hit-holiday, custom-rows, sticky-task-timeline-top, sticky-task-timeline-bottom, custom-rows-sticky-top, custom-rows-sticky-bottom
 
 Bars: data-task-id, data-selected (timeline SVG)
 Sidebar rows: data-task-id on .rg-task-row (left + middle panels); data-sticky on pinned rows
@@ -763,7 +782,7 @@ Reference implementations:
 ## Limitations (do not assume)
 
 - __timeline__ custom cells do not re-run their generator on scroll; use useGanttTimeline() for live scroll/window data (ctx.visibleColumnStart etc. are snapshots)
-- lag on GanttDependency ignored
+- lag is a label only; it does not move or constrain bars
 - onGanttHover for blocks may not fire when pointer is over a task bar (bars sit above block hit layer)
 - GanttChartProps.children unused
 - No built-in context menu UI (use onGanttContextMenu + your own menu component)
@@ -772,7 +791,7 @@ Reference implementations:
 - Middle panel start/end show date only (not time); formatted in `timezone` when set, else browser locale
 - Sticky tasks are excluded from scrollable TimelineBody hit layer; timeline empty-area clicks (rowIndex) refer to scroll-section rows only
 - When extending sticky timeline rendering: keep pinned rows as direct children of .rg-timeline-rows; do not wrap in a container sized only to pinned row height
-- Dependency arrows use full task list row indices; pinned rows may affect visual arrow paths when sticky tasks are not adjacent to dependents in scroll order
+- Links to or from a sticky (pinned) row are not drawn (each timeline section draws links between its own rows)
 - Week starts Monday (date-fns weekStartsOn: 1)
 
 ## Build / test

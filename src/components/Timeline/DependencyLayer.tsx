@@ -1,18 +1,16 @@
-import { memo, useMemo } from 'react';
-import type { ResolvedTask } from '../../types';
-import { getTaskBarCenterY, type RowLayout } from '../../core/rowLayout';
-import { resolveTimelineWidth } from '../../core/zoom';
-import { taskConnectorX } from './milestoneGeometry';
-import { buildFinishToStartPath } from './dependencyPaths';
-import type { ViewScale } from '../../core/scale';
-import type { TimelineRange } from '../../types';
+import { memo, useMemo, type CSSProperties } from 'react';
+import type { GanttDependency, ResolvedTask, TimelineRange } from '../../types';
+import type { RowLayout } from '../../core/rowLayout';
 import { totalRowLayoutHeight } from '../../core/rowLayout';
+import { resolveTimelineWidth } from '../../core/zoom';
+import type { ViewScale } from '../../core/scale';
 import type { DragPreviewStore } from '../../hooks/useDragPreviewStore';
 import { useDragPreviewSnapshot } from '../../hooks/useDragPreviewStore';
+import { computeDependencyLinks, defaultDependencyLagLabel, type DependencyLink } from './dependencyLinks';
 
-interface DependencyLayerProps {
+/** Everything a dependency layer needs to lay out links. Shared by the drawn and the hit layer. */
+export interface DependencyLinkLayerProps {
   tasks: ResolvedTask[];
-  taskIndexMap: Map<string, number>;
   range: TimelineRange;
   scale: ViewScale;
   columnWidth: number;
@@ -21,75 +19,84 @@ interface DependencyLayerProps {
   dragPreviewStore: DragPreviewStore;
 }
 
-function normalizeDeps(task: ResolvedTask): string[] {
-  if (!task.dependencies) return [];
-  return task.dependencies.map((d) => (typeof d === 'string' ? d : d.id));
-}
-
-function taskForConnector(
-  task: ResolvedTask,
-  previewTaskId: string | null,
-  previewDates: { start: Date; end: Date } | null,
-): { type?: string; _start: Date; _end: Date } {
-  if (previewTaskId !== task.id || !previewDates) return task;
-  return { ...task, _start: previewDates.start, _end: previewDates.end };
-}
-
-export const DependencyLayer = memo(function DependencyLayer({
+/**
+ * Link geometry, following an in-flight drag. Each layer subscribes on its own, so a drag frame
+ * re-renders the layers and not the timeline body. With interactive links that computes the
+ * geometry twice per frame (drawn + hit layer); it is linear in the number of links.
+ */
+export function useDependencyLinks({
   tasks,
-  taskIndexMap,
   range,
   scale,
   columnWidth,
   rowLayouts,
   showBaseline,
   dragPreviewStore,
-}: DependencyLayerProps) {
+}: DependencyLinkLayerProps): DependencyLink[] {
   const dragPreview = useDragPreviewSnapshot(dragPreviewStore);
+  return useMemo(
+    () =>
+      computeDependencyLinks({
+        tasks,
+        rowLayouts,
+        rangeStart: range.start,
+        scale,
+        columnWidth,
+        showBaseline,
+        preview: { taskId: dragPreview.taskId, dates: dragPreview.dates },
+      }),
+    [
+      tasks,
+      range.start,
+      scale,
+      columnWidth,
+      rowLayouts,
+      showBaseline,
+      dragPreview.taskId,
+      dragPreview.dates,
+    ],
+  );
+}
 
-  const paths = useMemo(() => {
-    const result: { key: string; d: string }[] = [];
-    const previewDates = dragPreview.dates;
+export type DependencyLagFormatter = (lag: number, dependency: GanttDependency) => string;
 
-    for (const task of tasks) {
-      for (const depId of normalizeDeps(task)) {
-        const fromIdx = taskIndexMap.get(depId);
-        const toIdx = task._rowIndex;
-        if (fromIdx === undefined) continue;
+/** Label text for a link's lag; `''` (no label) when the lag is zero or the formatter says so. */
+export function dependencyLagLabel(link: DependencyLink, format?: DependencyLagFormatter): string {
+  if (link.lag === 0) return '';
+  return format ? format(link.lag, link.target.dependency) : defaultDependencyLagLabel(link.lag);
+}
 
-        const fromTask = tasks[fromIdx];
-        const fromRow = rowLayouts[fromIdx];
-        const toRow = rowLayouts[toIdx];
-        const fromConnector = taskForConnector(fromTask, dragPreview.taskId, previewDates);
-        const toConnector = taskForConnector(task, dragPreview.taskId, previewDates);
-        const fromX = taskConnectorX(fromConnector, 'end', range.start, scale, columnWidth);
-        const toX = taskConnectorX(toConnector, 'start', range.start, scale, columnWidth);
-        const fromY = getTaskBarCenterY(fromTask, fromRow, showBaseline);
-        const toY = getTaskBarCenterY(task, toRow, showBaseline);
+function dependencyClassName(link: DependencyLink, selected: boolean): string {
+  const { dependency } = link.target;
+  let cls = `rg-dependency rg-dependency--${link.type.toLowerCase()}`;
+  if (selected) cls += ' rg-dependency--selected';
+  if (dependency.critical) cls += ' rg-dependency--critical';
+  if (dependency.className) cls += ` ${dependency.className}`;
+  return cls;
+}
 
-        result.push({
-          key: `${depId}->${task.id}`,
-          d: buildFinishToStartPath(fromX, fromY, toX, toY),
-        });
-      }
-    }
-    return result;
-  }, [
-    tasks,
-    taskIndexMap,
-    range.start,
-    scale,
-    columnWidth,
-    rowLayouts,
-    showBaseline,
-    dragPreview.taskId,
-    dragPreview.dates,
-  ]);
+interface DependencyLayerProps extends DependencyLinkLayerProps {
+  selectedDependencyIds?: string[];
+  formatLag?: DependencyLagFormatter;
+}
 
-  if (paths.length === 0) return null;
+/**
+ * Draws dependency links under the bars: line, arrowhead and lag label per link, grouped so a
+ * link's `color`, `className`, selection and `critical` style all three. Not interactive — the
+ * hit strokes live in `DependencyHitTargets`, inside the bars' SVG.
+ */
+export const DependencyLayer = memo(function DependencyLayer({
+  selectedDependencyIds,
+  formatLag,
+  ...layout
+}: DependencyLayerProps) {
+  const links = useDependencyLinks(layout);
+  const selected = useMemo(() => new Set(selectedDependencyIds), [selectedDependencyIds]);
 
-  const totalHeight = totalRowLayoutHeight(rowLayouts);
-  const timelineWidth = resolveTimelineWidth(range, columnWidth);
+  if (links.length === 0) return null;
+
+  const totalHeight = totalRowLayoutHeight(layout.rowLayouts);
+  const timelineWidth = resolveTimelineWidth(layout.range, layout.columnWidth);
 
   return (
     <svg
@@ -97,16 +104,35 @@ export const DependencyLayer = memo(function DependencyLayer({
       width={timelineWidth}
       height={totalHeight}
       style={{ pointerEvents: 'none' }}
+      aria-hidden="true"
       data-testid="dependency-layer"
     >
-      {paths.map((p) => (
-        <path key={p.key} d={p.d} className="rg-dependency-arrow" fill="none" markerEnd="url(#rg-arrowhead)" />
-      ))}
-      <defs>
-        <marker id="rg-arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <polygon points="0 0, 6 3, 0 6" className="rg-dependency-arrow-head" />
-        </marker>
-      </defs>
+      {links.map((link) => {
+        const color = link.target.dependency.color;
+        const lagLabel = dependencyLagLabel(link, formatLag);
+        return (
+          <g
+            key={link.id}
+            className={dependencyClassName(link, selected.has(link.id))}
+            style={color ? ({ '--rg-dependency-color': color } as CSSProperties) : undefined}
+            data-dependency-id={link.id}
+            data-dependency-type={link.type}
+          >
+            <path d={link.d} className="rg-dependency-arrow" fill="none" />
+            <polygon points={link.head} className="rg-dependency-arrow-head" />
+            {lagLabel && (
+              <text
+                x={link.label.x + 4}
+                y={link.label.y}
+                className="rg-dependency-lag"
+                dominantBaseline="middle"
+              >
+                {lagLabel}
+              </text>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
 });

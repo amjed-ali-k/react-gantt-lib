@@ -44,14 +44,12 @@ describe('DependencyLayer drag preview', () => {
     makeTask('t1', 0, '2026-01-01', '2026-01-05'),
     makeTask('t2', 1, '2026-01-06', '2026-01-10', ['t1']),
   ];
-  const taskIndexMap = new Map(tasks.map((t) => [t.id, t._rowIndex]));
 
   it('recomputes arrow path when drag preview store updates', () => {
     const store = new DragPreviewStore();
     const { container } = render(
       <DependencyLayer
         tasks={tasks}
-        taskIndexMap={taskIndexMap}
         range={range}
         scale={scale}
         columnWidth={80}
@@ -80,7 +78,6 @@ describe('DependencyLayer drag preview', () => {
     render(
       <DependencyLayer
         tasks={tasks}
-        taskIndexMap={taskIndexMap}
         range={range}
         scale={scale}
         columnWidth={80}
