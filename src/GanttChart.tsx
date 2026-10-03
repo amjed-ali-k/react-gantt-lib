@@ -62,7 +62,7 @@ import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
 import { DraggableMarkersLayer } from './components/Timeline/DraggableMarkersLayer';
 import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
 import { DependencyLinkLayer } from './components/Timeline/DependencyLinkLayer';
-import { DependencyLinkStore, useLinkingMode } from './hooks/useDependencyLinkStore';
+import { DependencyLinkStore } from './hooks/useDependencyLinkStore';
 import { DependencyLinkContext } from './context/DependencyLinkContext';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
@@ -313,31 +313,25 @@ export function GanttChart({
 
   // Drag-to-link. The store holds the one in-flight link; the context is set only when some
   // task can be linked, so a chart without it renders and behaves exactly as before.
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
   const linkStoreRef = useRef<DependencyLinkStore | null>(null);
-  if (!linkStoreRef.current) linkStoreRef.current = new DependencyLinkStore();
+  if (!linkStoreRef.current) {
+    linkStoreRef.current = new DependencyLinkStore({
+      nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
+      create: (fromId, toId, type, source) => {
+        const ids = new Set(tasksRef.current.map((t) => t.id));
+        if (!ids.has(fromId) || !ids.has(toId)) return false;
+        emit('dependencyCreate', { fromId, toId, type, source });
+        return true;
+      },
+    });
+  }
   const linkStore = linkStoreRef.current;
-  const linkingMode = useLinkingMode(linkStore);
   const linkingAvailable = useMemo(
     () => enableDependencyCreate || tasks.some((t) => t.enableDependencyCreate),
     [enableDependencyCreate, tasks],
   );
-  const linkContext = useMemo(
-    () => (linkingAvailable ? { store: linkStore, enabledByDefault: enableDependencyCreate } : null),
-    [linkingAvailable, linkStore, enableDependencyCreate],
-  );
-  const tasksRef = useRef(tasks);
-  tasksRef.current = tasks;
-  linkStore.handlers = {
-    nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
-    create: (fromId, toId, type, source) => {
-      const current = tasksRef.current;
-      if (fromId === toId || !current.some((t) => t.id === fromId) || !current.some((t) => t.id === toId)) {
-        return false;
-      }
-      emit('dependencyCreate', { fromId, toId, type, source });
-      return true;
-    },
-  };
   useEffect(() => {
     if (!linkingAvailable) linkStore.cancel();
   }, [linkingAvailable, linkStore]);
@@ -841,10 +835,10 @@ export function GanttChart({
     <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
     <DragPreviewProvider store={dragPreviewStore}>
-    <DependencyLinkContext.Provider value={linkContext}>
+    <DependencyLinkContext.Provider value={linkingAvailable ? linkStore : null}>
     <div
       ref={containerRef}
-      className={`rg-gantt rg-theme-${theme}${linkingMode ? ' rg-gantt--linking' : ''} ${className ?? ''}`.trim()}
+      className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
       style={{ width, height, ...style }}
       data-testid="gantt-chart"
       data-sidebar-left={leftWidth}
@@ -1011,6 +1005,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1040,6 +1035,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1086,6 +1082,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1097,7 +1094,7 @@ export function GanttChart({
                 </div>
               </div>
             </div>
-            {linkContext && <DependencyLinkLayer store={linkStore} scrollRef={timelineScrollRef} />}
+            {linkingAvailable && <DependencyLinkLayer store={linkStore} scrollRef={timelineScrollRef} />}
           </div>
         </div>
       </div>

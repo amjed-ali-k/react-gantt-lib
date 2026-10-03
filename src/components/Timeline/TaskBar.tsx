@@ -18,7 +18,7 @@ import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 import { useDragPreviewStoreOptional } from '../../context/DragPreviewContext';
-import { useDependencyLinkOptional } from '../../context/DependencyLinkContext';
+import { useDependencyLinkStoreOptional } from '../../context/DependencyLinkContext';
 import type { DependencyEdge } from './dependencyPaths';
 
 export interface TaskBarProps {
@@ -32,6 +32,8 @@ export interface TaskBarProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  /** Connector handles and the `L` key to draw links (needs the chart's link store). */
+  enableDependencyCreate?: boolean;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
   emit: EventEmitter;
@@ -72,6 +74,7 @@ function TaskBarInner({
   enableDrag = true,
   enableResize = true,
   enableProgressDrag = true,
+  enableDependencyCreate = false,
   snapToGrid = true,
   timelineBounds,
   rangeStart,
@@ -91,11 +94,8 @@ function TaskBarInner({
   const msPerPixel = getMsPerPixel(scale, columnWidth);
   const tooltip = useTaskTooltipOptional();
   const dragPreviewStore = useDragPreviewStoreOptional();
-  const linking = useDependencyLinkOptional();
-  const linkStore =
-    linking && !task.readOnly && (task.enableDependencyCreate ?? linking.enabledByDefault)
-      ? linking.store
-      : null;
+  const chartLinkStore = useDependencyLinkStoreOptional();
+  const linkStore = enableDependencyCreate ? chartLinkStore : null;
   // Whether the latest press on this bar was on a connector handle. A link drag that ends on this
   // same bar still makes the browser fire `click` on the bar group; that click is not a task click.
   const pressedConnectorRef = useRef(false);
@@ -424,6 +424,7 @@ function TaskBarInner({
     if (!linkStore || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+    pressedConnectorRef.current = true;
     linkStore.beginPointer({ taskId: task.id, edge }, e.clientX, e.clientY);
   };
 
@@ -433,6 +434,21 @@ function TaskBarInner({
       e.stopPropagation();
     }
   };
+
+  // Every press starts as "not on a handle"; `beginLink` (bubbling, after this) says otherwise.
+  const linkProps = linkStore
+    ? {
+        tabIndex: 0,
+        role: 'group',
+        'aria-label': task.name,
+        'aria-keyshortcuts': 'L',
+        onPointerDownCapture: () => {
+          pressedConnectorRef.current = false;
+        },
+        onKeyDown: handleLinkKey,
+        onFocus: () => linkStore.focusBar(task.id),
+      }
+    : {};
 
   // Drag-to-link handles: a wide transparent hit circle and a small dot, outside each edge.
   const connectors = linkStore && (
@@ -483,20 +499,7 @@ function TaskBarInner({
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
       onContextMenu={handleTaskContextMenu}
-      onPointerDownCapture={
-        linkStore
-          ? (e) => {
-              pressedConnectorRef.current =
-                e.target instanceof Element && e.target.hasAttribute('data-connector-edge');
-            }
-          : undefined
-      }
-      tabIndex={linkStore ? 0 : undefined}
-      role={linkStore ? 'group' : undefined}
-      aria-label={linkStore ? task.name : undefined}
-      aria-keyshortcuts={linkStore ? 'L' : undefined}
-      onKeyDown={linkStore ? handleLinkKey : undefined}
-      onFocus={linkStore ? () => linkStore.focusBar(task.id) : undefined}
+      {...linkProps}
     >
       {isMilestone ? (
         <>
@@ -643,7 +646,7 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.enableProgressDrag !== next.enableProgressDrag) return false;
   if (prev.task.type !== next.task.type) return false;
   if (prev.task.width !== next.task.width) return false;
-  if (prev.task.enableDependencyCreate !== next.task.enableDependencyCreate) return false;
+  if (prev.enableDependencyCreate !== next.enableDependencyCreate) return false;
   return true;
 }
 

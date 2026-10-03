@@ -35,6 +35,7 @@ interface TimelineBodyProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  enableDependencyCreate?: boolean;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -63,6 +64,7 @@ export const TimelineBody = memo(function TimelineBody({
   enableDrag,
   enableResize,
   enableProgressDrag,
+  enableDependencyCreate,
   groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
@@ -190,6 +192,7 @@ export const TimelineBody = memo(function TimelineBody({
             enableDrag: enableDrag ?? true,
             enableResize: enableResize ?? true,
             enableProgressDrag: enableProgressDrag ?? true,
+            enableDependencyCreate,
             groupSummaryRollup,
           });
           return (
@@ -205,6 +208,7 @@ export const TimelineBody = memo(function TimelineBody({
               enableDrag={flags.enableDrag}
               enableResize={flags.enableResize}
               enableProgressDrag={flags.enableProgressDrag}
+              enableDependencyCreate={flags.enableDependencyCreate}
               snapToGrid={snapToGrid}
               timelineBounds={timelineBounds}
               emit={emit}

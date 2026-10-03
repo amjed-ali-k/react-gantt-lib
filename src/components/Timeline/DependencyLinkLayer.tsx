@@ -57,40 +57,41 @@ interface LinkPreview {
   /** Line and arrowhead, when there is somewhere to draw to. */
   d?: string;
   head?: string;
-  /** The handle (pointer) or bar edge (keyboard) the link would land on. */
+  /** Where the link would land: the target's connector point. */
   target?: Point;
+  /** The target bar's box — where the type menu opens. */
+  targetBox?: { left: number; top: number; bottom: number };
 }
 
-/** Preview geometry for a session, in this layer's coordinates, from where the bars are drawn now. */
+/**
+ * Preview geometry for a session, in this layer's coordinates, measured from where the bars are
+ * drawn now — so sticky rows and scrolling need no extra maths. The ends are the bar shapes' edges,
+ * the same points `taskConnectorX` gives drawn links.
+ */
 function measurePreview(
   session: LinkSession,
   root: HTMLElement,
   scrollEl: HTMLElement,
 ): LinkPreview | null {
-  const fromId = session.mode === 'pointer' ? session.from.taskId : session.fromId;
-  const fromRect = shapeRect(scrollEl, fromId);
+  const fromRect = shapeRect(scrollEl, session.from.taskId);
   if (!fromRect) return null;
   const origin = root.getBoundingClientRect();
   const local = (x: number, y: number): Point => ({ x: x - origin.left, y: y - origin.top });
   const edgePoint = (rect: DOMRect, edge: DependencyEdge) =>
     local(edge === 'start' ? rect.left : rect.right, rect.top + rect.height / 2);
 
-  const source = {
-    ...local(fromRect.left, fromRect.top),
-    width: fromRect.width,
-    height: fromRect.height,
-  };
-  const fromEdge: DependencyEdge = session.mode === 'pointer' ? session.from.edge : 'end';
-  const from = edgePoint(fromRect, fromEdge);
+  const source = { ...local(fromRect.left, fromRect.top), width: fromRect.width, height: fromRect.height };
+  const from = edgePoint(fromRect, session.from.edge);
+  const targetRect =
+    session.target && session.target.taskId !== session.from.taskId
+      ? shapeRect(scrollEl, session.target.taskId)
+      : null;
 
   let to: Point;
   let toEdge: DependencyEdge;
-  let target: Point | undefined;
-  const targetId = session.mode === 'pointer' ? session.target?.taskId : session.targetId;
-  const targetRect = targetId && targetId !== fromId ? shapeRect(scrollEl, targetId) : null;
   if (targetRect) {
-    toEdge = session.mode === 'pointer' ? session.target!.edge : 'start';
-    to = target = edgePoint(targetRect, toEdge);
+    toEdge = session.target!.edge;
+    to = edgePoint(targetRect, toEdge);
   } else if (session.mode === 'pointer') {
     to = local(session.clientX, session.clientY);
     // Free end: arrive the way the pointer lies, so the preview does not loop back on itself.
@@ -99,8 +100,21 @@ function measurePreview(
     return { source };
   }
 
-  const points = routeDependency(dependencyTypeForEdges(fromEdge, toEdge), from.x, from.y, to.x, to.y);
-  return { source, d: routeToPath(points), head: arrowHeadPoints(points), target };
+  const type = dependencyTypeForEdges(session.from.edge, toEdge);
+  const points = routeDependency(type, from.x, from.y, to.x, to.y);
+  return {
+    source,
+    d: routeToPath(points),
+    head: arrowHeadPoints(points),
+    target: targetRect ? to : undefined,
+    targetBox: targetRect
+      ? {
+          left: targetRect.left - origin.left,
+          top: targetRect.top - origin.top,
+          bottom: targetRect.bottom - origin.top,
+        }
+      : undefined,
+  };
 }
 
 interface LinkTypeMenuProps {
@@ -166,7 +180,8 @@ function LinkTypeMenu({ anchor, fromName, toName, onChoose, onClose }: LinkTypeM
       className="rg-link-menu"
       role="menu"
       aria-label={`Link ${fromName} to ${toName} as`}
-      style={placement ?? { left: anchor.left, top: anchor.bottom + MENU_GAP, visibility: 'hidden' }}
+      // First render sits below the bar; the layout effect flips or clamps it before paint.
+      style={placement ?? { left: anchor.left, top: anchor.bottom + MENU_GAP }}
       onKeyDown={handleKeyDown}
       // A press inside keeps focus where it is (Safari does not focus clicked buttons, so the
       // menu would otherwise see a blur with nowhere to go and close before the click).
@@ -216,6 +231,8 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
     const scrollEl = scrollRef.current;
     const chart = rootRef.current?.closest<HTMLElement>('.rg-gantt') ?? null;
     if (!mode || !scrollEl || !chart) return;
+    // Shows every linkable bar's handles while a link is drawn (no chart re-render).
+    chart.classList.add('rg-gantt--linking');
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (mode === 'keyboard' && !(e.target instanceof Node && chart.contains(e.target))) return;
@@ -232,6 +249,7 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
     chart.addEventListener('focusout', onFocusOut);
     scrollEl.addEventListener('scroll', onScroll);
     return () => {
+      chart.classList.remove('rg-gantt--linking');
       document.removeEventListener('keydown', onKeyDown);
       chart.removeEventListener('focusout', onFocusOut);
       scrollEl.removeEventListener('scroll', onScroll);
@@ -299,20 +317,13 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
 
   const menuFor = session?.mode === 'keyboard' ? session.menuFor : null;
   let menu = null;
-  if (session?.mode === 'keyboard' && menuFor && root && scrollEl) {
-    const rect = shapeRect(scrollEl, menuFor);
-    const origin = root.getBoundingClientRect();
+  if (session && menuFor && preview?.targetBox && scrollEl) {
     const refocus = () => barElement(scrollEl, menuFor)?.focus();
-    const name = (id: string) => store.handlers.nameOf(id) ?? id;
     menu = (
       <LinkTypeMenu
-        anchor={{
-          left: rect ? rect.left - origin.left : 0,
-          top: rect ? rect.top - origin.top : 0,
-          bottom: rect ? rect.bottom - origin.top : 0,
-        }}
-        fromName={name(session.fromId)}
-        toName={name(menuFor)}
+        anchor={preview.targetBox}
+        fromName={store.name(session.from.taskId)}
+        toName={store.name(menuFor)}
         onChoose={(type) => {
           store.chooseType(type);
           refocus();

@@ -1,23 +1,19 @@
 import { useSyncExternalStore } from 'react';
 import type { DependencyType } from '../types';
-import { resolveLinkDrop, type LinkEndpoint } from '../core/dependencyLinking';
+import { dependencyTypeForEdges, type LinkEndpoint } from '../core/dependencyLinking';
 import { DEPENDENCY_TYPE_NAMES } from '../components/Timeline/dependencyLinks';
 
-/** A link being drawn: dragged from a connector handle, or started with `L` on a focused bar. */
+/**
+ * A link being drawn: dragged from a connector handle, or started with `L` on a focused bar.
+ * `target` is the handle under the pointer, or (keyboard) the focused bar's start edge.
+ */
 export type LinkSession =
-  | {
-      mode: 'pointer';
-      from: LinkEndpoint;
-      clientX: number;
-      clientY: number;
-      /** The connector handle under the pointer, if any. */
-      target: LinkEndpoint | null;
-    }
+  | { mode: 'pointer'; from: LinkEndpoint; target: LinkEndpoint | null; clientX: number; clientY: number }
   | {
       mode: 'keyboard';
-      fromId: string;
-      /** The focused bar — where Enter would link to. */
-      targetId: string | null;
+      /** The source's end edge: the keyboard links finish to start unless the menu says otherwise. */
+      from: LinkEndpoint;
+      target: LinkEndpoint | null;
       /** The bar whose link-type menu is open (Shift+Enter). */
       menuFor: string | null;
     };
@@ -31,7 +27,7 @@ export interface DependencyLinkSnapshot {
 /** What the chart supplies: task names for announcements, and the report of a finished link. */
 export interface DependencyLinkHandlers {
   nameOf: (taskId: string) => string | undefined;
-  /** Reports a link; false when either task no longer exists. */
+  /** Reports a link (never to itself); false when either task no longer exists. */
   create: (
     fromId: string,
     toId: string,
@@ -52,7 +48,7 @@ const IDLE: DependencyLinkSnapshot = { session: null, message: '' };
 export class DependencyLinkStore {
   private snapshot: DependencyLinkSnapshot = IDLE;
   private listeners = new Set<Listener>();
-  handlers: DependencyLinkHandlers = { nameOf: () => undefined, create: () => false };
+  constructor(readonly handlers: DependencyLinkHandlers) {}
 
   subscribe = (listener: Listener): (() => void) => {
     this.listeners.add(listener);
@@ -70,7 +66,8 @@ export class DependencyLinkStore {
     for (const listener of this.listeners) listener();
   }
 
-  private name(taskId: string): string {
+  /** A task's name for announcements, or its id. */
+  name(taskId: string): string {
     return this.handlers.nameOf(taskId) ?? taskId;
   }
 
@@ -90,23 +87,22 @@ export class DependencyLinkStore {
   dropPointer(target: LinkEndpoint | null): void {
     const s = this.session;
     if (s?.mode !== 'pointer') return;
-    const link = resolveLinkDrop(s.from, target);
-    if (link) this.finish(link.fromId, link.toId, link.type, 'pointer');
-    else this.set(null);
+    if (!target || target.taskId === s.from.taskId) this.set(null);
+    else this.finish(s.from.taskId, target.taskId, dependencyTypeForEdges(s.from.edge, target.edge), 'pointer');
   }
 
   beginKeyboard(fromId: string): void {
     this.set(
-      { mode: 'keyboard', fromId, targetId: fromId, menuFor: null },
+      { mode: 'keyboard', from: { taskId: fromId, edge: 'end' }, target: null, menuFor: null },
       `Linking from ${this.name(fromId)}. Move to another task and press Enter to link finish to start, or Shift+Enter to choose the type. Escape cancels.`,
     );
   }
 
-  /** A bar took focus: during a keyboard session it becomes the target. */
+  /** A bar took focus: during a keyboard session another task becomes the target. */
   focusBar(taskId: string): void {
     const s = this.session;
-    if (s?.mode !== 'keyboard' || s.menuFor || s.targetId === taskId) return;
-    this.set({ ...s, targetId: taskId });
+    if (s?.mode !== 'keyboard' || s.menuFor || s.target?.taskId === taskId) return;
+    this.set({ ...s, target: taskId === s.from.taskId ? null : { taskId, edge: 'start' } });
   }
 
   /**
@@ -123,15 +119,16 @@ export class DependencyLinkStore {
       return true;
     }
     if (s?.mode !== 'keyboard' || e.key !== 'Enter') return false;
-    if (taskId === s.fromId) {
+    const fromId = s.from.taskId;
+    if (taskId === fromId) {
       this.set(s, 'Choose a different task to link to.');
     } else if (e.shiftKey) {
       this.set(
-        { ...s, targetId: taskId, menuFor: taskId },
-        `Choose the link type from ${this.name(s.fromId)} to ${this.name(taskId)}.`,
+        { ...s, target: { taskId, edge: 'start' }, menuFor: taskId },
+        `Choose the link type from ${this.name(fromId)} to ${this.name(taskId)}.`,
       );
     } else {
-      this.finish(s.fromId, taskId, 'FS', 'keyboard');
+      this.finish(fromId, taskId, 'FS', 'keyboard');
     }
     return true;
   }
@@ -145,7 +142,7 @@ export class DependencyLinkStore {
   /** Picks a type in the menu. */
   chooseType(type: DependencyType): void {
     const s = this.session;
-    if (s?.mode === 'keyboard' && s.menuFor) this.finish(s.fromId, s.menuFor, type, 'keyboard');
+    if (s?.mode === 'keyboard' && s.menuFor) this.finish(s.from.taskId, s.menuFor, type, 'keyboard');
   }
 
   cancel(): void {
@@ -162,15 +159,6 @@ export class DependencyLinkStore {
       created ? `Linked ${this.name(fromId)} to ${this.name(toId)}, ${DEPENDENCY_TYPE_NAMES[type]}.` : '',
     );
   }
-}
-
-/** The current session's mode — a primitive, so subscribers re-render only on start and end. */
-export function useLinkingMode(store: DependencyLinkStore): LinkSession['mode'] | null {
-  return useSyncExternalStore(
-    store.subscribe,
-    () => store.getSnapshot().session?.mode ?? null,
-    () => null,
-  );
 }
 
 export function useDependencyLinkSnapshot(store: DependencyLinkStore): DependencyLinkSnapshot {

@@ -13,18 +13,6 @@ export function dependencyTypeForEdges(from: DependencyEdge, to: DependencyEdge)
   return types.find((t) => DEPENDENCY_EDGES[t].from === from && DEPENDENCY_EDGES[t].to === to)!;
 }
 
-/**
- * The link a drop makes, or `null` when the drop cancels: no handle under the pointer, or a
- * handle of the task the drag started from.
- */
-export function resolveLinkDrop(
-  from: LinkEndpoint,
-  to: LinkEndpoint | null,
-): { fromId: string; toId: string; type: DependencyType } | null {
-  if (!to || to.taskId === from.taskId) return null;
-  return { fromId: from.taskId, toId: to.taskId, type: dependencyTypeForEdges(from.edge, to.edge) };
-}
-
 /** Width of the band inside each viewport edge that scrolls while a link is dragged. */
 export const AUTO_SCROLL_ZONE = 40;
 /** Fastest auto-scroll, in px per frame, reached at (and past) the viewport edge. */

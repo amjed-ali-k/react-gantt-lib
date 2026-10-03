@@ -36,8 +36,4 @@ export {
   buildDependencyPath,
   type DependencyEdge,
 } from './components/Timeline/dependencyPaths';
-export {
-  dependencyTypeForEdges,
-  autoScrollSpeed,
-  type LinkEndpoint,
-} from './core/dependencyLinking';
+export { dependencyTypeForEdges } from './core/dependencyLinking';
