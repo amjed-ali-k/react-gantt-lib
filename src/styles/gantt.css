@@ -665,6 +665,8 @@
 .rg-bar-connector-hit {
   fill: transparent;
   cursor: crosshair;
+  /* A drag from a handle draws a link; it must not pan the page on touch. */
+  touch-action: none;
 }
 
 .rg-link-layer {

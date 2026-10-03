@@ -29,6 +29,8 @@ const bar = (container: HTMLElement, id: string) =>
 const handle = (container: HTMLElement, id: string, edge: 'start' | 'end') =>
   bar(container, id)?.querySelector<SVGCircleElement>(`[data-connector-edge="${edge}"]`) ?? null;
 
+const nextFrame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+
 /** Pointer drag between two elements; jsdom has no hit-testing, so events target them directly. */
 function drag(from: Element, over: Element, { drop = over, before }: { drop?: Element; before?: () => void } = {}) {
   fireEvent.pointerDown(from, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
@@ -56,11 +58,12 @@ describe('drag-to-link', () => {
     expect(onDependencyCreate).toHaveBeenCalledWith({ fromId: 'm', toId: 'b', type: 'FF', source: 'pointer' });
   });
 
-  it('draws a preview while dragging and marks the chart as linking', () => {
+  it('draws a preview while dragging and marks the chart as linking', async () => {
     const { container } = renderChart();
     fireEvent.pointerDown(handle(container, 'a', 'end')!, { button: 0, clientX: 10, clientY: 10 });
     expect(container.querySelector('.rg-gantt')!.className).toContain('rg-gantt--linking');
     fireEvent.pointerMove(handle(container, 'b', 'start')!, { clientX: 200, clientY: 40 });
+    await nextFrame();
     expect(container.querySelector('.rg-dependency--preview .rg-dependency-arrow')).toBeTruthy();
     expect(container.querySelector('.rg-link-target')).toBeTruthy();
     fireEvent.pointerUp(document.body, { clientX: 500, clientY: 300 });
@@ -68,15 +71,21 @@ describe('drag-to-link', () => {
     expect(container.querySelector('.rg-gantt')!.className).not.toContain('rg-gantt--linking');
   });
 
-  it('does not start a bar drag or select the task', () => {
+  it('does not start a bar drag or select the task, even when dropped back on its own bar', () => {
     const onTaskDragStart = vi.fn();
     const onTaskClick = vi.fn();
     const { container } = renderChart({ onTaskDragStart, onTaskClick });
     const start = handle(container, 'a', 'end')!;
-    drag(start, start);
-    fireEvent.click(start);
+    drag(start, bar(container, 'a').querySelector('.rg-bar-bg')!);
+    // The browser clicks the common ancestor of press and release: the bar group.
+    fireEvent.click(bar(container, 'a'));
     expect(onTaskDragStart).not.toHaveBeenCalled();
     expect(onTaskClick).not.toHaveBeenCalled();
+
+    // A later press on the bar itself is a task click again.
+    fireEvent.pointerDown(bar(container, 'a').querySelector('.rg-bar-bg')!);
+    fireEvent.click(bar(container, 'a'));
+    expect(onTaskClick).toHaveBeenCalledTimes(1);
   });
 
   describe('cancels with no event', () => {
@@ -124,6 +133,13 @@ describe('drag-to-link', () => {
     const scrolled = scroll.scrollLeft;
     expect(scrolled).toBeGreaterThan(0);
     expect(scroll.scrollTop).toBe(0);
+
+    // Over a handle it could drop on: scrolling pauses, so the target stays under the pointer.
+    fireEvent.pointerMove(handle(container, 'b', 'start')!, { clientX: 398, clientY: 150 });
+    await act(() => new Promise((r) => setTimeout(r, 60)));
+    const paused = scroll.scrollLeft;
+    await act(() => new Promise((r) => setTimeout(r, 60)));
+    expect(scroll.scrollLeft).toBe(paused);
 
     // Back in the middle: scrolling stops.
     fireEvent.pointerMove(document, { clientX: 200, clientY: 150 });
@@ -196,6 +212,22 @@ describe('keyboard linking', () => {
     expect(onDependencyCreate).not.toHaveBeenCalled();
   });
 
+  it('ends when focus leaves the chart; Escape outside the chart is left alone', () => {
+    const outside = document.createElement('input');
+    document.body.appendChild(outside);
+    const { container } = renderChart();
+    act(() => bar(container, 'a').focus());
+    fireEvent.keyDown(bar(container, 'a'), { key: 'l' });
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    outside.dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(false);
+    expect(container.querySelector('.rg-link-source')).toBeTruthy();
+    act(() => outside.focus());
+    expect(container.querySelector('.rg-link-source')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('Linking cancelled.');
+    outside.remove();
+  });
+
   it('Enter on the source bar does not link it to itself', () => {
     const { container, onDependencyCreate } = renderChart();
     link(container, 'a', 'a');
@@ -213,6 +245,13 @@ describe('enabling', () => {
     expect(bar(container, 'a').querySelector('.rg-bar-label')!.getAttribute('x')).toBe(
       String(Number(bar(container, 'a').querySelector('.rg-bar-bg')!.getAttribute('width')) + 6),
     );
+  });
+
+  it('a read-only task cannot be linked', () => {
+    const { container } = renderChart({ tasks: [{ ...tasks[0], readOnly: true }, tasks[1]] });
+    expect(handle(container, 'a', 'end')).toBeNull();
+    expect(bar(container, 'a').getAttribute('tabindex')).toBeNull();
+    expect(handle(container, 'b', 'end')).toBeTruthy();
   });
 
   it('a task can opt out of the chart setting, or in without it', () => {

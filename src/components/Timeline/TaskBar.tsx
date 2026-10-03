@@ -93,7 +93,12 @@ function TaskBarInner({
   const dragPreviewStore = useDragPreviewStoreOptional();
   const linking = useDependencyLinkOptional();
   const linkStore =
-    linking && (task.enableDependencyCreate ?? linking.enabledByDefault) ? linking.store : null;
+    linking && !task.readOnly && (task.enableDependencyCreate ?? linking.enabledByDefault)
+      ? linking.store
+      : null;
+  // Whether the latest press on this bar was on a connector handle. A link drag that ends on this
+  // same bar still makes the browser fire `click` on the bar group; that click is not a task click.
+  const pressedConnectorRef = useRef(false);
 
   const resolveHoverTask = useCallback(
     (t: ResolvedTask, start?: Date, end?: Date) => {
@@ -378,6 +383,7 @@ function TaskBarInner({
 
   const handleTaskClick = useCallback(
     (e: React.MouseEvent) => {
+      if (pressedConnectorRef.current) return;
       emit('taskClick', {
         task,
         rowIndex: task._rowIndex,
@@ -444,7 +450,6 @@ function TaskBarInner({
               r={CONNECTOR_HIT_RADIUS}
               data-connector-edge={edge}
               onPointerDown={beginLink(edge)}
-              onClick={(e) => e.stopPropagation()}
             />
           </g>
         );
@@ -478,8 +483,16 @@ function TaskBarInner({
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
       onContextMenu={handleTaskContextMenu}
+      onPointerDownCapture={
+        linkStore
+          ? (e) => {
+              pressedConnectorRef.current =
+                e.target instanceof Element && e.target.hasAttribute('data-connector-edge');
+            }
+          : undefined
+      }
       tabIndex={linkStore ? 0 : undefined}
-      role={linkStore ? 'button' : undefined}
+      role={linkStore ? 'group' : undefined}
       aria-label={linkStore ? task.name : undefined}
       aria-keyshortcuts={linkStore ? 'L' : undefined}
       onKeyDown={linkStore ? handleLinkKey : undefined}

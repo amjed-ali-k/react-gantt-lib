@@ -357,12 +357,12 @@ Interactive links (off by default) — enabled by any of onDependencyClick, onDe
 - ganttClick / ganttContextMenu / ganttHover also receive GanttTarget { type: 'dependency', id, from, to, dependency }
 - hit stroke: role=button, tabIndex=0, aria-pressed, aria-label "Dependency: A finish to start B, lag +2d"
 
-Drawing links (enableDependencyCreate?: boolean, default false; GanttTask.enableDependencyCreate overrides):
+Drawing links (enableDependencyCreate?: boolean, default false; GanttTask.enableDependencyCreate overrides; readOnly tasks never):
 - connector handles (.rg-bar-connector, hit circle [data-connector-edge="start"|"end"], aria-hidden) outside each bar/milestone edge; shown on hover/focus and on all linkable bars while linking (.rg-gantt--linking)
 - drag handle → another task's handle: onDependencyCreate({ fromId, toId, type, source: 'pointer' }); type from edges: end→start FS, start→start SS, end→end FF, start→end SF (dependencyTypeForEdges)
-- live preview (.rg-link-layer > .rg-link-preview, .rg-dependency--preview, solid + .rg-link-target ring over a handle); auto-scroll near viewport edges
+- live preview (.rg-link-layer > .rg-link-preview, .rg-dependency--preview, solid + .rg-link-target ring over a handle); auto-scroll near viewport edges (paused while over a handle)
 - cancel, no event: Escape, drop on same task, on a bar body, on empty space, pointercancel
-- keyboard: linkable bars are focusable (role=button, aria-label = name, aria-keyshortcuts L). L starts; focus target bar; Enter → FS (source 'keyboard'); Shift+Enter → role=menu of the 4 types; Escape closes menu / cancels. Live region role=status announces progress.
+- keyboard: linkable bars are focusable (role=group, aria-label = name, aria-keyshortcuts L). L starts; focus target bar; Enter → FS (source 'keyboard'); Shift+Enter → role=menu of the 4 types; Escape closes menu / cancels; focus leaving the chart cancels. Live region role=status announces progress.
 - no cycle/duplicate validation; chart adds nothing — update tasks
 
 Exports for extensions: dependencyTypeForEdges, autoScrollSpeed, dependencyId, collectDependencyTargets, computeDependencyLinks, DependencyLink, DEPENDENCY_EDGES, routeDependency, buildDependencyPath.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { DependencyType } from '../../types';
 import { TIMELINE_HEADER_HEIGHT } from '../../core/eventMarkers';
 import {
@@ -24,10 +24,9 @@ const MENU_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF'];
 
 /** The bar group of `taskId` inside the timeline (every section: sticky and scrolling rows). */
 function barElement(scrollEl: HTMLElement, taskId: string): SVGGElement | null {
-  for (const bar of scrollEl.querySelectorAll<SVGGElement>('.rg-bar[data-task-id]')) {
-    if (bar.getAttribute('data-task-id') === taskId) return bar;
-  }
-  return null;
+  // Inside a double-quoted attribute selector only `"` and `\` need escaping.
+  const id = taskId.replace(/["\\]/g, '\\$&');
+  return scrollEl.querySelector<SVGGElement>(`.rg-bar[data-task-id="${id}"]`);
 }
 
 /** The drawn shape of a task: a bar's background rect or a milestone's diamond. */
@@ -105,7 +104,8 @@ function measurePreview(
 }
 
 interface LinkTypeMenuProps {
-  at: Point;
+  /** The target bar's box, in this layer's coordinates. */
+  anchor: { left: number; top: number; bottom: number };
   fromName: string;
   toName: string;
   onChoose: (type: DependencyType) => void;
@@ -113,9 +113,27 @@ interface LinkTypeMenuProps {
   onClose: (refocus: boolean) => void;
 }
 
+const MENU_GAP = 4;
+
 /** Shift+Enter's menu: the four link types, keyboard first. */
-function LinkTypeMenu({ at, fromName, toName, onChoose, onClose }: LinkTypeMenuProps) {
+function LinkTypeMenu({ anchor, fromName, toName, onChoose, onClose }: LinkTypeMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<{ left: number; top: number } | null>(null);
+
+  // Below the bar, or above it when it would be cut off; kept inside the layer horizontally.
+  useLayoutEffect(() => {
+    const menu = ref.current;
+    const layer = menu?.parentElement;
+    if (!menu || !layer) return;
+    const { offsetWidth: width, offsetHeight: height } = menu;
+    const below = anchor.bottom + MENU_GAP;
+    const top =
+      below + height > layer.clientHeight && anchor.top - MENU_GAP - height >= 0
+        ? anchor.top - MENU_GAP - height
+        : below;
+    const left = Math.max(0, Math.min(anchor.left, layer.clientWidth - width));
+    setPlacement({ left, top });
+  }, [anchor.left, anchor.top, anchor.bottom]);
 
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
@@ -148,10 +166,14 @@ function LinkTypeMenu({ at, fromName, toName, onChoose, onClose }: LinkTypeMenuP
       className="rg-link-menu"
       role="menu"
       aria-label={`Link ${fromName} to ${toName} as`}
-      style={{ left: at.x, top: at.y }}
+      style={placement ?? { left: anchor.left, top: anchor.bottom + MENU_GAP, visibility: 'hidden' }}
       onKeyDown={handleKeyDown}
+      // A press inside keeps focus where it is (Safari does not focus clicked buttons, so the
+      // menu would otherwise see a blur with nowhere to go and close before the click).
+      onPointerDown={(e) => e.preventDefault()}
       onBlur={(e) => {
-        if (!ref.current?.contains(e.relatedTarget as Node | null)) onClose(false);
+        const next = e.relatedTarget;
+        if (next instanceof Node && !ref.current?.contains(next)) onClose(false);
       }}
     >
       {MENU_TYPES.map((type) => (
@@ -188,34 +210,54 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
   const [, setScrollFrame] = useState(0);
   const mode = session?.mode ?? null;
 
+  // Escape cancels; a keyboard session also ends when focus leaves the chart, and only hears
+  // Escape from inside it. Any session re-measures when the timeline scrolls under it.
   useEffect(() => {
-    if (!mode) return;
+    const scrollEl = scrollRef.current;
+    const chart = rootRef.current?.closest<HTMLElement>('.rg-gantt') ?? null;
+    if (!mode || !scrollEl || !chart) return;
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (mode === 'keyboard' && !(e.target instanceof Node && chart.contains(e.target))) return;
       e.preventDefault();
       store.cancel();
     };
+    const onFocusOut = (e: FocusEvent) => {
+      if (mode !== 'keyboard') return;
+      const next = e.relatedTarget;
+      if (!(next instanceof Node && chart.contains(next))) store.cancel();
+    };
+    const onScroll = () => setScrollFrame((n) => n + 1);
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [mode, store]);
+    chart.addEventListener('focusout', onFocusOut);
+    scrollEl.addEventListener('scroll', onScroll);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      chart.removeEventListener('focusout', onFocusOut);
+      scrollEl.removeEventListener('scroll', onScroll);
+    };
+  }, [mode, store, scrollRef]);
 
+  // A pointer drag: follows the pointer once per frame, and auto-scrolls near the viewport edges
+  // unless the pointer is over a handle it could drop on.
   useEffect(() => {
     const scrollEl = scrollRef.current;
     const start = store.session;
     if (mode !== 'pointer' || !scrollEl || start?.mode !== 'pointer') return;
-    let pointer = { x: start.clientX, y: start.clientY };
+    let pointer = { x: start.clientX, y: start.clientY, target: null as EventTarget | null };
     let raf: number | null = null;
 
-    // Where the pointer is, re-probed after a scroll moved the bars under it.
-    const reprobe = () => {
-      const s = store.session;
-      if (s?.mode !== 'pointer') return;
-      const el = elementAt(pointer.x, pointer.y);
-      store.movePointer(pointer.x, pointer.y, el === undefined ? s.target : endpointOf(scrollEl, el));
+    // The handle under the pointer: hit-tested where the DOM can, else the event's own target.
+    const targetAt = (x: number, y: number, fallback: EventTarget | null) => {
+      const el = elementAt(x, y);
+      return endpointOf(scrollEl, el === undefined ? fallback : el);
     };
 
-    const tick = () => {
+    const frame = () => {
       raf = null;
+      store.movePointer(pointer.x, pointer.y, targetAt(pointer.x, pointer.y, pointer.target));
+      const s = store.session;
+      if (s?.mode !== 'pointer' || s.target) return;
       const r = scrollEl.getBoundingClientRect();
       const dx = autoScrollSpeed(pointer.x, r.left, r.right);
       const dy = autoScrollSpeed(pointer.y, r.top + TIMELINE_HEADER_HEIGHT, r.bottom);
@@ -225,35 +267,29 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
       scrollEl.scrollTop = scrollTop + dy;
       // At the end of the timeline there is nothing left to scroll; wait for the pointer to move.
       if (scrollEl.scrollLeft === scrollLeft && scrollEl.scrollTop === scrollTop) return;
-      raf = requestAnimationFrame(tick);
+      raf = requestAnimationFrame(frame);
+    };
+    const schedule = () => {
+      if (raf === null) raf = requestAnimationFrame(frame);
     };
 
     const onMove = (e: PointerEvent) => {
-      pointer = { x: e.clientX, y: e.clientY };
-      const el = elementAt(e.clientX, e.clientY);
-      store.movePointer(e.clientX, e.clientY, endpointOf(scrollEl, el === undefined ? e.target : el));
-      if (raf === null) raf = requestAnimationFrame(tick);
+      pointer = { x: e.clientX, y: e.clientY, target: e.target };
+      schedule();
     };
-    const onUp = (e: PointerEvent) => {
-      const el = elementAt(e.clientX, e.clientY);
-      store.dropPointer(endpointOf(scrollEl, el === undefined ? e.target : el));
-    };
+    const onUp = (e: PointerEvent) => store.dropPointer(targetAt(e.clientX, e.clientY, e.target));
     const onCancel = () => store.cancel();
-    const onScroll = () => {
-      reprobe();
-      setScrollFrame((n) => n + 1);
-    };
 
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onCancel);
-    scrollEl.addEventListener('scroll', onScroll);
+    scrollEl.addEventListener('scroll', schedule);
     return () => {
       if (raf !== null) cancelAnimationFrame(raf);
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onCancel);
-      scrollEl.removeEventListener('scroll', onScroll);
+      scrollEl.removeEventListener('scroll', schedule);
     };
   }, [mode, store, scrollRef]);
 
@@ -270,9 +306,10 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
     const name = (id: string) => store.handlers.nameOf(id) ?? id;
     menu = (
       <LinkTypeMenu
-        at={{
-          x: rect ? rect.left - origin.left : 0,
-          y: rect ? rect.bottom - origin.top + 4 : 0,
+        anchor={{
+          left: rect ? rect.left - origin.left : 0,
+          top: rect ? rect.top - origin.top : 0,
+          bottom: rect ? rect.bottom - origin.top : 0,
         }}
         fromName={name(session.fromId)}
         toName={name(menuFor)}

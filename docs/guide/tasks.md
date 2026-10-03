@@ -119,7 +119,7 @@ const [linkIds, setLinkIds] = useState<string[]>([]);
 
 Set `enableDependencyCreate` (or `GanttTask.enableDependencyCreate` per task, which overrides it)
 and each bar and milestone gets a **connector handle** just outside its start and end edge, shown on
-hover and focus, and on every linkable bar while a link is being drawn.
+hover and focus, and on every linkable bar while a link is being drawn. A `readOnly` task has none.
 
 - **Drag** from one handle to another task's handle. A live preview follows the pointer — dashed
   while it has nowhere to land, solid with a ring once it is over a handle — and the timeline
@@ -129,7 +129,8 @@ hover and focus, and on every linkable bar while a link is being drawn.
 - **Escape**, a drop on the same task, on a bar body or on empty space cancel with no event.
 - **Keyboard:** linkable bars are focusable. Press **L** on a bar, move focus to the target bar
   (Tab), then **Enter** for `FS` or **Shift+Enter** to choose the type from a small menu (arrow keys,
-  Enter; Escape closes it). Escape cancels. Progress is announced in a polite live region.
+  Enter; Escape closes it). Escape, or moving focus out of the chart, cancels. Progress is announced
+  in a polite live region.
 
 The chart adds nothing and checks nothing — not cycles, not duplicates. Validate in the handler,
 then update `tasks`.
