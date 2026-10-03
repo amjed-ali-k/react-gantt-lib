@@ -214,11 +214,16 @@ describe('keyboard editing', () => {
     expect(announced()).toMatch(/10:00 – .*12:00$/);
   });
 
-  it('leaves an arrow key unhandled when the bar cannot change', () => {
+  it('leaves a plain arrow to the browser when the bar cannot change, but never Alt+arrow (Back)', () => {
     const { container } = renderChart({ tasks: [{ ...tasks[0], readOnly: true }] });
-    const key = new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true });
-    bar(container, 'a').dispatchEvent(key);
-    expect(key.defaultPrevented).toBe(false);
+    const press = (init: KeyboardEventInit) => {
+      const key = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      bar(container, 'a').dispatchEvent(key);
+      return key.defaultPrevented;
+    };
+    expect(press({ key: 'ArrowLeft' })).toBe(false);
+    expect(press({ key: 'ArrowLeft', altKey: true })).toBe(true);
+    expect(press({ key: 'ArrowRight', altKey: true })).toBe(true);
   });
 
   it('respects enableDrag / enableResize, and milestones only move', () => {

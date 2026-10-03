@@ -503,13 +503,16 @@ function TaskBarInner({
         break;
       case 'ArrowLeft':
       case 'ArrowRight':
-        // Not editable here (or at a bound): the key stays the browser's (Alt+Left is Back).
         if (
           !nudge(
             e.shiftKey ? 'resize-end' : e.altKey ? 'resize-start' : 'move',
             e.key === 'ArrowRight' ? 1 : -1,
           )
         ) {
+          // Not editable here (or at a bound). A plain or Shift arrow stays the browser's (it
+          // scrolls), but Alt+Left/Right is this bar's shortcut: letting it through would be the
+          // browser's Back/Forward, navigating away from unsaved work.
+          if (e.altKey) e.preventDefault();
           return;
         }
         break;
