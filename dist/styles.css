@@ -1,0 +1,976 @@
+.rg-gantt {
+  color-scheme: light;
+
+  --rg-bg: #ffffff;
+  --rg-surface: #ffffff;
+  --rg-surface-muted: #fafafa;
+  --rg-surface-raised: #ffffff;
+  --rg-bar-bg: #e2e8f0;
+  --rg-bar-fill: #3b82f6;
+  --rg-bar-handle: #1d4ed8;
+  --rg-bar-handle-fill: rgba(29, 78, 216, 0.15);
+  --rg-bar-handle-stroke: rgba(29, 78, 216, 0.5);
+  --rg-border: #e2e8f0;
+  --rg-header-bg: #f8fafc;
+  --rg-text: #334155;
+  --rg-text-muted: #64748b;
+  --rg-today: #ef4444;
+  --rg-selection-bg: rgba(59, 130, 246, 0.06);
+  --rg-divider-hover: #94a3b8;
+  --rg-btn-bg: #ffffff;
+  --rg-dependency: #94a3b8;
+  --rg-dependency-selected: #2563eb;
+  --rg-dependency-critical: #dc2626;
+  --rg-dependency-halo: rgba(100, 116, 139, 0.18);
+  --rg-dependency-halo-selected: rgba(37, 99, 235, 0.2);
+  --rg-dependency-focus: rgba(37, 99, 235, 0.5);
+  --rg-focus-ring: #2563eb;
+  --rg-critical: #dc2626;
+  --rg-event-label-bg: #ffffff;
+  --rg-event-label-text: #334155;
+  --rg-event-label-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --rg-tooltip-bg: #1e293b;
+  --rg-tooltip-text: #f8fafc;
+  --rg-tooltip-muted: #94a3b8;
+  --rg-tooltip-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  --rg-collapse-color: #64748b;
+  --rg-collapse-hover-bg: #f1f5f9;
+  --rg-collapse-hover-color: #334155;
+  --rg-sticky-row-bg: #ffffff;
+  --rg-holiday-fill: #f2f2f2;
+  --rg-block-fill: rgba(251, 207, 232, 0.55);
+  --rg-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  font-family: var(--rg-font);
+  font-size: 13px;
+  color: var(--rg-text);
+  border: 1px solid var(--rg-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--rg-bg);
+  box-sizing: border-box;
+}
+
+.rg-gantt *,
+.rg-gantt *::before,
+.rg-gantt *::after {
+  box-sizing: border-box;
+}
+
+.rg-gantt-toolbar-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rg-border);
+  background: var(--rg-header-bg);
+  min-height: 40px;
+}
+
+.rg-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rg-toolbar-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--rg-border);
+  border-radius: 6px;
+  background: var(--rg-btn-bg);
+  color: var(--rg-text);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.rg-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rg-toolbar-label {
+  text-transform: capitalize;
+  font-weight: 600;
+  min-width: 64px;
+  text-align: center;
+}
+
+.rg-gantt-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rg-panels {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rg-panel-scroll {
+  flex-shrink: 0;
+  overflow: auto;
+  border-right: 1px solid var(--rg-border);
+}
+
+.rg-divider {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--rg-border) 40%,
+    var(--rg-border) 60%,
+    transparent
+  );
+}
+
+.rg-divider:hover {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--rg-divider-hover) 40%,
+    var(--rg-divider-hover) 60%,
+    transparent
+  );
+  opacity: 0.85;
+}
+
+.rg-task-list-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--rg-header-bg);
+  border-bottom: 1px solid var(--rg-border);
+  font-weight: 600;
+  height: 52px;
+  align-items: center;
+}
+
+.rg-task-list-header-cell {
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rg-task-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--rg-border);
+}
+
+.rg-task-row--selected {
+  background: var(--rg-selection-bg);
+}
+
+.rg-task-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rg-task-collapse {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rg-collapse-color);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.rg-task-collapse:hover {
+  background: var(--rg-collapse-hover-bg);
+  color: var(--rg-collapse-hover-color);
+}
+
+.rg-task-collapse-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.rg-timeline-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rg-timeline-scroll {
+  overflow: auto;
+  flex: 1;
+  background: var(--rg-header-bg);
+}
+
+.rg-timeline-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--rg-header-bg);
+  border-bottom: 1px solid var(--rg-border);
+  height: 52px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.rg-timeline-header-inner {
+  position: relative;
+  height: 100%;
+}
+
+.rg-timeline-header-upper,
+.rg-timeline-header-lower {
+  position: relative;
+  height: 50%;
+}
+
+.rg-header-cell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--rg-border);
+  font-size: 11px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.rg-header-cell--upper {
+  font-weight: 600;
+  color: var(--rg-text-muted);
+}
+
+.rg-header-markings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rg-header-marking {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.rg-date-marking {
+  pointer-events: none;
+}
+
+.rg-date-marking--holiday {
+  fill: var(--rg-holiday-fill);
+}
+
+.rg-date-marking--block {
+  fill: var(--rg-block-fill);
+}
+
+.rg-header-marking--holiday {
+  background-color: var(--rg-holiday-fill);
+}
+
+.rg-header-marking--block {
+  background-color: var(--rg-block-fill);
+}
+
+.rg-date-marking-interaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: block;
+}
+
+.rg-date-marking-hit {
+  cursor: pointer;
+}
+
+.rg-timeline-hit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  display: block;
+}
+
+.rg-timeline-hit-rect {
+  cursor: crosshair;
+}
+
+.rg-timeline-header--interactive {
+  cursor: crosshair;
+}
+
+.rg-event-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.rg-event-markers--interactive {
+  pointer-events: auto;
+}
+
+.rg-event-markers--interactive .rg-event-marker-hit {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rg-event-markers:not(.rg-event-markers--interactive) {
+  pointer-events: none;
+}
+
+.rg-event-marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  border-left: 1px dashed var(--rg-event-marker-color, #64748b);
+}
+
+.rg-event-marker-label {
+  position: absolute;
+  left: 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  height: 28px;
+  line-height: 22px;
+  padding: 3px 12px;
+  white-space: nowrap;
+  width: auto;
+  z-index: 2;
+  font-size: 12px;
+  color: var(--rg-event-label-text);
+  background: var(--rg-event-label-bg);
+  border: 1px solid var(--rg-event-marker-color, var(--rg-text-muted));
+  box-shadow: var(--rg-event-label-shadow);
+}
+
+.rg-event-marker-arrow {
+  position: absolute;
+  left: 0;
+  border-bottom: 5px solid transparent;
+  border-right: 5px solid var(--rg-event-marker-color, #64748b);
+  border-top: 5px solid transparent;
+  width: 0;
+  height: 0;
+}
+
+.rg-timeline-inner {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.rg-timeline-rows {
+  position: relative;
+  width: 100%;
+}
+
+.rg-timeline-body {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.rg-timeline-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  display: block;
+}
+
+.rg-grid-line {
+  stroke: var(--rg-border);
+  stroke-width: 1;
+}
+
+.rg-grid-fill {
+  fill: var(--rg-bg);
+}
+
+.rg-today-marker {
+  stroke: var(--rg-today);
+}
+
+.rg-draggable-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.rg-draggable-markers--interactive {
+  pointer-events: auto;
+}
+
+.rg-draggable-markers-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.rg-draggable-marker-line {
+  stroke: var(--rg-today);
+}
+
+.rg-draggable-marker-line--dragging {
+  stroke-width: 3;
+}
+
+.rg-draggable-marker-hit {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+
+.rg-draggable-marker-hit--draggable {
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+
+.rg-draggable-marker-label {
+  position: absolute;
+  top: 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  white-space: nowrap;
+  color: var(--rg-today);
+  background: var(--rg-bg);
+  border: 1px solid var(--rg-today);
+  box-shadow: var(--rg-event-label-shadow);
+  pointer-events: none;
+  user-select: none;
+}
+
+.rg-draggable-marker-label--static {
+  z-index: 1;
+}
+
+.rg-dependency-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  display: block;
+}
+
+/* A link's <g> sets `color`; line, head and lag label all follow it. */
+.rg-dependency {
+  color: var(--rg-dependency-color, var(--rg-dependency));
+}
+
+.rg-dependency--critical {
+  color: var(--rg-dependency-color, var(--rg-dependency-critical));
+}
+
+.rg-dependency--selected {
+  color: var(--rg-dependency-color, var(--rg-dependency-selected));
+}
+
+.rg-dependency-arrow {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Not colour alone: critical and selected links are also drawn heavier. */
+.rg-dependency--critical .rg-dependency-arrow {
+  stroke-width: 2.25;
+}
+
+.rg-dependency--selected .rg-dependency-arrow {
+  stroke-width: 2.5;
+}
+
+.rg-dependency-arrow-head {
+  fill: currentColor;
+}
+
+.rg-dependency-lag {
+  fill: currentColor;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--rg-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  user-select: none;
+}
+
+/* Wide invisible stroke over each link (inside the bars' SVG); the halo shows hover, focus and
+   selection as a shape around the line, not just a colour change. */
+.rg-dependency-hit {
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  cursor: pointer;
+  outline: none;
+}
+
+.rg-dependency-hit:hover {
+  stroke: var(--rg-dependency-halo);
+}
+
+.rg-dependency-hit--selected {
+  stroke: var(--rg-dependency-halo-selected);
+}
+
+/* Last, so the focused link stands out from other selected ones. */
+.rg-dependency-hit:focus-visible {
+  stroke: var(--rg-dependency-focus);
+}
+
+.rg-baseline-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+.rg-baseline-layer--interactive .rg-baseline-hit {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rg-timeline-bars {
+  position: relative;
+  z-index: 2;
+  display: block;
+}
+
+.rg-bar-milestone {
+  cursor: grab;
+}
+
+.rg-bar-milestone:active {
+  cursor: grabbing;
+}
+
+.rg-bar-label {
+  fill: var(--rg-text);
+  pointer-events: none;
+}
+
+.rg-bar-handle {
+  fill: var(--rg-bar-handle-fill);
+  stroke: var(--rg-bar-handle-stroke);
+  stroke-width: 1;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rg-bar:hover .rg-bar-handle {
+  opacity: 1;
+}
+
+.rg-bar-progress-handle {
+  fill: var(--rg-bar-handle);
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rg-bar:hover .rg-bar-progress-handle {
+  opacity: 1;
+}
+
+.rg-bar-bg {
+  cursor: grab;
+}
+
+.rg-bar-bg:active {
+  cursor: grabbing;
+}
+
+.rg-bar--group .rg-bar-bg {
+  fill-opacity: 0.2;
+  stroke-dasharray: 4 2;
+}
+
+.rg-bar--readonly .rg-bar-bg,
+.rg-bar--readonly .rg-bar-milestone {
+  cursor: default;
+}
+
+.rg-bar-focus-ring {
+  pointer-events: none;
+}
+
+/* ── Drag-to-link ─────────────────────────────────────────────────── */
+.rg-bar:focus {
+  outline: none;
+}
+
+.rg-bar:focus-visible .rg-bar-bg,
+.rg-bar:focus-visible .rg-bar-milestone {
+  stroke: var(--rg-focus-ring);
+  stroke-width: 2px;
+}
+
+/* Connector handles: shown on hover and focus, and on every linkable bar while a link is drawn. */
+.rg-bar-connector {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rg-bar:hover .rg-bar-connector,
+.rg-bar:focus .rg-bar-connector,
+.rg-gantt--linking .rg-bar-connector {
+  opacity: 1;
+}
+
+.rg-bar-connector-dot {
+  fill: var(--rg-bg);
+  stroke: var(--rg-bar-handle);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.rg-bar-connector-hit {
+  fill: transparent;
+  cursor: crosshair;
+  /* A drag from a handle draws a link; it must not pan the page on touch. */
+  touch-action: none;
+}
+
+.rg-link-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rg-link-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+
+.rg-dependency--preview {
+  color: var(--rg-dependency-selected);
+}
+
+/* Dashed while it has nowhere to land; solid once over a handle — not colour alone. */
+.rg-dependency--preview .rg-dependency-arrow {
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.rg-dependency--preview-target .rg-dependency-arrow {
+  stroke-dasharray: none;
+}
+
+.rg-link-source {
+  fill: none;
+  stroke: var(--rg-dependency-selected);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.rg-link-target {
+  fill: none;
+  stroke: var(--rg-dependency-selected);
+  stroke-width: 2.5;
+}
+
+.rg-link-menu {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--rg-border);
+  border-radius: 6px;
+  background: var(--rg-surface-raised);
+  box-shadow: var(--rg-tooltip-shadow);
+  pointer-events: auto;
+}
+
+.rg-link-menu-item {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rg-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rg-link-menu-item:hover,
+.rg-link-menu-item:focus {
+  background: var(--rg-selection-bg);
+  outline: 2px solid var(--rg-focus-ring);
+  outline-offset: -2px;
+}
+
+.rg-link-menu-type {
+  min-width: 22px;
+  font-weight: 600;
+}
+
+.rg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rg-custom-rows-timeline {
+  border-top: 1px solid var(--rg-border);
+}
+
+.rg-custom-row-timeline-band {
+  position: relative;
+  background: var(--rg-surface-muted);
+}
+
+.rg-custom-row-sidebar {
+  border-top: 1px solid var(--rg-border);
+  background: var(--rg-surface-muted);
+}
+
+.rg-row--sticky {
+  box-shadow: 0 1px 0 var(--rg-border);
+}
+
+.rg-sticky-task-timeline-row {
+  background: var(--rg-sticky-row-bg, var(--rg-surface));
+  border-bottom: 1px solid var(--rg-border);
+}
+
+.rg-row--sticky.rg-custom-row-timeline-band {
+  background: var(--rg-sticky-row-bg, var(--rg-surface-muted));
+  box-shadow: 0 1px 0 var(--rg-border);
+}
+
+.rg-sticky-task-timeline-bars {
+  display: block;
+  overflow: visible;
+}
+
+.rg-custom-row-timeline-band .rg-custom-cell {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.rg-custom-cell--loading {
+  opacity: 0.5;
+}
+
+.rg-task-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--rg-tooltip-bg);
+  color: var(--rg-tooltip-text);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: var(--rg-tooltip-shadow);
+}
+
+/** Position-only shell for `renderTaskTooltip` — styling is owned by the custom component. */
+.rg-task-tooltip-shell {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.rg-task-tooltip-shell > * {
+  pointer-events: auto;
+}
+
+.rg-task-tooltip-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.rg-task-tooltip-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rg-task-tooltip-label {
+  flex-shrink: 0;
+  width: 36px;
+  color: var(--rg-tooltip-muted);
+}
+
+/* ── Dark theme (explicit) ───────────────────────────────────────── */
+.rg-gantt.rg-theme-dark {
+  color-scheme: dark;
+
+  --rg-bg: #0c1222;
+  --rg-surface: #0c1222;
+  --rg-surface-muted: #111827;
+  --rg-surface-raised: #1a1f3a;
+  --rg-bar-bg: #334155;
+  --rg-bar-fill: #60a5fa;
+  --rg-bar-handle: #38bdf8;
+  --rg-bar-handle-fill: rgba(56, 189, 248, 0.2);
+  --rg-bar-handle-stroke: rgba(56, 189, 248, 0.55);
+  --rg-border: rgba(255, 255, 255, 0.1);
+  --rg-header-bg: #151b2e;
+  --rg-text: #e2e8f0;
+  --rg-text-muted: #94a3b8;
+  --rg-today: #f87171;
+  --rg-selection-bg: rgba(96, 165, 250, 0.12);
+  --rg-divider-hover: #64748b;
+  --rg-btn-bg: #1a1f3a;
+  --rg-dependency: #64748b;
+  --rg-dependency-selected: #60a5fa;
+  --rg-dependency-critical: #f87171;
+  --rg-dependency-halo: rgba(148, 163, 184, 0.22);
+  --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+  --rg-dependency-focus: rgba(96, 165, 250, 0.6);
+  --rg-focus-ring: #93c5fd;
+  --rg-critical: #f87171;
+  --rg-event-label-bg: #1a1f3a;
+  --rg-event-label-text: #e2e8f0;
+  --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
+  --rg-tooltip-bg: #1a1f3a;
+  --rg-tooltip-text: #f1f5f9;
+  --rg-tooltip-muted: #94a3b8;
+  --rg-tooltip-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(56, 189, 248, 0.08);
+  --rg-collapse-color: #94a3b8;
+  --rg-collapse-hover-bg: rgba(255, 255, 255, 0.08);
+  --rg-collapse-hover-color: #e2e8f0;
+  --rg-sticky-row-bg: #0c1222;
+  --rg-holiday-fill: rgba(255, 255, 255, 0.06);
+  --rg-block-fill: rgba(244, 114, 182, 0.22);
+}
+
+/* ── Auto theme: follow OS in dark mode ──────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  .rg-gantt.rg-theme-auto {
+    color-scheme: dark;
+
+    --rg-bg: #0c1222;
+    --rg-surface: #0c1222;
+    --rg-surface-muted: #111827;
+    --rg-surface-raised: #1a1f3a;
+    --rg-bar-bg: #334155;
+    --rg-bar-fill: #60a5fa;
+    --rg-bar-handle: #38bdf8;
+    --rg-bar-handle-fill: rgba(56, 189, 248, 0.2);
+    --rg-bar-handle-stroke: rgba(56, 189, 248, 0.55);
+    --rg-border: rgba(255, 255, 255, 0.1);
+    --rg-header-bg: #151b2e;
+    --rg-text: #e2e8f0;
+    --rg-text-muted: #94a3b8;
+    --rg-today: #f87171;
+    --rg-selection-bg: rgba(96, 165, 250, 0.12);
+    --rg-divider-hover: #64748b;
+    --rg-btn-bg: #1a1f3a;
+    --rg-dependency: #64748b;
+    --rg-dependency-selected: #60a5fa;
+    --rg-dependency-critical: #f87171;
+    --rg-dependency-halo: rgba(148, 163, 184, 0.22);
+    --rg-dependency-halo-selected: rgba(96, 165, 250, 0.28);
+    --rg-dependency-focus: rgba(96, 165, 250, 0.6);
+    --rg-focus-ring: #93c5fd;
+    --rg-critical: #f87171;
+    --rg-event-label-bg: #1a1f3a;
+    --rg-event-label-text: #e2e8f0;
+    --rg-event-label-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
+    --rg-tooltip-bg: #1a1f3a;
+    --rg-tooltip-text: #f1f5f9;
+    --rg-tooltip-muted: #94a3b8;
+    --rg-tooltip-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.45),
+      0 0 20px rgba(56, 189, 248, 0.08);
+    --rg-collapse-color: #94a3b8;
+    --rg-collapse-hover-bg: rgba(255, 255, 255, 0.08);
+    --rg-collapse-hover-color: #e2e8f0;
+    --rg-sticky-row-bg: #0c1222;
+    --rg-holiday-fill: rgba(255, 255, 255, 0.06);
+    --rg-block-fill: rgba(244, 114, 182, 0.22);
+  }
+}
+
+/* ── Critical path ────────────────────────────────────────────────── */
+/* A heavy dashed outline around the bar: a shape, not only a colour. */
+.rg-bar-critical {
+  fill: none;
+  stroke: var(--rg-critical);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 3;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+/* `rg-gantt--reduced-motion` follows prefers-reduced-motion from script (and is testable); the
+   media query covers the first paint. Both switch off every transition and animation. */
+.rg-gantt--reduced-motion,
+.rg-gantt--reduced-motion *,
+.rg-gantt--reduced-motion *::before,
+.rg-gantt--reduced-motion *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-gantt,
+  .rg-gantt *,
+  .rg-gantt *::before,
+  .rg-gantt *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
