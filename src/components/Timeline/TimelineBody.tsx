@@ -36,6 +36,9 @@ interface TimelineBodyProps {
   enableResize?: boolean;
   enableProgressDrag?: boolean;
   enableDependencyCreate?: boolean;
+  /** Accessible name of the bars' treegrid; `rowCount` is every task row in the chart. */
+  timelineLabel?: string;
+  rowCount?: number;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -65,6 +68,8 @@ export const TimelineBody = memo(function TimelineBody({
   enableResize,
   enableProgressDrag,
   enableDependencyCreate,
+  timelineLabel = 'Timeline',
+  rowCount,
   groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
@@ -185,6 +190,7 @@ export const TimelineBody = memo(function TimelineBody({
             onSelect={onDependencySelect}
           />
         )}
+        <g role="treegrid" aria-label={timelineLabel} aria-rowcount={rowCount}>
         {tasks.map((task, i) => {
           if (!shouldRenderTaskBar(task, tasks)) return null;
           const g = geometries[i];
@@ -216,6 +222,7 @@ export const TimelineBody = memo(function TimelineBody({
             />
           );
         })}
+        </g>
       </svg>
     </div>
   );

@@ -29,6 +29,9 @@ const bar = (container: HTMLElement, id: string) =>
 const handle = (container: HTMLElement, id: string, edge: 'start' | 'end') =>
   bar(container, id)?.querySelector<SVGCircleElement>(`[data-connector-edge="${edge}"]`) ?? null;
 
+/** The chart's live region, without the zero-width space that marks a repeated message. */
+const announced = () => screen.getByTestId('gantt-announcer').textContent?.replace(/\u200B/g, '');
+
 const nextFrame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
 
 /** Pointer drag between two elements; jsdom has no hit-testing, so events target them directly. */
@@ -163,14 +166,14 @@ describe('keyboard linking', () => {
     const { container, onDependencyCreate } = renderChart();
     link(container, 'a', 'b');
     expect(onDependencyCreate).toHaveBeenCalledWith({ fromId: 'a', toId: 'b', type: 'FS', source: 'keyboard' });
-    expect(screen.getByRole('status').textContent).toBe('Linked Design to Build, finish to start.');
+    expect(announced()).toBe('Requested a finish to start link from Design to Build.');
   });
 
   it('announces the session and draws the preview to the focused bar', () => {
     const { container } = renderChart();
     act(() => bar(container, 'a').focus());
     fireEvent.keyDown(bar(container, 'a'), { key: 'L' });
-    expect(screen.getByRole('status').textContent).toMatch(/^Linking from Design\./);
+    expect(announced()).toMatch(/^Linking from Design\./);
     expect(container.querySelector('.rg-link-source')).toBeTruthy();
     expect(container.querySelector('.rg-dependency--preview')).toBeNull();
     act(() => bar(container, 'b').focus());
@@ -207,7 +210,7 @@ describe('keyboard linking', () => {
     expect(container.querySelector('.rg-link-source')).toBeTruthy();
     fireEvent.keyDown(bar(container, 'b'), { key: 'Escape' });
     expect(container.querySelector('.rg-link-source')).toBeNull();
-    expect(screen.getByRole('status').textContent).toBe('Linking cancelled.');
+    expect(announced()).toBe('Linking cancelled.');
     fireEvent.keyDown(bar(container, 'b'), { key: 'Enter' });
     expect(onDependencyCreate).not.toHaveBeenCalled();
   });
@@ -224,7 +227,7 @@ describe('keyboard linking', () => {
     expect(container.querySelector('.rg-link-source')).toBeTruthy();
     act(() => outside.focus());
     expect(container.querySelector('.rg-link-source')).toBeNull();
-    expect(screen.getByRole('status').textContent).toBe('Linking cancelled.');
+    expect(announced()).toBe('Linking cancelled.');
     outside.remove();
   });
 
@@ -232,15 +235,15 @@ describe('keyboard linking', () => {
     const { container, onDependencyCreate } = renderChart();
     link(container, 'a', 'a');
     expect(onDependencyCreate).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toBe('Choose a different task to link to.');
+    expect(announced()).toBe('Choose a different task to link to.');
   });
 });
 
 describe('enabling', () => {
-  it('is off by default: no handles, no focusable bars, no link layer', () => {
+  it('is off by default: no handles, no L shortcut, no link layer', () => {
     const { container } = render(<GanttChart tasks={tasks} height={400} zoomLevel="day" />);
     expect(container.querySelector('[data-connector-edge]')).toBeNull();
-    expect(bar(container, 'a').getAttribute('tabindex')).toBeNull();
+    expect(bar(container, 'a').getAttribute('aria-keyshortcuts')).toBeNull();
     expect(container.querySelector('.rg-link-layer')).toBeNull();
     expect(bar(container, 'a').querySelector('.rg-bar-label')!.getAttribute('x')).toBe(
       String(Number(bar(container, 'a').querySelector('.rg-bar-bg')!.getAttribute('width')) + 6),
@@ -250,7 +253,7 @@ describe('enabling', () => {
   it('a read-only task cannot be linked', () => {
     const { container } = renderChart({ tasks: [{ ...tasks[0], readOnly: true }, tasks[1]] });
     expect(handle(container, 'a', 'end')).toBeNull();
-    expect(bar(container, 'a').getAttribute('tabindex')).toBeNull();
+    expect(bar(container, 'a').getAttribute('aria-keyshortcuts')).toBeNull();
     expect(handle(container, 'b', 'end')).toBeTruthy();
   });
 
@@ -268,6 +271,6 @@ describe('enabling', () => {
     const off = renderChart({ tasks: mixed, enableDependencyCreate: false });
     expect(handle(off.container, 'b', 'start')).toBeNull();
     expect(handle(off.container, 'm', 'end')).toBeTruthy();
-    expect(bar(off.container, 'm').getAttribute('tabindex')).toBe('0');
+    expect(bar(off.container, 'm').getAttribute('aria-keyshortcuts')).toBe('L');
   });
 });

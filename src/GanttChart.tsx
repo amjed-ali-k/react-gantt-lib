@@ -64,6 +64,13 @@ import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
 import { DependencyLinkLayer } from './components/Timeline/DependencyLinkLayer';
 import { DependencyLinkStore } from './hooks/useDependencyLinkStore';
 import { DependencyLinkContext } from './context/DependencyLinkContext';
+import { TimelineKeyboardContext, type TimelineKeyboard } from './context/TimelineKeyboardContext';
+import { RovingFocus } from './hooks/useRovingFocus';
+import { useAnnouncer } from './hooks/useAnnouncer';
+import { usePrefersReducedMotion } from './hooks/useReducedMotion';
+import { barElement } from './components/Timeline/barElement';
+import { shouldRenderTaskBar } from './core/groupTasks';
+import { nextZoomLevel } from './core/zoom';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
   { key: 'name', title: 'Task', flex: 2, minWidth: 120 },
@@ -134,6 +141,8 @@ export function GanttChart({
   selectedDependencyIds,
   formatDependencyLag,
   enableDependencyCreate = false,
+  announce: announceProp,
+  timelineLabel = 'Timeline',
   ...callbacks
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -310,6 +319,8 @@ export function GanttChart({
   ]);
 
   const { tasks, updateTask, store } = useTaskStore(externalTasks);
+  const { announce, region: announcerRegion } = useAnnouncer(announceProp);
+  const reducedMotion = usePrefersReducedMotion();
 
   // Drag-to-link. The store holds the one in-flight link; the context is set only when some
   // task can be linked, so a chart without it renders and behaves exactly as before.
@@ -318,6 +329,7 @@ export function GanttChart({
   const linkStoreRef = useRef<DependencyLinkStore | null>(null);
   if (!linkStoreRef.current) {
     linkStoreRef.current = new DependencyLinkStore({
+      announce,
       nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
       create: (fromId, toId, type, source) => {
         const ids = new Set(tasksRef.current.map((t) => t.id));
@@ -346,6 +358,19 @@ export function GanttChart({
     () => partitionTasksBySticky(resolvedTasks),
     [resolvedTasks],
   );
+  // Keyboard: the bars are one roving tab stop, in the order they are drawn (pinned top rows,
+  // scrolling rows, pinned bottom rows).
+  const barFocusRef = useRef<RovingFocus | null>(null);
+  if (!barFocusRef.current) barFocusRef.current = new RovingFocus();
+  const barFocus = barFocusRef.current;
+  const barOrder = useMemo(() => {
+    const { top, scroll, bottom } = stickyTaskPartitions;
+    return [...top, ...scroll, ...bottom]
+      .filter((task) => shouldRenderTaskBar(task, resolvedTasks))
+      .map((task) => task.id);
+  }, [stickyTaskPartitions, resolvedTasks]);
+  useLayoutEffect(() => barFocus.setIds(barOrder), [barFocus, barOrder]);
+
   const stickyCustomRowPartitions = useMemo(
     () => partitionCustomRowsBySticky(customRows),
     [customRows],
@@ -805,6 +830,42 @@ export function GanttChart({
 
   const tooltipEnabled = showTooltip || !!renderTaskTooltip;
 
+  // What a focused bar's keys reach: built once, reading the latest values through a ref.
+  const keyboardInputsRef = useRef({ scale, availableScales, handleZoomChange, reducedMotion });
+  keyboardInputsRef.current = { scale, availableScales, handleZoomChange, reducedMotion };
+  const timelineKeyboardRef = useRef<TimelineKeyboard | null>(null);
+  if (!timelineKeyboardRef.current) {
+    timelineKeyboardRef.current = {
+      focus: barFocus,
+      announce,
+      nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
+      moveFocus: (taskId, delta) => {
+        const next = barFocus.step(taskId, delta);
+        if (!next || next === taskId || !containerRef.current) return;
+        barFocus.setActive(next);
+        barElement(containerRef.current, next)?.focus();
+      },
+      scrollToEdge: (edge) => {
+        const el = timelineScrollRef.current;
+        if (!el) return;
+        const left = edge === 'start' ? 0 : el.scrollWidth - el.clientWidth;
+        const behavior = keyboardInputsRef.current.reducedMotion ? 'auto' : 'smooth';
+        if (typeof el.scrollTo === 'function') el.scrollTo({ left, behavior });
+        else el.scrollLeft = left;
+        announce(edge === 'start' ? 'Start of timeline' : 'End of timeline');
+      },
+      zoom: (direction) => {
+        const { scale: current, availableScales: scales, handleZoomChange: zoomTo } =
+          keyboardInputsRef.current;
+        const next = nextZoomLevel(current.id, direction, scales.map((s) => s.id));
+        if (next === current.id) return;
+        zoomTo(next);
+        announce(`Zoom: ${resolveScale(next).label}`);
+      },
+    };
+  }
+  const timelineKeyboard = timelineKeyboardRef.current;
+
   // Delete/Backspace anywhere in the chart (outside a text field) reports the selected links.
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -836,9 +897,10 @@ export function GanttChart({
     <GanttTimelineProvider value={stableTimelineContext}>
     <DragPreviewProvider store={dragPreviewStore}>
     <DependencyLinkContext.Provider value={linkingAvailable ? linkStore : null}>
+    <TimelineKeyboardContext.Provider value={timelineKeyboard}>
     <div
       ref={containerRef}
-      className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
+      className={`rg-gantt rg-theme-${theme}${reducedMotion ? ' rg-gantt--reduced-motion' : ''} ${className ?? ''}`.trim()}
       style={{ width, height, ...style }}
       data-testid="gantt-chart"
       data-sidebar-left={leftWidth}
@@ -1006,6 +1068,8 @@ export function GanttChart({
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
                   enableDependencyCreate={enableDependencyCreate}
+                  timelineLabel={timelineLabel}
+                  rowCount={resolvedTasks.length}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1036,6 +1100,8 @@ export function GanttChart({
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
                   enableDependencyCreate={enableDependencyCreate}
+                  timelineLabel={timelineLabel}
+                  rowCount={resolvedTasks.length}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1083,6 +1149,8 @@ export function GanttChart({
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
                   enableDependencyCreate={enableDependencyCreate}
+                  timelineLabel={timelineLabel}
+                  rowCount={resolvedTasks.length}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1099,7 +1167,9 @@ export function GanttChart({
         </div>
       </div>
       </TaskTooltipProvider>
+      {announcerRegion}
     </div>
+    </TimelineKeyboardContext.Provider>
     </DependencyLinkContext.Provider>
     </DragPreviewProvider>
     </GanttTimelineProvider>

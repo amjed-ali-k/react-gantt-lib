@@ -88,6 +88,8 @@ export interface GanttTask {
   color?: string;
   /** Bar outline color. */
   borderColor?: string;
+  /** On the critical path: drawn with a heavy dashed outline (`rg-bar--critical`), not colour alone. */
+  critical?: boolean;
   /** Bar height in px (within the row). */
   width?: number;
   collapsed?: boolean;
@@ -340,6 +342,9 @@ export interface DraggableMarkerSnapPoint {
   date: Date | string;
 }
 
+/** What drove a move or resize: a pointer drag, or the arrow keys on a focused bar. */
+export type GanttInputSource = 'pointer' | 'keyboard';
+
 export interface GanttEventMap {
   taskClick: {
     task: GanttTask;
@@ -359,12 +364,27 @@ export interface GanttEventMap {
     clientX?: number;
     clientY?: number;
   };
-  taskDragStart: { task: GanttTask; start: Date; end: Date };
-  taskDrag: { task: GanttTask; start: Date; end: Date; deltaMs: number };
-  taskDragEnd: { task: GanttTask; start: Date; end: Date; previousStart: Date; previousEnd: Date };
-  taskResizeStart: { task: GanttTask; edge: 'start' | 'end' };
-  taskResize: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end' };
-  taskResizeEnd: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end'; previousStart: Date; previousEnd: Date };
+  taskDragStart: { task: GanttTask; start: Date; end: Date; source: GanttInputSource };
+  taskDrag: { task: GanttTask; start: Date; end: Date; deltaMs: number; source: GanttInputSource };
+  taskDragEnd: {
+    task: GanttTask;
+    start: Date;
+    end: Date;
+    previousStart: Date;
+    previousEnd: Date;
+    source: GanttInputSource;
+  };
+  taskResizeStart: { task: GanttTask; edge: 'start' | 'end'; source: GanttInputSource };
+  taskResize: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end'; source: GanttInputSource };
+  taskResizeEnd: {
+    task: GanttTask;
+    start: Date;
+    end: Date;
+    edge: 'start' | 'end';
+    previousStart: Date;
+    previousEnd: Date;
+    source: GanttInputSource;
+  };
   progressChange: { task: GanttTask; progress: number; previousProgress: number };
   draggableMarkerDragStart: { marker: DraggableMarker; index: number; date: Date };
   draggableMarkerDrag: {
@@ -546,6 +566,14 @@ export interface GanttChartProps extends GanttCallbacks {
    * Per-task `enableDependencyCreate` overrides it. Default false.
    */
   enableDependencyCreate?: boolean;
+  /**
+   * Speaks keyboard moves, resizes, zoom and linking progress ("Moved Rebar inspection to 12 Oct –
+   * 14 Oct"). Pass it to route them to your own live region; without it the chart renders a visually
+   * hidden `role="status"` region.
+   */
+  announce?: (message: string) => void;
+  /** Accessible name of the timeline grid. Default "Timeline". */
+  timelineLabel?: string;
   onTasksChange?: (tasks: GanttTask[]) => void;
   customRows?: CustomRowDefinition[];
   /**

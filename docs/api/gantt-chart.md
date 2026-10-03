@@ -46,6 +46,8 @@ description: Complete prop reference for the GanttChart component.
 | `enableResize` | `boolean` | `true` |
 | `enableProgressDrag` | `boolean` | `true` |
 | `enableDependencyCreate` | `boolean` | `false` (connector handles to draw links; per-task override) |
+| `announce` | `(message: string) => void` | built-in `role="status"` region |
+| `timelineLabel` | `string` | `'Timeline'` (the bars' treegrid name) |
 | `snapToGrid` | `boolean` | `true` |
 | `selectedTaskIds` | `string[]` | — |
 | `selectedDependencyIds` | `string[]` | — (controlled link selection; makes links interactive) |

@@ -52,8 +52,8 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `onGanttContextMenu` | `ganttContextMenu` | `GanttPointerDetail` |
 | `onGanttHover` | `ganttHover` | `GanttHoverDetail` |
 | `onTaskHover` | `taskHover` | enter/leave only |
-| `onTaskDragStart/Drag/DragEnd` | drag lifecycle | `task`, dates |
-| `onTaskResizeStart/Resize/ResizeEnd` | resize lifecycle | `task`, `edge` |
+| `onTaskDragStart/Drag/DragEnd` | drag lifecycle | `task`, dates, `source: 'pointer' \| 'keyboard'` |
+| `onTaskResizeStart/Resize/ResizeEnd` | resize lifecycle | `task`, `edge`, `source` |
 | `onProgressChange` | `progressChange` | `task`, `progress` |
 | `onDraggableMarkerDragStart/Drag/DragEnd` | marker drag lifecycle | `marker`, `date`, optional `snapPoint` |
 | `onDraggableMarkerDragToSnapPoint` | marker snapped to custom point | `snapPoint`, `phase: 'drag' \| 'end'` |

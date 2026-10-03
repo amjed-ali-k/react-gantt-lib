@@ -105,6 +105,7 @@ Optional:
 - showSummaryBar: boolean — on group rows only; default true. false = sidebar folder only (no summary bar; children keep their own bars)
 - rollup?: GroupSummaryRollup — per-group summary bar roll-up overrides (see Group rows & collapse)
 - readOnly: boolean — disables drag, resize, and progress edits for this task
+- critical: boolean — critical-path outline
 - enableDrag, enableResize, enableProgressDrag, enableDependencyCreate: boolean — per-task overrides (fall back to chart-level props)
 - dependencies: string[] | GanttDependency[] — see Dependencies
 - baseline: { start, end, color? } — original plan overlay (amber default #e6a23c)
@@ -471,6 +472,8 @@ selectedTaskIds?: string[] — controlled selection
 selectedDependencyIds?: string[] — controlled dependency-link selection (see Dependencies)
 formatDependencyLag?: (lag, dependency) => string — lag label text
 enableDependencyCreate?: boolean — connector handles + L key to draw links → onDependencyCreate
+announce?: (message) => void — receives keyboard/zoom/link announcements; default: built-in visually hidden role=status region (data-testid gantt-announcer)
+timelineLabel?: string — name of the bars' role=treegrid (default 'Timeline')
 Uncontrolled: internal state; click selects one task
 Ctrl/⌘+click (metaKey / ctrlKey on onTaskClick): toggle task in selection without clearing others
 onSelectionChange({ selectedIds, selectedDependencyIds })
@@ -592,7 +595,7 @@ Demo: demo/stickyRowsDemo.tsx — 32 scrollable work packages, indigo baseline b
 | onGanttContextMenu | ganttContextMenu | GanttPointerDetail — right-click; call preventDefault() to suppress browser menu |
 | onGanttHover | ganttHover | GanttHoverDetail — hover on blocks, holidays, etc. |
 | onTaskHover | taskHover | task \| null, rowIndex, clientX?, clientY? — enter/leave only (not mousemove) |
-| onTaskDragStart | taskDragStart | task, start, end |
+| onTaskDragStart | taskDragStart | task, start, end, source ('pointer'|'keyboard'; on all drag/resize events) |
 | onTaskDrag | taskDrag | task, start, end, deltaMs |
 | onTaskDragEnd | taskDragEnd | task, start, end, previousStart, previousEnd |
 | onTaskResizeStart | taskResizeStart | task, edge: 'start'\|'end' |
@@ -811,3 +814,13 @@ npm test — vitest
 npm run typecheck
 
 Styles: react-gantt-lib/styles.css (side effect; not auto-imported)
+
+## Keyboard & accessibility
+Bars: rows (role=row > role=gridcell) of role=treegrid (aria-label timelineLabel, aria-rowcount; rows aria-rowindex/_rowIndex+1, aria-level, aria-selected). One roving tab stop for all bars (RovingFocus).
+aria-label: "{name}, {start} to {end}, {progress}%, depends on {pred names}, critical" (milestone: "{name}, milestone, {date}") — taskAccessibleName.
+Keys on a focused bar: Up/Down rows; Left/Right move one grid unit (enableDrag); Shift+Left/Right resize end; Alt+Left/Right resize start (enableResize, not milestones); Enter taskDoubleClick; Space select (Ctrl/⌘ toggles); Home/End scroll timeline to start/end; +/- zoom; L link (enableDependencyCreate). Keyboard edits fire the same drag/resize events with source 'keyboard'.
+Announcements: "Moved X to A – B", "Resized …", "Zoom: Day", "Start/End of timeline", link progress ("Requested a finish to start link from A to B.").
+Dependency hit strokes: role=group "Dependencies", one roving tab stop; arrows/Home/End move, Enter/Space select.
+Reduced motion: prefers-reduced-motion → .rg-gantt--reduced-motion (transitions/animations none) + @media rule; Home/End scroll behavior 'auto'.
+critical?: boolean on GanttTask → .rg-bar--critical + dashed outline .rg-bar-critical (--rg-critical); "critical" in name.
+Today marker: role=img aria-label "Today, {date}" (data-testid today-marker).

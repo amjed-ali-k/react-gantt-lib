@@ -7,11 +7,12 @@ import {
   type LinkEndpoint,
 } from '../../core/dependencyLinking';
 import {
-  useDependencyLinkSnapshot,
+  useLinkSession,
   type DependencyLinkStore,
   type LinkSession,
 } from '../../hooks/useDependencyLinkStore';
 import { DEPENDENCY_TYPE_NAMES } from './dependencyLinks';
+import { barElement } from './barElement';
 import {
   arrowHeadPoints,
   routeDependency,
@@ -21,13 +22,6 @@ import {
 } from './dependencyPaths';
 
 const MENU_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF'];
-
-/** The bar group of `taskId` inside the timeline (every section: sticky and scrolling rows). */
-function barElement(scrollEl: HTMLElement, taskId: string): SVGGElement | null {
-  // Inside a double-quoted attribute selector only `"` and `\` need escaping.
-  const id = taskId.replace(/["\\]/g, '\\$&');
-  return scrollEl.querySelector<SVGGElement>(`.rg-bar[data-task-id="${id}"]`);
-}
 
 /** The drawn shape of a task: a bar's background rect or a milestone's diamond. */
 function shapeRect(scrollEl: HTMLElement, taskId: string): DOMRect | null {
@@ -216,11 +210,11 @@ interface DependencyLinkLayerProps {
 /**
  * Overlay over the timeline viewport for drawing a new link: follows a handle drag (auto-scrolling
  * near the viewport edges), draws the preview with the same router as real links, hosts the
- * Shift+Enter type menu and announces progress in a live region. Escape cancels any session.
+ * Shift+Enter type menu. Escape cancels any session; the store announces progress.
  */
 export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const { session, message } = useDependencyLinkSnapshot(store);
+  const session = useLinkSession(store);
   // Bumped when the viewport scrolls under a drag, so the preview is re-measured.
   const [, setScrollFrame] = useState(0);
   const mode = session?.mode ?? null;
@@ -362,9 +356,6 @@ export function DependencyLinkLayer({ store, scrollRef }: DependencyLinkLayerPro
         </svg>
       )}
       {menu}
-      <div className="rg-sr-only" role="status">
-        {message}
-      </div>
     </div>
   );
 }
