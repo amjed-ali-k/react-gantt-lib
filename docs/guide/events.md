@@ -65,6 +65,7 @@ description: Event callbacks, click targets, and context menu hooks in react-gan
 | `onDependencyContextMenu` | `dependencyContextMenu` | dependency target, `preventDefault()` |
 | `onDependencyHover` | `dependencyHover` | dependency target, `phase: 'enter' \| 'leave'` |
 | `onDependencyDelete` | `dependencyDelete` | `{ dependencies }` — Delete/Backspace with links selected |
+| `onDependencyCreate` | `dependencyCreate` | `{ fromId, toId, type, source }` — a link drawn by drag or `L` (`enableDependencyCreate`) |
 | `onTasksChange` | — | Full `GanttTask[]` after edits |
 
 ::: tip onTaskHover

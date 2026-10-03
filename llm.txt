@@ -58,7 +58,7 @@ GanttTask, GanttColumn, GanttChartProps, GanttCallbacks, GanttEventMap, GanttEve
 GanttTarget, GanttPointerDetail, GanttHoverDetail, GanttTheme,
 CustomRowDefinition, CustomRowCellContext, CustomRowCellGenerator,
 HolidayMarking, HolidayDateEntry, BlockDateRange, EventMarker, TaskBaseline,
-GanttDependency, GanttDependencyTarget, GanttDependencyPointerDetail, GanttDependencyHoverDetail, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
+GanttDependency, GanttDependencyTarget, GanttDependencyPointerDetail, GanttDependencyHoverDetail, GanttDependencyCreateDetail, DependencyType, ViewScaleId, ZoomLevel, ViewScale,
 TaskTooltipRenderer, TaskTooltipChangeHandler,
 SidebarLayoutState, SidebarWidths, TimelineRange, TimelineRangeBounds,
 ResolvedTask, BarGeometry, ColumnRenderContext, DateMarkingLayers, DateMarkingRect,
@@ -105,7 +105,7 @@ Optional:
 - showSummaryBar: boolean — on group rows only; default true. false = sidebar folder only (no summary bar; children keep their own bars)
 - rollup?: GroupSummaryRollup — per-group summary bar roll-up overrides (see Group rows & collapse)
 - readOnly: boolean — disables drag, resize, and progress edits for this task
-- enableDrag, enableResize, enableProgressDrag: boolean — per-task overrides (fall back to chart-level props)
+- enableDrag, enableResize, enableProgressDrag, enableDependencyCreate: boolean — per-task overrides (fall back to chart-level props)
 - dependencies: string[] | GanttDependency[] — see Dependencies
 - baseline: { start, end, color? } — original plan overlay (amber default #e6a23c)
 - color: string — bar fill / milestone color
@@ -357,7 +357,15 @@ Interactive links (off by default) — enabled by any of onDependencyClick, onDe
 - ganttClick / ganttContextMenu / ganttHover also receive GanttTarget { type: 'dependency', id, from, to, dependency }
 - hit stroke: role=button, tabIndex=0, aria-pressed, aria-label "Dependency: A finish to start B, lag +2d"
 
-Exports for extensions: dependencyId, collectDependencyTargets, computeDependencyLinks, DependencyLink, DEPENDENCY_EDGES, routeDependency, buildDependencyPath.
+Drawing links (enableDependencyCreate?: boolean, default false; GanttTask.enableDependencyCreate overrides; readOnly tasks never):
+- connector handles (.rg-bar-connector, hit circle [data-connector-edge="start"|"end"], aria-hidden) outside each bar/milestone edge; shown on hover/focus and on all linkable bars while linking (.rg-gantt--linking)
+- drag handle → another task's handle: onDependencyCreate({ fromId, toId, type, source: 'pointer' }); type from edges: end→start FS, start→start SS, end→end FF, start→end SF (dependencyTypeForEdges)
+- live preview (.rg-link-layer > .rg-link-preview, .rg-dependency--preview, solid + .rg-link-target ring over a handle); auto-scroll near viewport edges (paused while over a handle)
+- cancel, no event: Escape, drop on same task, on a bar body, on empty space, pointercancel
+- keyboard: linkable bars are focusable (role=group, aria-label = name, aria-keyshortcuts L). L starts; focus target bar; Enter → FS (source 'keyboard'); Shift+Enter → role=menu of the 4 types; Escape closes menu / cancels; focus leaving the chart cancels. Live region role=status announces progress.
+- no cycle/duplicate validation; chart adds nothing — update tasks
+
+Exports for extensions: dependencyTypeForEdges, autoScrollSpeed, dependencyId, collectDependencyTargets, computeDependencyLinks, DependencyLink, DEPENDENCY_EDGES, routeDependency, buildDependencyPath.
 
 ## Baseline
 
@@ -462,6 +470,7 @@ Implementation: TaskTooltipProvider + imperative TaskTooltipController (src/comp
 selectedTaskIds?: string[] — controlled selection
 selectedDependencyIds?: string[] — controlled dependency-link selection (see Dependencies)
 formatDependencyLag?: (lag, dependency) => string — lag label text
+enableDependencyCreate?: boolean — connector handles + L key to draw links → onDependencyCreate
 Uncontrolled: internal state; click selects one task
 Ctrl/⌘+click (metaKey / ctrlKey on onTaskClick): toggle task in selection without clearing others
 onSelectionChange({ selectedIds, selectedDependencyIds })
@@ -598,6 +607,7 @@ Demo: demo/stickyRowsDemo.tsx — 32 scrollable work packages, indigo baseline b
 | onDependencyContextMenu | dependencyContextMenu | target (dependency), preventDefault |
 | onDependencyHover | dependencyHover | target (dependency), phase enter/leave |
 | onDependencyDelete | dependencyDelete | dependencies |
+| onDependencyCreate | dependencyCreate | fromId, toId, type, source |
 | onCustomRowCellReady | customRowCellReady | rowId, columnKey |
 | onCustomRowCellError | customRowCellError | rowId, columnKey, error |
 | onTasksChange | — | GanttTask[] (not in GanttEventMap) |

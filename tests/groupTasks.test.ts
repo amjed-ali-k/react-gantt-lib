@@ -106,7 +106,7 @@ describe('groupTasks', () => {
         { id: 'x', name: 'X', start: '2026-01-01', end: '2026-01-02', readOnly: true },
         { enableDrag: true, enableResize: true, enableProgressDrag: true },
       ),
-    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: false });
+    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: false, enableDependencyCreate: false });
 
     expect(
       resolveTaskInteractionFlags(
@@ -130,21 +130,21 @@ describe('groupTasks', () => {
         enableResize: true,
         enableProgressDrag: true,
       }),
-    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: false });
+    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: false, enableDependencyCreate: false });
 
     expect(
       resolveTaskInteractionFlags(
         { ...group, rollup: { dates: false, progress: false }, progress: 25 },
         { enableDrag: true, enableResize: true, enableProgressDrag: true },
       ),
-    ).toEqual({ enableDrag: true, enableResize: true, enableProgressDrag: true });
+    ).toEqual({ enableDrag: true, enableResize: true, enableProgressDrag: true, enableDependencyCreate: false });
 
     expect(
       resolveTaskInteractionFlags(
         { ...group, progress: 25 },
         { enableDrag: true, enableResize: true, enableProgressDrag: true },
       ),
-    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: true });
+    ).toEqual({ enableDrag: false, enableResize: false, enableProgressDrag: true, enableDependencyCreate: false });
   });
 });
 

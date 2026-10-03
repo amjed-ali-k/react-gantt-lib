@@ -36,3 +36,4 @@ export {
   buildDependencyPath,
   type DependencyEdge,
 } from './components/Timeline/dependencyPaths';
+export { dependencyTypeForEdges } from './core/dependencyLinking';

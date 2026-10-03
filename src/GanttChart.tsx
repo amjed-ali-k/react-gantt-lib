@@ -61,6 +61,9 @@ import { GanttDisplayProvider } from './context/GanttDisplayContext';
 import { EventMarkersLayer } from './components/Timeline/EventMarkersLayer';
 import { DraggableMarkersLayer } from './components/Timeline/DraggableMarkersLayer';
 import { TaskTooltipProvider } from './components/Tooltip/TaskTooltipLayer';
+import { DependencyLinkLayer } from './components/Timeline/DependencyLinkLayer';
+import { DependencyLinkStore } from './hooks/useDependencyLinkStore';
+import { DependencyLinkContext } from './context/DependencyLinkContext';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
   { key: 'name', title: 'Task', flex: 2, minWidth: 120 },
@@ -130,6 +133,7 @@ export function GanttChart({
   selectedTaskIds,
   selectedDependencyIds,
   formatDependencyLag,
+  enableDependencyCreate = false,
   ...callbacks
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -306,6 +310,31 @@ export function GanttChart({
   ]);
 
   const { tasks, updateTask, store } = useTaskStore(externalTasks);
+
+  // Drag-to-link. The store holds the one in-flight link; the context is set only when some
+  // task can be linked, so a chart without it renders and behaves exactly as before.
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const linkStoreRef = useRef<DependencyLinkStore | null>(null);
+  if (!linkStoreRef.current) {
+    linkStoreRef.current = new DependencyLinkStore({
+      nameOf: (id) => tasksRef.current.find((t) => t.id === id)?.name,
+      create: (fromId, toId, type, source) => {
+        const ids = new Set(tasksRef.current.map((t) => t.id));
+        if (!ids.has(fromId) || !ids.has(toId)) return false;
+        emit('dependencyCreate', { fromId, toId, type, source });
+        return true;
+      },
+    });
+  }
+  const linkStore = linkStoreRef.current;
+  const linkingAvailable = useMemo(
+    () => enableDependencyCreate || tasks.some((t) => t.enableDependencyCreate),
+    [enableDependencyCreate, tasks],
+  );
+  useEffect(() => {
+    if (!linkingAvailable) linkStore.cancel();
+  }, [linkingAvailable, linkStore]);
 
   const resolvedTasks = useMemo(
     () => resolveTasks(tasks, { groupSummaryRollup }),
@@ -806,6 +835,7 @@ export function GanttChart({
     <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
     <DragPreviewProvider store={dragPreviewStore}>
+    <DependencyLinkContext.Provider value={linkingAvailable ? linkStore : null}>
     <div
       ref={containerRef}
       className={`rg-gantt rg-theme-${theme} ${className ?? ''}`.trim()}
@@ -975,6 +1005,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1004,6 +1035,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1050,6 +1082,7 @@ export function GanttChart({
                   enableDrag={enableDrag}
                   enableResize={enableResize}
                   enableProgressDrag={enableProgressDrag}
+                  enableDependencyCreate={enableDependencyCreate}
                   groupSummaryRollup={groupSummaryRollup}
                   snapToGrid={snapToGrid}
                   timelineBounds={timelineBounds}
@@ -1061,11 +1094,13 @@ export function GanttChart({
                 </div>
               </div>
             </div>
+            {linkingAvailable && <DependencyLinkLayer store={linkStore} scrollRef={timelineScrollRef} />}
           </div>
         </div>
       </div>
       </TaskTooltipProvider>
     </div>
+    </DependencyLinkContext.Provider>
     </DragPreviewProvider>
     </GanttTimelineProvider>
     </GanttDisplayProvider>

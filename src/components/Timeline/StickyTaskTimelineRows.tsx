@@ -29,6 +29,7 @@ interface StickyTaskTimelineRowsProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  enableDependencyCreate?: boolean;
   groupSummaryRollup?: GroupSummaryRollup;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
@@ -51,6 +52,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
   enableDrag,
   enableResize,
   enableProgressDrag,
+  enableDependencyCreate,
   groupSummaryRollup,
   snapToGrid = true,
   timelineBounds,
@@ -102,6 +104,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
           enableDrag: enableDrag ?? true,
           enableResize: enableResize ?? true,
           enableProgressDrag: enableProgressDrag ?? true,
+          enableDependencyCreate,
           groupSummaryRollup,
         });
         const stickyOffset = stickyOffsets[i] ?? 0;
@@ -134,6 +137,7 @@ export const StickyTaskTimelineRows = memo(function StickyTaskTimelineRows({
                 enableDrag={flags.enableDrag}
                 enableResize={flags.enableResize}
                 enableProgressDrag={flags.enableProgressDrag}
+                enableDependencyCreate={flags.enableDependencyCreate}
                 snapToGrid={snapToGrid}
                 timelineBounds={timelineBounds}
                 emit={emit}

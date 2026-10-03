@@ -18,6 +18,8 @@ import { createPointerDetail } from './pointerDetail';
 import { milestoneDiamondPoints } from './milestoneGeometry';
 import { useTaskTooltipOptional } from '../Tooltip/TaskTooltipLayer';
 import { useDragPreviewStoreOptional } from '../../context/DragPreviewContext';
+import { useDependencyLinkStoreOptional } from '../../context/DependencyLinkContext';
+import type { DependencyEdge } from './dependencyPaths';
 
 export interface TaskBarProps {
   task: ResolvedTask;
@@ -30,6 +32,8 @@ export interface TaskBarProps {
   enableDrag?: boolean;
   enableResize?: boolean;
   enableProgressDrag?: boolean;
+  /** Connector handles and the `L` key to draw links (needs the chart's link store). */
+  enableDependencyCreate?: boolean;
   snapToGrid?: boolean;
   timelineBounds?: TimelineBounds;
   emit: EventEmitter;
@@ -54,6 +58,12 @@ interface DragPreview {
 }
 
 const HANDLE_WIDTH = 10;
+/** Connector handles sit this far outside each bar edge (centre), clear of the resize handles. */
+const CONNECTOR_OFFSET = 10;
+const CONNECTOR_DOT_RADIUS = 4;
+const CONNECTOR_HIT_RADIUS = 8;
+const LABEL_GAP = 6;
+const CONNECTOR_EDGES: DependencyEdge[] = ['start', 'end'];
 
 function TaskBarInner({
   task,
@@ -64,6 +74,7 @@ function TaskBarInner({
   enableDrag = true,
   enableResize = true,
   enableProgressDrag = true,
+  enableDependencyCreate = false,
   snapToGrid = true,
   timelineBounds,
   rangeStart,
@@ -83,6 +94,11 @@ function TaskBarInner({
   const msPerPixel = getMsPerPixel(scale, columnWidth);
   const tooltip = useTaskTooltipOptional();
   const dragPreviewStore = useDragPreviewStoreOptional();
+  const chartLinkStore = useDependencyLinkStoreOptional();
+  const linkStore = enableDependencyCreate ? chartLinkStore : null;
+  // Whether the latest press on this bar was on a connector handle. A link drag that ends on this
+  // same bar still makes the browser fire `click` on the bar group; that click is not a task click.
+  const pressedConnectorRef = useRef(false);
 
   const resolveHoverTask = useCallback(
     (t: ResolvedTask, start?: Date, end?: Date) => {
@@ -367,6 +383,7 @@ function TaskBarInner({
 
   const handleTaskClick = useCallback(
     (e: React.MouseEvent) => {
+      if (pressedConnectorRef.current) return;
       emit('taskClick', {
         task,
         rowIndex: task._rowIndex,
@@ -403,6 +420,61 @@ function TaskBarInner({
     },
     [emit, task, taskElement],
   );
+  const beginLink = (edge: DependencyEdge) => (e: React.PointerEvent) => {
+    if (!linkStore || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pressedConnectorRef.current = true;
+    linkStore.beginPointer({ taskId: task.id, edge }, e.clientX, e.clientY);
+  };
+
+  const handleLinkKey = (e: React.KeyboardEvent) => {
+    if (linkStore?.handleBarKey(task.id, e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  // Every press starts as "not on a handle"; `beginLink` (bubbling, after this) says otherwise.
+  const linkProps = linkStore
+    ? {
+        tabIndex: 0,
+        role: 'group',
+        'aria-label': task.name,
+        'aria-keyshortcuts': 'L',
+        onPointerDownCapture: () => {
+          pressedConnectorRef.current = false;
+        },
+        onKeyDown: handleLinkKey,
+        onFocus: () => linkStore.focusBar(task.id),
+      }
+    : {};
+
+  // Drag-to-link handles: a wide transparent hit circle and a small dot, outside each edge.
+  const connectors = linkStore && (
+    <g className="rg-bar-connectors" aria-hidden="true">
+      {CONNECTOR_EDGES.map((edge) => {
+        const cx = edge === 'start' ? -CONNECTOR_OFFSET : renderGeometry.width + CONNECTOR_OFFSET;
+        const cy = renderGeometry.height / 2;
+        return (
+          <g key={edge} className={`rg-bar-connector rg-bar-connector--${edge}`}>
+            <circle className="rg-bar-connector-dot" cx={cx} cy={cy} r={CONNECTOR_DOT_RADIUS} />
+            <circle
+              className="rg-bar-connector-hit"
+              cx={cx}
+              cy={cy}
+              r={CONNECTOR_HIT_RADIUS}
+              data-connector-edge={edge}
+              onPointerDown={beginLink(edge)}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+  const labelX =
+    renderGeometry.width + LABEL_GAP + (linkStore ? CONNECTOR_OFFSET + CONNECTOR_DOT_RADIUS : 0);
+
   const accentColor = task.color ?? 'var(--rg-bar-fill)';
   const barStroke = task.borderColor;
   const barStrokeWidth = barStroke ? 1.5 : 0;
@@ -427,6 +499,7 @@ function TaskBarInner({
       onClick={handleTaskClick}
       onDoubleClick={handleTaskDoubleClick}
       onContextMenu={handleTaskContextMenu}
+      {...linkProps}
     >
       {isMilestone ? (
         <>
@@ -453,7 +526,7 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={renderGeometry.width + 6}
+            x={labelX}
             y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
@@ -461,6 +534,7 @@ function TaskBarInner({
           >
             {task.name}
           </text>
+          {connectors}
         </>
       ) : (
         <>
@@ -532,7 +606,7 @@ function TaskBarInner({
           )}
           <text
             className="rg-bar-label"
-            x={renderGeometry.width + 6}
+            x={labelX}
             y={renderGeometry.height / 2}
             dominantBaseline="middle"
             fontSize={12}
@@ -540,6 +614,7 @@ function TaskBarInner({
           >
             {task.name}
           </text>
+          {connectors}
         </>
       )}
     </g>
@@ -571,6 +646,7 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.enableProgressDrag !== next.enableProgressDrag) return false;
   if (prev.task.type !== next.task.type) return false;
   if (prev.task.width !== next.task.width) return false;
+  if (prev.enableDependencyCreate !== next.enableDependencyCreate) return false;
   return true;
 }
 

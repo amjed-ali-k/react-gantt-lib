@@ -187,16 +187,18 @@ export function resolveTaskInteractionFlags(
     enableDrag: boolean;
     enableResize: boolean;
     enableProgressDrag: boolean;
+    enableDependencyCreate?: boolean;
     groupSummaryRollup?: GroupSummaryRollup;
   },
-): { enableDrag: boolean; enableResize: boolean; enableProgressDrag: boolean } {
+): { enableDrag: boolean; enableResize: boolean; enableProgressDrag: boolean; enableDependencyCreate: boolean } {
   if (task.readOnly) {
-    return { enableDrag: false, enableResize: false, enableProgressDrag: false };
+    return { enableDrag: false, enableResize: false, enableProgressDrag: false, enableDependencyCreate: false };
   }
 
   let enableDrag = task.enableDrag ?? defaults.enableDrag;
   let enableResize = task.enableResize ?? defaults.enableResize;
   let enableProgressDrag = task.enableProgressDrag ?? defaults.enableProgressDrag;
+  const enableDependencyCreate = task.enableDependencyCreate ?? defaults.enableDependencyCreate ?? false;
 
   if (shouldRollupGroupDates(task, defaults.groupSummaryRollup)) {
     enableDrag = false;
@@ -206,5 +208,5 @@ export function resolveTaskInteractionFlags(
     enableProgressDrag = false;
   }
 
-  return { enableDrag, enableResize, enableProgressDrag };
+  return { enableDrag, enableResize, enableProgressDrag, enableDependencyCreate };
 }

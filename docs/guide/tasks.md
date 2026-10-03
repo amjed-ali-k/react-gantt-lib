@@ -115,7 +115,42 @@ const [linkIds, setLinkIds] = useState<string[]>([]);
 />
 ```
 
-Building on links (e.g. a drag-to-link preview) can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
+### Drawing links (drag-to-link)
+
+Set `enableDependencyCreate` (or `GanttTask.enableDependencyCreate` per task, which overrides it)
+and each bar and milestone gets a **connector handle** just outside its start and end edge, shown on
+hover and focus, and on every linkable bar while a link is being drawn. A `readOnly` task has none.
+
+- **Drag** from one handle to another task's handle. A live preview follows the pointer — dashed
+  while it has nowhere to land, solid with a ring once it is over a handle — and the timeline
+  auto-scrolls while the pointer is near the viewport's edges. Dropping on a handle fires
+  `onDependencyCreate({ fromId, toId, type, source: 'pointer' })`, with the type inferred from the two
+  handles: end→start `FS`, start→start `SS`, end→end `FF`, start→end `SF`.
+- **Escape**, a drop on the same task, on a bar body or on empty space cancel with no event.
+- **Keyboard:** linkable bars are focusable. Press **L** on a bar, move focus to the target bar
+  (Tab), then **Enter** for `FS` or **Shift+Enter** to choose the type from a small menu (arrow keys,
+  Enter; Escape closes it). Escape, or moving focus out of the chart, cancels. Progress is announced
+  in a polite live region.
+
+The chart adds nothing and checks nothing — not cycles, not duplicates. Validate in the handler,
+then update `tasks`.
+
+```tsx
+<GanttChart
+  tasks={tasks}
+  enableDependencyCreate
+  onDependencyCreate={({ fromId, toId, type }) => {
+    if (wouldCycle(fromId, toId)) return;
+    setTasks((ts) => ts.map((t) => (t.id === toId
+      ? { ...t, dependencies: [...(t.dependencies ?? []), { id: fromId, type }] }
+      : t)));
+  }}
+/>
+```
+
+`dependencyTypeForEdges(from, to)` is the inverse of `DEPENDENCY_EDGES`.
+
+Building on links can reuse `routeDependency(type, fromX, fromY, toX, toY)`,
 `buildDependencyPath`, `DEPENDENCY_EDGES` and `computeDependencyLinks`.
 
 ## Baseline

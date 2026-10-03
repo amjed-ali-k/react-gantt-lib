@@ -14,6 +14,7 @@ description: Known limitations and future work for react-gantt-lib.
 - Middle panel start/end show date only (not time)
 - Sticky tasks are excluded from the scrollable timeline hit layer
 - Links to or from a sticky (pinned) row are not drawn
+- Drawing a link (`enableDependencyCreate`) does not check for cycles or duplicates — the consumer validates
 - Week starts Monday (`weekStartsOn: 1`)
 
 Have a feature request? [Open an issue on GitHub](https://github.com/amjed-ali-k/react-gantt-lib/issues).

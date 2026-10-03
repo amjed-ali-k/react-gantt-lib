@@ -45,6 +45,7 @@ description: Complete prop reference for the GanttChart component.
 | `enableDrag` | `boolean` | `true` |
 | `enableResize` | `boolean` | `true` |
 | `enableProgressDrag` | `boolean` | `true` |
+| `enableDependencyCreate` | `boolean` | `false` (connector handles to draw links; per-task override) |
 | `snapToGrid` | `boolean` | `true` |
 | `selectedTaskIds` | `string[]` | — |
 | `selectedDependencyIds` | `string[]` | — (controlled link selection; makes links interactive) |

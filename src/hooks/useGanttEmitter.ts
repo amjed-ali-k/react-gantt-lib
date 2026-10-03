@@ -32,6 +32,7 @@ const CALLBACK_MAP: Record<GanttEventName, keyof GanttCallbacks> = {
   dependencyContextMenu: 'onDependencyContextMenu',
   dependencyHover: 'onDependencyHover',
   dependencyDelete: 'onDependencyDelete',
+  dependencyCreate: 'onDependencyCreate',
   customRowCellReady: 'onCustomRowCellReady',
   customRowCellError: 'onCustomRowCellError',
 };
