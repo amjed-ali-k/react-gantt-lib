@@ -324,7 +324,7 @@ function collectRollupDescendants(group, tasks, taskMap = buildTaskMap(tasks)) {
 	for (const id of collectDescendantIds(group.id, tasks)) {
 		const descendant = taskMap.get(id);
 		if (!descendant) continue;
-		if (isGroupTask(descendant) && groupShowsSummaryBar(descendant)) continue;
+		if (isGroupTask(descendant)) continue;
 		descendants.push(descendant);
 	}
 	return descendants;
@@ -5898,6 +5898,9 @@ function GanttChart({ tasks: externalTasks, columns = DEFAULT_COLUMNS, middleCol
 		};
 	}, []);
 	(0, react.useEffect)(() => {
+		const scrollEl = timelineScrollRef.current;
+		const inputs = zoomChangeInputsRef.current;
+		if (scrollEl && scrollEl.clientWidth > 0 && inputs.scale.id !== zoomProp) pendingCenterDateRef.current = scalePixelToDate(scrollEl.scrollLeft + scrollEl.clientWidth / 2, inputs.rangeStart, inputs.scale, inputs.columnWidth);
 		setScaleId(zoomProp);
 	}, [zoomProp]);
 	const syncRowScroll = (0, react.useCallback)((e) => {
