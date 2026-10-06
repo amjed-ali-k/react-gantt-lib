@@ -251,4 +251,24 @@ describe('resolveTasks group summary', () => {
     ]);
     expect(resolved[0].progress).toBe(100);
   });
+
+  it('does not roll a folder row up: its own dates and progress are not a task\'s', () => {
+    const withFolder: GanttTask[] = [
+      { id: 'g', name: 'Section', start: '2026-03-01', end: '2026-03-01', type: 'group' },
+      { id: 't', name: 'Task', start: '2026-03-02', end: '2026-03-06', parentId: 'g', progress: 100 },
+      // An "Add task" style row: a bar-less group whose own dates would stretch the summary.
+      {
+        id: 'add',
+        name: 'Add task',
+        start: '2026-03-20',
+        end: '2026-03-30',
+        type: 'group',
+        showSummaryBar: false,
+        parentId: 'g',
+      },
+    ];
+    const rollup = rollUpGroupDates(withFolder[0], withFolder);
+    expect(rollup?.end.getTime()).toBe(toDate('2026-03-06').getTime());
+    expect(rollUpGroupProgress(withFolder[0], withFolder)).toBe(100);
+  });
 });
