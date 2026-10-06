@@ -150,6 +150,7 @@ export function GanttChart({
   formatHeaderUpper,
   formatHeaderLower,
   hatchHolidays = false,
+  scaleLabels,
   showOffscreenIndicators = false,
   enableWheelZoom = false,
   highlightHoveredRow = false,
@@ -173,11 +174,17 @@ export function GanttChart({
   const pendingCenterDateRef = useRef<Date | null>(null);
 
   const availableScales = useMemo(
-    () => resolveScales(availableZoomLevels),
-    [availableZoomLevels],
+    () =>
+      resolveScales(availableZoomLevels).map((s) =>
+        scaleLabels?.[s.id] ? { ...s, label: scaleLabels[s.id]! } : s,
+      ),
+    [availableZoomLevels, scaleLabels],
   );
 
-  const scale = useMemo(() => resolveScale(scaleId), [scaleId]);
+  const scale = useMemo(() => {
+    const resolved = resolveScale(scaleId);
+    return scaleLabels?.[resolved.id] ? { ...resolved, label: scaleLabels[resolved.id]! } : resolved;
+  }, [scaleId, scaleLabels]);
 
   const onTaskHoverRef = useRef(onTaskHover);
   onTaskHoverRef.current = onTaskHover;

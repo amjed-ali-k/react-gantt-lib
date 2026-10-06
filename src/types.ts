@@ -609,6 +609,8 @@ export interface GanttChartProps extends GanttCallbacks {
   formatHeaderUpper?: (date: Date, scale: ViewScale, timeZone?: string) => string;
   /** The lower-header cell for a column's date. */
   formatHeaderLower?: (date: Date, scale: ViewScale, timeZone?: string) => React.ReactNode;
+  /** Names for scales, by id, where a host calls a scale something else (toolbar, announcements). */
+  scaleLabels?: Record<string, string>;
   /** Draw holidays and weekends hatched rather than as a flat tint. */
   hatchHolidays?: boolean;
   /** A chevron in a row whose bar is out of view, which scrolls to it. */
