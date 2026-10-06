@@ -44,7 +44,9 @@ export function collectRollupDescendants(
   for (const id of collectDescendantIds(group.id, tasks)) {
     const descendant = taskMap.get(id);
     if (!descendant) continue;
-    if (isGroupTask(descendant) && groupShowsSummaryBar(descendant)) continue;
+    // A group's own dates and progress are not its tasks': its children are walked anyway, so a
+    // folder row (no summary bar) or a heading with nothing under it adds nothing to the roll-up.
+    if (isGroupTask(descendant)) continue;
     descendants.push(descendant);
   }
   return descendants;

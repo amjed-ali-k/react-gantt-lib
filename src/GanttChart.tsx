@@ -753,7 +753,18 @@ export function GanttChart({
     };
   }, []);
 
+  // A host that changes `zoomLevel` gets the same centre-preserving zoom as the chart's own buttons.
   useEffect(() => {
+    const scrollEl = timelineScrollRef.current;
+    const inputs = zoomChangeInputsRef.current;
+    if (scrollEl && scrollEl.clientWidth > 0 && inputs.scale.id !== zoomProp) {
+      pendingCenterDateRef.current = scalePixelToDate(
+        scrollEl.scrollLeft + scrollEl.clientWidth / 2,
+        inputs.rangeStart,
+        inputs.scale,
+        inputs.columnWidth,
+      );
+    }
     setScaleId(zoomProp);
   }, [zoomProp]);
 
