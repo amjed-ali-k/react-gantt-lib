@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useImperativeHandle,
   type KeyboardEvent,
 } from 'react';
 import type {
@@ -53,6 +54,7 @@ import { toDate } from './core/dates';
 import { TaskListPanel, MiddlePanel } from './components/TaskList/TaskListPanel';
 import { TimelineHeader } from './components/Timeline/TimelineHeader';
 import { TimelineBody } from './components/Timeline/TimelineBody';
+import { RowOverlays } from './components/Timeline/RowOverlays';
 import { ZoomToolbar } from './components/Toolbar/ZoomToolbar';
 import { CustomRowsTimeline } from './components/CustomRows/CustomRowsTimeline';
 import { StickyTaskTimelineRows } from './components/Timeline/StickyTaskTimelineRows';
@@ -70,6 +72,7 @@ import { useAnnouncer } from './hooks/useAnnouncer';
 import { usePrefersReducedMotion } from './hooks/useReducedMotion';
 import { barElement } from './components/Timeline/barElement';
 import { shouldRenderTaskBar } from './core/groupTasks';
+import { resolveRowAtY } from './core/timelineInteraction';
 import { nextScaleInList } from './core/scale';
 
 const DEFAULT_COLUMNS: GanttColumn[] = [
@@ -143,6 +146,14 @@ export function GanttChart({
   enableDependencyCreate = false,
   announce: announceProp,
   timelineLabel = 'Timeline',
+  zoomControls = 'toolbar',
+  formatHeaderUpper,
+  formatHeaderLower,
+  hatchHolidays = false,
+  showOffscreenIndicators = false,
+  enableWheelZoom = false,
+  highlightHoveredRow = false,
+  controllerRef,
   ...callbacks
 }: GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -834,6 +845,8 @@ export function GanttChart({
 
   const tooltipEnabled = showTooltip || !!renderTaskTooltip;
 
+  const wheelZoomRef = useRef<(direction: 'in' | 'out') => void>(() => {});
+
   // What a focused bar's keys reach: built once, reading the latest values through a ref.
   const keyboardInputsRef = useRef({ scale, availableScales, handleZoomChange, reducedMotion });
   keyboardInputsRef.current = { scale, availableScales, handleZoomChange, reducedMotion };
@@ -869,6 +882,7 @@ export function GanttChart({
     };
   }
   const timelineKeyboard = timelineKeyboardRef.current;
+  wheelZoomRef.current = timelineKeyboard.zoom;
 
   // Delete/Backspace anywhere in the chart (outside a text field) reports the selected links.
   const handleKeyDown = useCallback(
@@ -896,6 +910,162 @@ export function GanttChart({
     [tasks, emit, dependenciesControlled, commitSelection],
   );
 
+  // The latest layout, read by the chart's imperative handle and its hover tracking.
+  const layoutRef = useRef({
+    range,
+    scale,
+    columnWidth,
+    rows: stickyTaskPartitions.scroll,
+    layouts: stickyRowLayouts.scroll,
+  });
+  layoutRef.current = {
+    range,
+    scale,
+    columnWidth,
+    rows: stickyTaskPartitions.scroll,
+    layouts: stickyRowLayouts.scroll,
+  };
+
+  const scrollTimelineTo = useCallback(
+    (left: number, smooth: boolean) => {
+      const el = timelineScrollRef.current;
+      if (!el) return;
+      const target = Math.max(0, Math.min(left, el.scrollWidth - el.clientWidth));
+      const behavior = smooth && !reducedMotion ? 'smooth' : 'auto';
+      if (typeof el.scrollTo === 'function') el.scrollTo({ left: target, behavior });
+      else el.scrollLeft = target;
+    },
+    [reducedMotion],
+  );
+
+  const revealTask = useCallback(
+    (taskId: string) => {
+      const { range: r, scale: sc, columnWidth: cw, rows } = layoutRef.current;
+      const task = rows.find((t) => t.id === taskId);
+      if (!task) return;
+      scrollTimelineTo(dateToScalePixel(task._start, r.start, sc, cw) - 48, true);
+    },
+    [scrollTimelineTo],
+  );
+
+  useImperativeHandle(
+    controllerRef,
+    () => ({
+      scrollToDate: (date, options) => {
+        const el = timelineScrollRef.current;
+        if (!el) return;
+        const { range: r, scale: sc, columnWidth: cw } = layoutRef.current;
+        const x = dateToScalePixel(date, r.start, sc, cw);
+        const left = options?.align === 'start' ? x - 48 : x - el.clientWidth / 2;
+        scrollTimelineTo(left, options?.smooth ?? false);
+      },
+      scrollToTask: (taskId, options) => {
+        const el = timelineScrollRef.current;
+        if (!el) return;
+        const { range: r, scale: sc, columnWidth: cw, rows } = layoutRef.current;
+        const task = rows.find((t) => t.id === taskId);
+        if (!task) return;
+        scrollTimelineTo(dateToScalePixel(task._start, r.start, sc, cw) - 48, options?.smooth ?? true);
+      },
+    }),
+    [scrollTimelineTo],
+  );
+
+  // Ctrl/Cmd + wheel over the timeline steps the zoom (the browser's page zoom is not wanted).
+  useEffect(() => {
+    if (!enableWheelZoom) return;
+    const el = timelineScrollRef.current;
+    if (!el) return;
+    let lastStep = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastStep < 160 || e.deltaY === 0) return;
+      lastStep = now;
+      wheelZoomRef.current(e.deltaY < 0 ? 'in' : 'out');
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [enableWheelZoom]);
+
+  // The hovered row is marked in the list and banded in the timeline without re-rendering either.
+  useEffect(() => {
+    if (!highlightHoveredRow) return;
+    const root = containerRef.current;
+    if (!root) return;
+    let current: string | null = null;
+    const apply = (id: string | null) => {
+      if (id === current) return;
+      current = id;
+      root.querySelectorAll('.rg-task-row[data-row-hover]').forEach((row) => row.removeAttribute('data-row-hover'));
+      const band = root.querySelector<HTMLElement>('.rg-row-hover-band');
+      const index = id === null ? -1 : layoutRef.current.rows.findIndex((t) => t.id === id);
+      if (id !== null) {
+        root.querySelectorAll('.rg-task-row[data-task-id]').forEach((row) => {
+          if (row.getAttribute('data-task-id') === id) row.setAttribute('data-row-hover', 'true');
+        });
+      }
+      const layout = layoutRef.current.layouts[index];
+      if (band) {
+        band.hidden = !layout;
+        if (layout) {
+          band.style.top = `${layout.y}px`;
+          band.style.height = `${layout.height}px`;
+        }
+      }
+    };
+    const onMove = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (!target) return;
+      const inTimeline = target.closest('.rg-timeline-panel');
+      const listRow = inTimeline ? null : target.closest('.rg-task-row[data-task-id]');
+      if (listRow) {
+        apply(listRow.getAttribute('data-task-id'));
+        return;
+      }
+      const rowsEl = root.querySelector('.rg-row-overlays');
+      if (inTimeline && rowsEl && target.closest('.rg-timeline-rows')) {
+        const y = e.clientY - rowsEl.getBoundingClientRect().top;
+        const index = resolveRowAtY(y, layoutRef.current.layouts);
+        apply(index === null ? null : (layoutRef.current.rows[index]?.id ?? null));
+        return;
+      }
+      apply(null);
+    };
+    const onLeave = () => apply(null);
+    root.addEventListener('mousemove', onMove);
+    root.addEventListener('mouseleave', onLeave);
+    return () => {
+      root.removeEventListener('mousemove', onMove);
+      root.removeEventListener('mouseleave', onLeave);
+    };
+  }, [highlightHoveredRow]);
+
+  /** Arrow keys resize the list from a focused splitter (the pointer is not the only way). */
+  const dividerKeyboard = (which: 'left' | 'middle') => {
+    const value = which === 'left' ? sidebar.leftWidth : sidebar.middleWidth;
+    return {
+      tabIndex: 0,
+      'aria-label': which === 'left' ? 'Resize the task list' : 'Resize the date columns',
+      'aria-valuenow': Math.round(value),
+      'aria-valuemin': minPanelWidth,
+      onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        const step = (e.shiftKey ? 64 : 16) * (e.key === 'ArrowRight' ? 1 : -1);
+        const total = sidebar.layout.totalWidth;
+        if (which === 'left') {
+          sidebar.setLeftWidth(Math.max(minPanelWidth, Math.min(total - minPanelWidth * 2, value + step)));
+        } else {
+          sidebar.setMiddleWidth(
+            Math.max(minPanelWidth, Math.min(total - sidebar.leftWidth - minPanelWidth, value + step)),
+          );
+        }
+      },
+    };
+  };
+
   return (
     <GanttDisplayProvider timezone={timezone}>
     <GanttTimelineProvider value={stableTimelineContext}>
@@ -917,15 +1087,20 @@ export function GanttChart({
         renderTaskTooltip={renderTaskTooltip}
         onTaskChange={handleTooltipTaskChange}
       >
-      <div className="rg-gantt-toolbar-row">
-        <ZoomToolbar
-          scale={scale}
-          availableScales={availableScales}
-          onZoomChange={handleZoomChange}
-        />
-      </div>
+      {zoomControls === 'toolbar' && (
+        <div className="rg-gantt-toolbar-row">
+          <ZoomToolbar
+            scale={scale}
+            availableScales={availableScales}
+            onZoomChange={handleZoomChange}
+          />
+        </div>
+      )}
 
-      <div className="rg-gantt-body" style={{ height: `calc(100% - 40px)` }}>
+      <div
+        className="rg-gantt-body"
+        style={{ height: zoomControls === 'toolbar' ? `calc(100% - 40px)` : '100%' }}
+      >
         <div className="rg-panels">
           {showTaskList && (
             <div
@@ -961,6 +1136,7 @@ export function GanttChart({
               onPointerDown={sidebar.onDividerPointerDown('left')}
               onPointerMove={sidebar.onDividerPointerMove}
               onPointerUp={sidebar.onDividerPointerUp}
+              {...dividerKeyboard('left')}
               data-testid="divider-left"
             />
           )}
@@ -997,6 +1173,7 @@ export function GanttChart({
               onPointerDown={sidebar.onDividerPointerDown(showDateColumns ? 'middle' : 'left')}
               onPointerMove={sidebar.onDividerPointerMove}
               onPointerUp={sidebar.onDividerPointerUp}
+              {...dividerKeyboard(showDateColumns ? 'middle' : 'left')}
               data-testid={showDateColumns ? 'divider-middle' : 'divider-left'}
             />
           )}
@@ -1056,6 +1233,8 @@ export function GanttChart({
                   dateMarkings={dateMarkings}
                   interactive={interactionsEnabled}
                   emit={emit}
+                  formatUpper={formatHeaderUpper}
+                  formatLower={formatHeaderLower}
                 />
                 <div className="rg-timeline-rows">
                 <StickyTaskTimelineRows
@@ -1092,6 +1271,20 @@ export function GanttChart({
                   stickyPosition="top"
                   stickyOffsets={stickyOffsets.topCustomRows}
                 />
+                {(highlightHoveredRow || showOffscreenIndicators) && (
+                  <RowOverlays
+                    tasks={stickyTaskPartitions.scroll}
+                    rowLayouts={stickyRowLayouts.scroll}
+                    range={range}
+                    scale={scale}
+                    columnWidth={columnWidth}
+                    scrollLeft={scrollLeft}
+                    viewportWidth={viewportWidth}
+                    hoverBand={highlightHoveredRow}
+                    indicators={showOffscreenIndicators}
+                    onReveal={revealTask}
+                  />
+                )}
                 <TimelineBody
                   tasks={stickyTaskPartitions.scroll}
                   range={range}
@@ -1112,6 +1305,7 @@ export function GanttChart({
                   dateMarkings={dateMarkings}
                   blockDates={blockDates}
                   showBaseline={showBaseline}
+                  hatchHolidays={hatchHolidays}
                   selectedTaskIds={effectiveSelectedIds}
                   selectedDependencyIds={effectiveSelectedDependencyIds}
                   formatDependencyLag={hasLagFormatter ? stableFormatDependencyLag : undefined}
@@ -1166,6 +1360,16 @@ export function GanttChart({
                 </div>
               </div>
             </div>
+            {zoomControls === 'floating' && (
+              <div className="rg-zoom-floating">
+                <ZoomToolbar
+                  scale={scale}
+                  availableScales={availableScales}
+                  onZoomChange={handleZoomChange}
+                  floating
+                />
+              </div>
+            )}
             {linkingAvailable && <DependencyLinkLayer store={linkStore} scrollRef={timelineScrollRef} />}
           </div>
         </div>

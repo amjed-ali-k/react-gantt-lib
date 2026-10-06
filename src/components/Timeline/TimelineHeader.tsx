@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { MouseEvent } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { addScaleSteps, formatScaleHeader, formatScaleSubHeader } from '../../core/scale';
 import type { ViewScale } from '../../core/scale';
 import type { DateMarkingLayers, TimelineRange } from '../../types';
@@ -22,6 +22,10 @@ interface TimelineHeaderProps {
   dateMarkings?: DateMarkingLayers;
   interactive?: boolean;
   emit?: EventEmitter;
+  /** Upper-band text for a column's date; columns that agree form one band. */
+  formatUpper?: (date: Date, scale: ViewScale, timeZone?: string) => string;
+  /** The lower cell for a column's date. */
+  formatLower?: (date: Date, scale: ViewScale, timeZone?: string) => ReactNode;
 }
 
 interface HeaderColumn {
@@ -77,6 +81,8 @@ export const TimelineHeader = memo(function TimelineHeader({
   dateMarkings,
   interactive = false,
   emit,
+  formatUpper,
+  formatLower,
 }: TimelineHeaderProps) {
   const timezone = useGanttDisplayTimezone();
   const { startIndex, endIndex } = visibleColumns;
@@ -91,8 +97,15 @@ export const TimelineHeader = memo(function TimelineHeader({
   }, [range.start, scale, columnWidth, startIndex, endIndex]);
 
   const upperBands = useMemo(
-    () => buildUpperHeaderBandsForVisibleRange(range, scale, columnWidth, visibleColumns, timezone),
-    [range, scale, columnWidth, visibleColumns, timezone],
+    () => buildUpperHeaderBandsForVisibleRange(
+        range,
+        scale,
+        columnWidth,
+        visibleColumns,
+        timezone,
+        formatUpper,
+      ),
+    [range, scale, columnWidth, visibleColumns, timezone, formatUpper],
   );
 
   const markingRects = useMemo(() => {
@@ -149,7 +162,7 @@ export const TimelineHeader = memo(function TimelineHeader({
               className="rg-header-cell rg-header-cell--lower"
               style={{ left: col.x, width: columnWidth }}
             >
-              {formatScaleHeader(col.date, scale, timezone)}
+              {formatLower ? formatLower(col.date, scale, timezone) : formatScaleHeader(col.date, scale, timezone)}
             </div>
           ))}
         </div>

@@ -95,12 +95,18 @@ export interface GanttTask {
   collapsed?: boolean;
   /** Pin this row to the top or bottom of the scroll viewport so it stays visible. */
   sticky?: 'top' | 'bottom';
+  /** Where the bar's title goes: `outside` (right of the bar, default), `inside`, or `auto` (inside when it fits). */
+  labelPlacement?: 'outside' | 'inside' | 'auto';
+  /** A person's badge drawn at the end of the bar (inside it when it is wide enough, else beside it). */
+  avatar?: GanttBarAvatar;
+  /** An empty stretch of this row can be drawn on with the pointer: `onTaskDraw` reports the span. */
+  drawable?: boolean;
   meta?: Record<string, unknown>;
 }
 
 export interface GanttColumn {
   key: string;
-  title: string;
+  title: React.ReactNode;
   width?: number;
   minWidth?: number;
   flex?: number;
@@ -376,6 +382,8 @@ export interface GanttEventMap {
   };
   taskResizeStart: { task: GanttTask; edge: 'start' | 'end'; source: GanttInputSource };
   taskResize: { task: GanttTask; start: Date; end: Date; edge: 'start' | 'end'; source: GanttInputSource };
+  /** A drawable row was dragged across: the whole columns it covered (`end` is exclusive). */
+  taskDraw: { task: GanttTask; start: Date; end: Date };
   taskResizeEnd: {
     task: GanttTask;
     start: Date;
@@ -456,6 +464,8 @@ export interface GanttCallbacks {
   onTaskResizeStart?: GanttEventHandler<'taskResizeStart'>;
   onTaskResize?: GanttEventHandler<'taskResize'>;
   onTaskResizeEnd?: GanttEventHandler<'taskResizeEnd'>;
+  /** A drawable row was dragged across (see `GanttTask.drawable`). */
+  onTaskDraw?: GanttEventHandler<'taskDraw'>;
   onProgressChange?: GanttEventHandler<'progressChange'>;
   onDraggableMarkerDragStart?: GanttEventHandler<'draggableMarkerDragStart'>;
   onDraggableMarkerDrag?: GanttEventHandler<'draggableMarkerDrag'>;
@@ -482,6 +492,24 @@ export interface GanttCallbacks {
   onDependencyCreate?: GanttEventHandler<'dependencyCreate'>;
   onCustomRowCellReady?: GanttEventHandler<'customRowCellReady'>;
   onCustomRowCellError?: GanttEventHandler<'customRowCellError'>;
+}
+
+/** A badge at the end of a bar: initials (or a short label) on a colour. */
+export interface GanttBarAvatar {
+  /** Up to two characters, drawn in the badge. */
+  label: string;
+  /** Badge fill; a CSS colour or `var(--token)`. */
+  color?: string;
+  /** Accessible name, e.g. the person's name. */
+  title?: string;
+}
+
+/** What a consumer can ask of a mounted chart (see `GanttChartProps.controllerRef`). */
+export interface GanttController {
+  /** Scrolls the timeline so `date` is at `align` (default: centre) of the viewport. */
+  scrollToDate: (date: Date, options?: { align?: 'start' | 'center'; smooth?: boolean }) => void;
+  /** Scrolls the timeline so the task's bar is in view, with a margin. */
+  scrollToTask: (taskId: string, options?: { smooth?: boolean }) => void;
 }
 
 export interface GanttChartProps extends GanttCallbacks {
@@ -572,6 +600,25 @@ export interface GanttChartProps extends GanttCallbacks {
    * hidden `role="status"` region.
    */
   announce?: (message: string) => void;
+  /**
+   * The zoom buttons: the default `toolbar` row above the chart, `floating` (a small +/- pair at
+   * the chart's top right), or `none` when the host draws its own.
+   */
+  zoomControls?: 'toolbar' | 'floating' | 'none';
+  /** Text of an upper-header band for a column's date; columns that agree are one band. */
+  formatHeaderUpper?: (date: Date, scale: ViewScale, timeZone?: string) => string;
+  /** The lower-header cell for a column's date. */
+  formatHeaderLower?: (date: Date, scale: ViewScale, timeZone?: string) => React.ReactNode;
+  /** Draw holidays and weekends hatched rather than as a flat tint. */
+  hatchHolidays?: boolean;
+  /** A chevron in a row whose bar is out of view, which scrolls to it. */
+  showOffscreenIndicators?: boolean;
+  /** Ctrl/Cmd + wheel over the timeline steps the zoom. */
+  enableWheelZoom?: boolean;
+  /** Highlights the hovered row across the list and the timeline. */
+  highlightHoveredRow?: boolean;
+  /** Receives the chart's imperative handle. */
+  controllerRef?: React.Ref<GanttController>;
   /** Accessible name of the timeline grid. Default "Timeline". */
   timelineLabel?: string;
   onTasksChange?: (tasks: GanttTask[]) => void;

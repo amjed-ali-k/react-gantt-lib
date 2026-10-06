@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import type { BlockDateRange, DateMarkingLayers, GroupSummaryRollup, ResolvedTask, TimelineRange } from '../../types';
 import type { ViewScale } from '../../core/scale';
 import type { VisibleColumnRange } from '../../core/visibleColumns';
@@ -22,6 +22,7 @@ import { DependencyHitTargets } from './DependencyHitTargets';
 import { BaselineLayer } from './BaselineLayer';
 import { DateMarkingInteractionLayer } from './DateMarkingInteractionLayer';
 import { TimelineHitLayer } from './TimelineHitLayer';
+import { useRowDraw } from './useRowDraw';
 import { shouldRenderTaskBar, resolveTaskInteractionFlags } from '../../core/groupTasks';
 
 interface TimelineBodyProps {
@@ -45,6 +46,7 @@ interface TimelineBodyProps {
   dateMarkings?: DateMarkingLayers;
   blockDates?: BlockDateRange[];
   showBaseline?: boolean;
+  hatchHolidays?: boolean;
   selectedTaskIds?: string[];
   selectedDependencyIds?: string[];
   formatDependencyLag?: DependencyLagFormatter;
@@ -76,6 +78,7 @@ export const TimelineBody = memo(function TimelineBody({
   dateMarkings,
   blockDates,
   showBaseline = true,
+  hatchHolidays = false,
   selectedTaskIds,
   selectedDependencyIds,
   formatDependencyLag,
@@ -117,6 +120,8 @@ export const TimelineBody = memo(function TimelineBody({
   }, [tasks, range.start, scale, columnWidth, rowLayouts, showBaseline]);
 
   const totalHeight = totalRowLayoutHeight(rowLayouts);
+  const barsRef = useRef<SVGSVGElement>(null);
+  const rowDraw = useRowDraw({ tasks, rowLayouts, range, scale, columnWidth, svgRef: barsRef, emit });
   const hasRows = tasks.some((task) => shouldRenderTaskBar(task, tasks));
 
   return (
@@ -128,6 +133,7 @@ export const TimelineBody = memo(function TimelineBody({
         rowLayouts={rowLayouts}
         visibleColumns={visibleColumns}
         dateMarkings={dateMarkings}
+        hatchHolidays={hatchHolidays}
       />
       <TimelineHitLayer
         range={range}
@@ -175,7 +181,16 @@ export const TimelineBody = memo(function TimelineBody({
           emit={emit}
         />
       )}
-      <svg className="rg-timeline-bars" width="100%" height={totalHeight}>
+      <svg
+        ref={barsRef}
+        className={`rg-timeline-bars${rowDraw.available ? ' rg-timeline-bars--drawable' : ''}`}
+        width="100%"
+        height={totalHeight}
+        onPointerDown={rowDraw.available ? rowDraw.onPointerDown : undefined}
+      >
+        {rowDraw.available && (
+          <rect className="rg-draw-surface" width="100%" height={totalHeight} fill="transparent" />
+        )}
         {onDependencySelect && (
           <DependencyHitTargets
             tasks={tasks}
@@ -229,6 +244,7 @@ export const TimelineBody = memo(function TimelineBody({
           );
         })}
         </g>
+        {rowDraw.preview}
       </svg>
     </div>
   );

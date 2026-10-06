@@ -974,3 +974,136 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── ClickUp-style additions (feat/clickup-style) ───────────────────────────────────────── */
+
+.rg-gantt {
+  --rg-hatch: color-mix(in srgb, var(--rg-text-muted) 28%, transparent);
+  --rg-row-hover: color-mix(in srgb, var(--rg-text) 6%, transparent);
+  --rg-bar-label-inside: var(--rg-text);
+}
+
+/* Hatched weekends and days off. */
+.rg-hatch-line {
+  stroke: var(--rg-hatch);
+}
+
+/* The floating zoom pair at the timeline's top right, below the header. */
+.rg-zoom-floating {
+  position: absolute;
+  top: 60px;
+  right: 18px;
+  z-index: 6;
+}
+
+.rg-toolbar--floating {
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--rg-border);
+  border-radius: 8px;
+  background: var(--rg-btn-bg);
+  box-shadow: var(--rg-event-label-shadow);
+}
+
+.rg-toolbar--floating .rg-toolbar-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+}
+
+.rg-toolbar--floating .rg-toolbar-btn:hover:not(:disabled) {
+  background: var(--rg-collapse-hover-bg);
+}
+
+.rg-toolbar--floating .rg-toolbar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The row under the pointer, across the list and the timeline. */
+.rg-row-overlays {
+  position: relative;
+  height: 0;
+  width: 100%;
+}
+
+.rg-row-hover-band {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--rg-row-hover);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rg-task-row[data-row-hover] {
+  background: var(--rg-row-hover);
+}
+
+/* A row whose bar is out of view: a chevron at the edge it lies toward. */
+.rg-offscreen-strip {
+  position: sticky;
+  left: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.rg-offscreen {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rg-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.rg-offscreen:hover,
+.rg-offscreen:focus-visible {
+  background: var(--rg-collapse-hover-bg);
+  color: var(--rg-text);
+}
+
+/* Drawing a bar on an unscheduled row. */
+.rg-timeline-bars--drawable .rg-draw-surface {
+  cursor: crosshair;
+}
+
+.rg-draw-preview {
+  fill: var(--rg-bar-fill);
+  fill-opacity: 0.35;
+  stroke: var(--rg-bar-fill);
+  stroke-dasharray: 4 3;
+}
+
+/* Bar labels and avatars. */
+.rg-bar-label--inside {
+  fill: var(--rg-bar-label-inside);
+  font-weight: 500;
+}
+
+.rg-bar-avatar-label {
+  fill: #fff;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.rg-divider:focus-visible {
+  outline: 2px solid var(--rg-focus-ring);
+  outline-offset: -2px;
+}

@@ -6,19 +6,22 @@ interface ZoomToolbarProps {
   scale: ViewScale;
   availableScales: ViewScale[];
   onZoomChange: (scaleId: string) => void;
+  /** A small +/- pair for the chart's corner instead of the toolbar row. */
+  floating?: boolean;
 }
 
 export const ZoomToolbar = memo(function ZoomToolbar({
   scale,
   availableScales,
   onZoomChange,
+  floating = false,
 }: ZoomToolbarProps) {
   const availableIds = availableScales.map((s) => s.id);
   const atMin = scale.id === availableScales[0]?.id;
   const atMax = scale.id === availableScales[availableScales.length - 1]?.id;
 
   return (
-    <div className="rg-toolbar" data-testid="zoom-toolbar">
+    <div className={`rg-toolbar${floating ? ' rg-toolbar--floating' : ''}`} data-testid="zoom-toolbar">
       <button
         type="button"
         className="rg-toolbar-btn"
@@ -28,7 +31,7 @@ export const ZoomToolbar = memo(function ZoomToolbar({
       >
         −
       </button>
-      <span className="rg-toolbar-label">{scale.label}</span>
+      <span className="rg-toolbar-label" data-testid="zoom-label">{scale.label}</span>
       <button
         type="button"
         className="rg-toolbar-btn"

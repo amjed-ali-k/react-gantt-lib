@@ -21,6 +21,7 @@ interface TimelineGridProps {
   rowLayouts: RowLayout[];
   visibleColumns: VisibleColumnRange;
   dateMarkings?: DateMarkingLayers;
+  hatchHolidays?: boolean;
 }
 
 export const TimelineGrid = memo(function TimelineGrid({
@@ -30,6 +31,7 @@ export const TimelineGrid = memo(function TimelineGrid({
   rowLayouts,
   visibleColumns,
   dateMarkings,
+  hatchHolidays = false,
 }: TimelineGridProps) {
   const totalHeight = totalRowLayoutHeight(rowLayouts);
   const timelineWidth = resolveTimelineWidth(range, columnWidth);
@@ -57,7 +59,7 @@ export const TimelineGrid = memo(function TimelineGrid({
       data-testid="timeline-grid"
     >
       <rect x={0} y={0} width={timelineWidth} height={totalHeight} className="rg-grid-fill" />
-      <DateMarkingHighlights rects={markingRects} height={totalHeight} />
+      <DateMarkingHighlights rects={markingRects} height={totalHeight} hatch={hatchHolidays} />
       {verticalLines.map((x) => (
         <line
           key={x}

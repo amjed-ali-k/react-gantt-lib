@@ -19,6 +19,7 @@ const CALLBACK_MAP: Record<GanttEventName, keyof GanttCallbacks> = {
   taskResizeStart: 'onTaskResizeStart',
   taskResize: 'onTaskResize',
   taskResizeEnd: 'onTaskResizeEnd',
+  taskDraw: 'onTaskDraw',
   progressChange: 'onProgressChange',
   draggableMarkerDragStart: 'onDraggableMarkerDragStart',
   draggableMarkerDrag: 'onDraggableMarkerDrag',

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ResolvedTask, BarGeometry } from '../../types';
 import type { EventEmitter } from '../../hooks/useGanttEmitter';
 import type { TaskStore } from '../../hooks/useTaskStore';
@@ -69,6 +69,11 @@ const CONNECTOR_OFFSET = 10;
 const CONNECTOR_DOT_RADIUS = 4;
 const CONNECTOR_HIT_RADIUS = 8;
 const LABEL_GAP = 6;
+const AVATAR_RADIUS = 9;
+/** A bar this wide or wider carries its avatar inside its end. */
+const AVATAR_INSIDE_MIN_WIDTH = 56;
+/** What a character of the 12px label measures, near enough to decide whether a title fits. */
+const LABEL_CHAR_WIDTH = 6.6;
 const CONNECTOR_EDGES: DependencyEdge[] = ['start', 'end'];
 /** Stands in for the chart's focus store when a bar renders outside a chart (tests). */
 const NO_FOCUS = new RovingFocus();
@@ -597,8 +602,56 @@ function TaskBarInner({
       })}
     </g>
   );
-  const labelX =
-    renderGeometry.width + LABEL_GAP + (linkStore ? CONNECTOR_OFFSET + CONNECTOR_DOT_RADIUS : 0);
+  const connectorGap = linkStore ? CONNECTOR_OFFSET + CONNECTOR_DOT_RADIUS : 0;
+  const avatar = task.avatar;
+  const avatarInside =
+    !!avatar && !isMilestone && renderGeometry.width >= AVATAR_INSIDE_MIN_WIDTH;
+  const avatarOutside = !!avatar && !avatarInside;
+  // Right of the bar: after the connector, then the avatar if it is not inside.
+  const outsideX =
+    renderGeometry.width +
+    LABEL_GAP +
+    connectorGap +
+    (avatarOutside ? AVATAR_RADIUS * 2 + LABEL_GAP : 0);
+  const insideRoom = renderGeometry.width - 16 - (avatarInside ? AVATAR_RADIUS * 2 + 4 : 0);
+  const placement = task.labelPlacement ?? 'outside';
+  const labelInside =
+    !isMilestone &&
+    (placement === 'inside' ||
+      (placement === 'auto' && task.name.length * LABEL_CHAR_WIDTH <= insideRoom));
+  const labelX = labelInside ? 8 : outsideX;
+  const clipId = `rg-clip-${useId().replace(/:/g, '')}`;
+  const avatarNode = avatar ? (
+    <g
+      className="rg-bar-avatar"
+      data-testid="bar-avatar"
+      transform={`translate(${
+        avatarInside
+          ? renderGeometry.width - AVATAR_RADIUS - 4
+          : renderGeometry.width + LABEL_GAP + connectorGap + AVATAR_RADIUS
+      }, ${renderGeometry.height / 2})`}
+      pointerEvents="none"
+    >
+      {avatar.title ? <title>{avatar.title}</title> : null}
+      <circle r={AVATAR_RADIUS} fill={avatar.color ?? 'var(--rg-text-muted)'} />
+      <text className="rg-bar-avatar-label" textAnchor="middle" dominantBaseline="central" fontSize={9}>
+        {avatar.label.slice(0, 2)}
+      </text>
+    </g>
+  ) : null;
+  const labelNode = (
+    <text
+      className={`rg-bar-label${labelInside ? ' rg-bar-label--inside' : ''}`}
+      x={labelX}
+      y={renderGeometry.height / 2}
+      dominantBaseline="middle"
+      fontSize={12}
+      pointerEvents="none"
+      clipPath={labelInside ? `url(#${clipId})` : undefined}
+    >
+      {task.name}
+    </text>
+  );
 
   const accentColor = task.color ?? 'var(--rg-bar-fill)';
   const barStroke = task.borderColor;
@@ -670,16 +723,8 @@ function TaskBarInner({
               pointerEvents="none"
             />
           )}
-          <text
-            className="rg-bar-label"
-            x={labelX}
-            y={renderGeometry.height / 2}
-            dominantBaseline="middle"
-            fontSize={12}
-            pointerEvents="none"
-          >
-            {task.name}
-          </text>
+          {avatarNode}
+          {labelNode}
           {connectors}
         </>
       ) : (
@@ -750,16 +795,13 @@ function TaskBarInner({
               pointerEvents="none"
             />
           )}
-          <text
-            className="rg-bar-label"
-            x={labelX}
-            y={renderGeometry.height / 2}
-            dominantBaseline="middle"
-            fontSize={12}
-            pointerEvents="none"
-          >
-            {task.name}
-          </text>
+          {labelInside && (
+            <clipPath id={clipId}>
+              <rect x={8} y={0} width={Math.max(0, insideRoom)} height={renderGeometry.height} />
+            </clipPath>
+          )}
+          {avatarNode}
+          {labelNode}
           {connectors}
         </>
       )}
@@ -801,6 +843,10 @@ function propsEqual(prev: TaskBarProps, next: TaskBarProps): boolean {
   if (prev.task.color !== next.task.color) return false;
   if (prev.task.borderColor !== next.task.borderColor) return false;
   if (prev.task.name !== next.task.name) return false;
+  if (prev.task.labelPlacement !== next.task.labelPlacement) return false;
+  if (prev.task.avatar?.label !== next.task.avatar?.label) return false;
+  if (prev.task.avatar?.color !== next.task.avatar?.color) return false;
+  if (prev.task.drawable !== next.task.drawable) return false;
   if (prev.task.progress !== next.task.progress) return false;
   if (prev.enableDrag !== next.enableDrag) return false;
   if (prev.enableResize !== next.enableResize) return false;
