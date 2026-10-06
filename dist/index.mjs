@@ -5419,7 +5419,7 @@ function isEditableTarget(e) {
 	].includes(target.tagName)) return true;
 	return TEXT_ROLES.has(target.getAttribute("role") ?? "");
 }
-function GanttChart({ tasks: externalTasks, columns = DEFAULT_COLUMNS, middleColumns = DEFAULT_MIDDLE_COLUMNS, zoomLevel: zoomProp = "week", availableZoomLevels, columnWidth: columnWidthProp, rowHeight = 36, height = 500, width = "100%", className, style, theme = "light", timezone, defaultLeftWidth = 220, defaultMiddleWidth = 180, minPanelWidth = 80, showTaskList = true, showDateColumns = true, showTooltip = false, renderTaskTooltip, holidays, blockDates, eventMarkers, draggableMarkers, draggableMarkerSnapPoints, showBaseline = true, groupSummaryRollup, enableDrag = true, enableResize = true, enableProgressDrag = true, snapToGrid = true, minDate, maxDate, customRows = EMPTY_CUSTOM_ROWS, columnScrollBufferPercent = DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT, onTasksChange, onSidebarLayoutChange, onTaskHover, onTaskClick, onSelectionChange, selectedTaskIds, selectedDependencyIds, formatDependencyLag, enableDependencyCreate = false, announce: announceProp, timelineLabel = "Timeline", zoomControls = "toolbar", formatHeaderUpper, formatHeaderLower, hatchHolidays = false, showOffscreenIndicators = false, enableWheelZoom = false, highlightHoveredRow = false, controllerRef,...callbacks }) {
+function GanttChart({ tasks: externalTasks, columns = DEFAULT_COLUMNS, middleColumns = DEFAULT_MIDDLE_COLUMNS, zoomLevel: zoomProp = "week", availableZoomLevels, columnWidth: columnWidthProp, rowHeight = 36, height = 500, width = "100%", className, style, theme = "light", timezone, defaultLeftWidth = 220, defaultMiddleWidth = 180, minPanelWidth = 80, showTaskList = true, showDateColumns = true, showTooltip = false, renderTaskTooltip, holidays, blockDates, eventMarkers, draggableMarkers, draggableMarkerSnapPoints, showBaseline = true, groupSummaryRollup, enableDrag = true, enableResize = true, enableProgressDrag = true, snapToGrid = true, minDate, maxDate, customRows = EMPTY_CUSTOM_ROWS, columnScrollBufferPercent = DEFAULT_COLUMN_SCROLL_BUFFER_PERCENT, onTasksChange, onSidebarLayoutChange, onTaskHover, onTaskClick, onSelectionChange, selectedTaskIds, selectedDependencyIds, formatDependencyLag, enableDependencyCreate = false, announce: announceProp, timelineLabel = "Timeline", zoomControls = "toolbar", formatHeaderUpper, formatHeaderLower, hatchHolidays = false, scaleLabels, showOffscreenIndicators = false, enableWheelZoom = false, highlightHoveredRow = false, controllerRef,...callbacks }) {
 	const containerRef = useRef(null);
 	const timelineScrollRef = useRef(null);
 	const dragPreviewStoreRef = useRef(null);
@@ -5433,8 +5433,17 @@ function GanttChart({ tasks: externalTasks, columns = DEFAULT_COLUMNS, middleCol
 	const [internalSelectedIds, setInternalSelectedIds] = useState([]);
 	const [internalSelectedDependencyIds, setInternalSelectedDependencyIds] = useState([]);
 	const pendingCenterDateRef = useRef(null);
-	const availableScales = useMemo(() => resolveScales(availableZoomLevels), [availableZoomLevels]);
-	const scale = useMemo(() => resolveScale(scaleId), [scaleId]);
+	const availableScales = useMemo(() => resolveScales(availableZoomLevels).map((s) => scaleLabels?.[s.id] ? {
+		...s,
+		label: scaleLabels[s.id]
+	} : s), [availableZoomLevels, scaleLabels]);
+	const scale = useMemo(() => {
+		const resolved = resolveScale(scaleId);
+		return scaleLabels?.[resolved.id] ? {
+			...resolved,
+			label: scaleLabels[resolved.id]
+		} : resolved;
+	}, [scaleId, scaleLabels]);
 	const onTaskHoverRef = useRef(onTaskHover);
 	onTaskHoverRef.current = onTaskHover;
 	const handleTaskHover = useCallback((detail) => {
